@@ -13,17 +13,145 @@ import {
   Settings,
   FolderPlus,
 } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useState, useEffect } from "react";
+import { createClient } from "../../supabase/client";
 
 interface DashboardTabsProps {
   userRole: "manager" | "employee";
 }
 
 export default function DashboardTabs({ userRole }: DashboardTabsProps) {
-  const handleTimeEntrySubmit = useCallback((data: any) => {
-    console.log("Time entry submitted:", data);
-    // In a real app, this would save to the database
+  const [quickStats, setQuickStats] = useState({
+    todayHours: 0,
+    weekHours: 0,
+    monthHours: 0,
+  });
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  const supabase = createClient();
+
+  useEffect(() => {
+    loadCurrentUser();
   }, []);
+
+  useEffect(() => {
+    if (currentUser || userRole === "manager") {
+      loadQuickData();
+    }
+  }, [currentUser, userRole]);
+
+  const loadCurrentUser = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    } catch (error) {
+      console.error("Error loading user:", error);
+    }
+  };
+
+  const loadQuickData = async () => {
+    try {
+      setLoading(true);
+
+      let query = supabase
+        .from("time_entries")
+        .select(
+          `
+          *,
+          activities(name),
+          areas(name, color)
+        `,
+        )
+        .order("date", { ascending: false });
+
+      if (userRole === "employee" && currentUser) {
+        query = query.eq("user_id", currentUser.id);
+      }
+
+      const { data: entries, error } = await query;
+
+      if (error) throw error;
+
+      const now = new Date();
+      const today = now.toISOString().split("T")[0];
+
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay() + 1);
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const todayHours =
+        entries
+          ?.filter((entry) => entry.date === today)
+          .reduce((sum, entry) => sum + entry.duration, 0) || 0;
+
+      const weekHours =
+        entries
+          ?.filter((entry) => new Date(entry.date) >= startOfWeek)
+          .reduce((sum, entry) => sum + entry.duration, 0) || 0;
+
+      const monthHours =
+        entries
+          ?.filter((entry) => new Date(entry.date) >= startOfMonth)
+          .reduce((sum, entry) => sum + entry.duration, 0) || 0;
+
+      setQuickStats({ todayHours, weekHours, monthHours });
+
+      // Get recent activities (last 3)
+      const recent =
+        entries?.slice(0, 3).map((entry) => ({
+          activity: entry.activities?.name || "Unbekannte Aktivität",
+          duration: entry.duration,
+          date: entry.date,
+          area: entry.areas?.name || "Unbekannter Bereich",
+          color: entry.areas?.color || "#6B7280",
+        })) || [];
+
+      setRecentActivities(recent);
+    } catch (error) {
+      console.error("Error loading quick data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTimeEntrySubmit = useCallback(async (data: any) => {
+    console.log("Time entry submitted:", data);
+    // Refresh quick data after submission
+    await loadQuickData();
+    // Also trigger a page refresh to ensure all components are updated
+    window.location.reload();
+  }, []);
+
+  const getAreaColorClasses = (hexColor: string) => {
+    const colorMap: { [key: string]: string } = {
+      "#3B82F6": "bg-blue-50 text-blue-600",
+      "#8B5CF6": "bg-purple-50 text-purple-600",
+      "#10B981": "bg-green-50 text-green-600",
+      "#F59E0B": "bg-orange-50 text-orange-600",
+      "#EF4444": "bg-red-50 text-red-600",
+    };
+    return colorMap[hexColor] || "bg-gray-50 text-gray-600";
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60 * 60),
+    );
+
+    if (diffInHours < 1) return "vor weniger als 1 Stunde";
+    if (diffInHours === 1) return "vor 1 Stunde";
+    if (diffInHours < 24) return `vor ${diffInHours} Stunden`;
+    if (diffInHours < 48) return "Gestern";
+    return date.toLocaleDateString("de-DE");
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -116,20 +244,43 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
                   <Clock className="w-5 h-5 text-blue-600" />
                   Schnellstatistiken
                 </h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Heutige Stunden</span>
-                    <span className="font-semibold text-2xl">7,5h</span>
+                {loading ? (
+                  <div className="space-y-4 animate-pulse">
+                    <div className="flex justify-between items-center">
+                      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                      <div className="h-8 bg-gray-200 rounded w-16"></div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                      <div className="h-8 bg-gray-200 rounded w-16"></div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                      <div className="h-8 bg-gray-200 rounded w-16"></div>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Diese Woche</span>
-                    <span className="font-semibold text-2xl">38,25h</span>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Heutige Stunden</span>
+                      <span className="font-semibold text-2xl">
+                        {quickStats.todayHours.toFixed(1)}h
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Diese Woche</span>
+                      <span className="font-semibold text-2xl">
+                        {quickStats.weekHours.toFixed(1)}h
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Dieser Monat</span>
+                      <span className="font-semibold text-2xl">
+                        {quickStats.monthHours.toFixed(1)}h
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Dieser Monat</span>
-                    <span className="font-semibold text-2xl">142,5h</span>
-                  </div>
-                </div>
+                )}
               </div>
 
               <div className="bg-white rounded-xl p-6 shadow-sm">
@@ -137,29 +288,45 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
                   <BarChart3 className="w-5 h-5 text-green-600" />
                   Letzte Aktivitäten
                 </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                    <div>
-                      <p className="font-medium">React Entwicklung</p>
-                      <p className="text-sm text-gray-600">vor 2 Stunden</p>
-                    </div>
-                    <span className="text-blue-600 font-semibold">3,5h</span>
+                {loading ? (
+                  <div className="space-y-3 animate-pulse">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                          </div>
+                          <div className="h-6 bg-gray-200 rounded w-12"></div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                    <div>
-                      <p className="font-medium">Team Meeting</p>
-                      <p className="text-sm text-gray-600">vor 4 Stunden</p>
-                    </div>
-                    <span className="text-green-600 font-semibold">1,0h</span>
+                ) : recentActivities.length > 0 ? (
+                  <div className="space-y-3">
+                    {recentActivities.map((activity, index) => (
+                      <div
+                        key={index}
+                        className={`flex items-center justify-between p-3 rounded-lg ${getAreaColorClasses(activity.color)}`}
+                      >
+                        <div>
+                          <p className="font-medium">{activity.activity}</p>
+                          <p className="text-sm opacity-75">
+                            {formatTimeAgo(activity.date)}
+                          </p>
+                        </div>
+                        <span className="font-semibold">
+                          {activity.duration.toFixed(1)}h
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                    <div>
-                      <p className="font-medium">Code Review</p>
-                      <p className="text-sm text-gray-600">Gestern</p>
-                    </div>
-                    <span className="text-purple-600 font-semibold">2,0h</span>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Clock className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>Keine aktuellen Aktivitäten</p>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </TabsContent>

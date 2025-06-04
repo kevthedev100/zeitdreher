@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -8,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   BarChart3,
   PieChart,
@@ -15,7 +17,19 @@ import {
   TrendingUp,
   Users,
   Calendar,
+  RefreshCw,
 } from "lucide-react";
+import { createClient } from "../../supabase/client";
+import type { Database } from "@/types/supabase";
+
+type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
+  areas: { name: string; color: string } | null;
+  fields: { name: string } | null;
+  activities: { name: string } | null;
+  users: { full_name: string; email: string } | null;
+};
+
+type Area = Database["public"]["Tables"]["areas"]["Row"];
 
 interface AnalyticsDashboardProps {
   userRole?: "manager" | "employee";
@@ -24,68 +38,229 @@ interface AnalyticsDashboardProps {
 export default function TimeAnalyticsDashboard({
   userRole = "employee",
 }: AnalyticsDashboardProps) {
-  // Mock data for demonstration
-  const timeData = {
-    totalHours: 42.5,
-    thisWeek: 38.25,
-    lastWeek: 35.75,
-    avgDaily: 7.5,
-    topActivity: "React Development",
-    productivity: 94,
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  const supabase = createClient();
+
+  useEffect(() => {
+    loadCurrentUser();
+  }, []);
+
+  useEffect(() => {
+    if (currentUser || userRole === "manager") {
+      loadData();
+    }
+  }, [currentUser, userRole]);
+
+  const loadCurrentUser = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    } catch (error) {
+      console.error("Error loading user:", error);
+    }
   };
 
-  const areaBreakdown = [
-    { name: "Entwicklung", hours: 28.5, percentage: 67, color: "bg-blue-500" },
-    { name: "Meetings", hours: 8.0, percentage: 19, color: "bg-green-500" },
-    { name: "Planung", hours: 4.0, percentage: 9, color: "bg-purple-500" },
-    { name: "Testing", hours: 2.0, percentage: 5, color: "bg-orange-500" },
-  ];
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  const weeklyTrend = [
-    { day: "Mon", hours: 8.5 },
-    { day: "Tue", hours: 7.25 },
-    { day: "Wed", hours: 8.0 },
-    { day: "Thu", hours: 6.75 },
-    { day: "Fri", hours: 7.75 },
-  ];
+      // Load areas
+      const { data: areasData, error: areasError } = await supabase
+        .from("areas")
+        .select("*")
+        .eq("is_active", true)
+        .order("name");
 
-  const recentEntries = [
-    {
-      id: 1,
-      activity: "React Entwicklung",
-      duration: 3.5,
-      date: "2024-01-15",
-      area: "Entwicklung",
-    },
-    {
-      id: 2,
-      activity: "Team Meeting",
-      duration: 1.0,
-      date: "2024-01-15",
-      area: "Meetings",
-    },
-    {
-      id: 3,
-      activity: "Code Review",
-      duration: 2.0,
-      date: "2024-01-14",
-      area: "Entwicklung",
-    },
-    {
-      id: 4,
-      activity: "Sprint Planung",
-      duration: 1.5,
-      date: "2024-01-14",
-      area: "Planung",
-    },
-    {
-      id: 5,
-      activity: "Bug Fixing",
-      duration: 2.5,
-      date: "2024-01-13",
-      area: "Entwicklung",
-    },
-  ];
+      if (areasError) throw areasError;
+      setAreas(areasData || []);
+
+      // Load time entries with related data
+      let query = supabase
+        .from("time_entries")
+        .select(
+          `
+          *,
+          areas(name, color),
+          fields(name),
+          activities(name),
+          users(full_name, email)
+        `,
+        )
+        .order("date", { ascending: false });
+
+      // Filter by user role
+      if (userRole === "employee" && currentUser) {
+        query = query.eq("user_id", currentUser.id);
+      }
+
+      const { data: entriesData, error: entriesError } = await query;
+
+      if (entriesError) throw entriesError;
+      setTimeEntries(entriesData || []);
+    } catch (error: any) {
+      console.error("Error loading data:", error);
+      setError(error.message || "Fehler beim Laden der Daten");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshData = () => {
+    loadData();
+  };
+
+  // Calculate analytics from real data
+  const calculateTimeData = () => {
+    if (timeEntries.length === 0) {
+      return {
+        totalHours: 0,
+        thisWeek: 0,
+        lastWeek: 0,
+        avgDaily: 0,
+        topActivity: "Keine Daten",
+        productivity: 0,
+      };
+    }
+
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const startOfLastWeek = new Date(startOfWeek);
+    startOfLastWeek.setDate(startOfWeek.getDate() - 7);
+
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const totalHours = timeEntries
+      .filter((entry) => new Date(entry.date) >= startOfMonth)
+      .reduce((sum, entry) => sum + entry.duration, 0);
+
+    const thisWeekHours = timeEntries
+      .filter((entry) => {
+        const entryDate = new Date(entry.date);
+        return entryDate >= startOfWeek;
+      })
+      .reduce((sum, entry) => sum + entry.duration, 0);
+
+    const lastWeekHours = timeEntries
+      .filter((entry) => {
+        const entryDate = new Date(entry.date);
+        return entryDate >= startOfLastWeek && entryDate < startOfWeek;
+      })
+      .reduce((sum, entry) => sum + entry.duration, 0);
+
+    // Calculate average daily hours (last 30 days)
+    const last30Days = new Date(now);
+    last30Days.setDate(now.getDate() - 30);
+
+    const last30DaysEntries = timeEntries.filter(
+      (entry) => new Date(entry.date) >= last30Days,
+    );
+    const avgDaily =
+      last30DaysEntries.length > 0
+        ? last30DaysEntries.reduce((sum, entry) => sum + entry.duration, 0) / 30
+        : 0;
+
+    // Find top activity
+    const activityHours: { [key: string]: number } = {};
+    timeEntries.forEach((entry) => {
+      const activityName = entry.activities?.name || "Unbekannt";
+      activityHours[activityName] =
+        (activityHours[activityName] || 0) + entry.duration;
+    });
+
+    const topActivity =
+      Object.keys(activityHours).length > 0
+        ? Object.keys(activityHours).reduce((a, b) =>
+            activityHours[a] > activityHours[b] ? a : b,
+          )
+        : "Keine Daten";
+
+    return {
+      totalHours,
+      thisWeek: thisWeekHours,
+      lastWeek: lastWeekHours,
+      avgDaily,
+      topActivity,
+      productivity:
+        totalHours > 0
+          ? Math.min(100, Math.round((totalHours / 160) * 100))
+          : 0, // Assuming 160h/month target
+    };
+  };
+
+  const calculateAreaBreakdown = () => {
+    if (timeEntries.length === 0) return [];
+
+    const areaHours: { [key: string]: { hours: number; color: string } } = {};
+    let totalHours = 0;
+
+    timeEntries.forEach((entry) => {
+      const areaName = entry.areas?.name || "Unbekannt";
+      const areaColor = entry.areas?.color || "#6B7280";
+      areaHours[areaName] = areaHours[areaName] || {
+        hours: 0,
+        color: areaColor,
+      };
+      areaHours[areaName].hours += entry.duration;
+      totalHours += entry.duration;
+    });
+
+    return Object.entries(areaHours)
+      .map(([name, data]) => ({
+        name,
+        hours: data.hours,
+        percentage:
+          totalHours > 0 ? Math.round((data.hours / totalHours) * 100) : 0,
+        color: `bg-[${data.color}]`,
+      }))
+      .sort((a, b) => b.hours - a.hours);
+  };
+
+  const calculateWeeklyTrend = () => {
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
+
+    return days.map((day, index) => {
+      const dayDate = new Date(startOfWeek);
+      dayDate.setDate(startOfWeek.getDate() + index);
+
+      const dayHours = timeEntries
+        .filter((entry) => {
+          const entryDate = new Date(entry.date);
+          return entryDate.toDateString() === dayDate.toDateString();
+        })
+        .reduce((sum, entry) => sum + entry.duration, 0);
+
+      return { day, hours: dayHours };
+    });
+  };
+
+  const getRecentEntries = () => {
+    return timeEntries.slice(0, 5).map((entry) => ({
+      id: entry.id,
+      activity: entry.activities?.name || "Unbekannte Aktivität",
+      duration: entry.duration,
+      date: entry.date,
+      area: entry.areas?.name || "Unbekannter Bereich",
+    }));
+  };
+
+  const timeData = calculateTimeData();
+  const areaBreakdown = calculateAreaBreakdown();
+  const weeklyTrend = calculateWeeklyTrend();
+  const recentEntries = getRecentEntries();
 
   const getAreaColor = (area: string) => {
     const colors: { [key: string]: string } = {
@@ -96,6 +271,75 @@ export default function TimeAnalyticsDashboard({
     };
     return colors[area] || "bg-gray-100 text-gray-800";
   };
+
+  if (loading) {
+    return (
+      <div className="bg-white p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Loading skeleton */}
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2 mb-6"></div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-white border rounded-lg p-6">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                  <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white border rounded-lg p-6">
+                <div className="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="h-4 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-white border rounded-lg p-6">
+                <div className="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="h-4 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white p-6">
+        <div className="max-w-7xl mx-auto">
+          <Card className="border-red-200">
+            <CardContent className="p-6">
+              <div className="text-center">
+                <div className="text-red-600 mb-2">
+                  <Clock className="w-12 h-12 mx-auto mb-4" />
+                </div>
+                <h3 className="text-lg font-semibold text-red-800 mb-2">
+                  Fehler beim Laden der Daten
+                </h3>
+                <p className="text-red-600 mb-4">{error}</p>
+                <Button onClick={refreshData} variant="outline">
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Erneut versuchen
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white p-6">
@@ -110,12 +354,26 @@ export default function TimeAnalyticsDashboard({
                 : "Ihr persönliches Zeiterfassungs-Dashboard"}
             </p>
           </div>
-          <Badge
-            variant={userRole === "manager" ? "default" : "secondary"}
-            className="text-sm"
-          >
-            {userRole === "manager" ? "Manager-Ansicht" : "Mitarbeiter-Ansicht"}
-          </Badge>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refreshData}
+              disabled={loading}
+            >
+              <RefreshCw
+                className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+              />
+            </Button>
+            <Badge
+              variant={userRole === "manager" ? "default" : "secondary"}
+              className="text-sm"
+            >
+              {userRole === "manager"
+                ? "Manager-Ansicht"
+                : "Mitarbeiter-Ansicht"}
+            </Badge>
+          </div>
         </div>
 
         {/* Key Metrics */}
@@ -128,7 +386,9 @@ export default function TimeAnalyticsDashboard({
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{timeData.totalHours}h</div>
+              <div className="text-2xl font-bold">
+                {timeData.totalHours.toFixed(1)}h
+              </div>
               <p className="text-xs text-muted-foreground">Dieser Monat</p>
             </CardContent>
           </Card>
@@ -139,9 +399,12 @@ export default function TimeAnalyticsDashboard({
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{timeData.thisWeek}h</div>
+              <div className="text-2xl font-bold">
+                {timeData.thisWeek.toFixed(1)}h
+              </div>
               <p className="text-xs text-green-600">
-                +{(timeData.thisWeek - timeData.lastWeek).toFixed(2)}h seit
+                {timeData.thisWeek >= timeData.lastWeek ? "+" : ""}
+                {(timeData.thisWeek - timeData.lastWeek).toFixed(1)}h seit
                 letzter Woche
               </p>
             </CardContent>
@@ -155,7 +418,9 @@ export default function TimeAnalyticsDashboard({
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{timeData.avgDaily}h</div>
+              <div className="text-2xl font-bold">
+                {timeData.avgDaily.toFixed(1)}h
+              </div>
               <p className="text-xs text-muted-foreground">Pro Arbeitstag</p>
             </CardContent>
           </Card>
@@ -192,23 +457,39 @@ export default function TimeAnalyticsDashboard({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {areaBreakdown.map((area, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-4 h-4 rounded ${area.color}`}></div>
-                      <span className="font-medium">{area.name}</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold">{area.hours}h</div>
-                      <div className="text-sm text-gray-500">
-                        {area.percentage}%
+                {areaBreakdown.length > 0 ? (
+                  areaBreakdown.map((area, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-4 h-4 rounded"
+                          style={{
+                            backgroundColor: area.color
+                              .replace("bg-[", "")
+                              .replace("]", ""),
+                          }}
+                        ></div>
+                        <span className="font-medium">{area.name}</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-semibold">
+                          {area.hours.toFixed(1)}h
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {area.percentage}%
+                        </div>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <PieChart className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>Keine Daten verfügbar</p>
                   </div>
-                ))}
+                )}
               </div>
 
               {/* Simple visual representation */}
@@ -217,8 +498,12 @@ export default function TimeAnalyticsDashboard({
                   {areaBreakdown.map((area, index) => (
                     <div
                       key={index}
-                      className={area.color}
-                      style={{ width: `${area.percentage}%` }}
+                      style={{
+                        width: `${area.percentage}%`,
+                        backgroundColor: area.color
+                          .replace("bg-[", "")
+                          .replace("]", ""),
+                      }}
                     ></div>
                   ))}
                 </div>
@@ -239,24 +524,33 @@ export default function TimeAnalyticsDashboard({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {weeklyTrend.map((day, index) => (
-                  <div key={index} className="flex items-center gap-4">
-                    <div className="w-12 text-sm font-medium">{day.day}</div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-500 h-2 rounded-full"
-                            style={{ width: `${(day.hours / 10) * 100}%` }}
-                          ></div>
+                {weeklyTrend.length > 0 ? (
+                  weeklyTrend.map((day, index) => (
+                    <div key={index} className="flex items-center gap-4">
+                      <div className="w-12 text-sm font-medium">{day.day}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-blue-500 h-2 rounded-full"
+                              style={{
+                                width: `${Math.min(100, (day.hours / 10) * 100)}%`,
+                              }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-semibold w-12">
+                            {day.hours.toFixed(1)}h
+                          </span>
                         </div>
-                        <span className="text-sm font-semibold w-12">
-                          {day.hours}h
-                        </span>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>Keine Daten verfügbar</p>
                   </div>
-                ))}
+                )}
               </div>
             </CardContent>
           </Card>
@@ -284,21 +578,35 @@ export default function TimeAnalyticsDashboard({
                   </tr>
                 </thead>
                 <tbody>
-                  {recentEntries.map((entry) => (
-                    <tr key={entry.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 font-medium">{entry.activity}</td>
-                      <td className="py-3">
-                        <Badge
-                          variant="secondary"
-                          className={getAreaColor(entry.area)}
-                        >
-                          {entry.area}
-                        </Badge>
+                  {recentEntries.length > 0 ? (
+                    recentEntries.map((entry) => (
+                      <tr key={entry.id} className="border-b hover:bg-gray-50">
+                        <td className="py-3 font-medium">{entry.activity}</td>
+                        <td className="py-3">
+                          <Badge
+                            variant="secondary"
+                            className={getAreaColor(entry.area)}
+                          >
+                            {entry.area}
+                          </Badge>
+                        </td>
+                        <td className="py-3">{entry.duration.toFixed(1)}h</td>
+                        <td className="py-3 text-gray-600">
+                          {new Date(entry.date).toLocaleDateString("de-DE")}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="py-8 text-center text-gray-500"
+                      >
+                        <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p>Keine aktuellen Einträge verfügbar</p>
                       </td>
-                      <td className="py-3">{entry.duration}h</td>
-                      <td className="py-3 text-gray-600">{entry.date}</td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>

@@ -182,21 +182,152 @@ export default function TimeEntryForm({
     }, 100);
   };
 
-  const handleVoiceToggle = () => {
-    setIsRecording(!isRecording);
-    // In a real implementation, this would start/stop voice recording
+  const handleVoiceToggle = async () => {
     if (!isRecording) {
-      // Simulate voice input after 2 seconds
-      setTimeout(() => {
-        setSelectedArea("development");
-        setSelectedField("frontend");
-        setSelectedActivity("react-dev");
-        if (!duration) {
-          setDuration("2,5");
-        }
-        setDescription("Arbeit am Zeiterfassungsformular-Komponenten");
+      // Start recording
+      setIsRecording(true);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        const mediaRecorder = new MediaRecorder(stream);
+        const audioChunks: Blob[] = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+          await processVoiceInput(audioBlob);
+          stream.getTracks().forEach((track) => track.stop());
+        };
+
+        mediaRecorder.start();
+
+        // Store recorder reference for stopping
+        (window as any).currentRecorder = mediaRecorder;
+      } catch (error) {
+        console.error("Error accessing microphone:", error);
         setIsRecording(false);
-      }, 2000);
+        alert(
+          "Fehler beim Zugriff auf das Mikrofon. Bitte überprüfen Sie die Berechtigungen.",
+        );
+      }
+    } else {
+      // Stop recording
+      const recorder = (window as any).currentRecorder;
+      if (recorder && recorder.state === "recording") {
+        recorder.stop();
+      }
+      setIsRecording(false);
+    }
+  };
+
+  const processVoiceInput = async (audioBlob: Blob) => {
+    try {
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "recording.webm");
+
+      const { data, error } = await supabase.functions.invoke(
+        "supabase-functions-transcribe-audio",
+        {
+          body: formData,
+        },
+      );
+
+      if (error) {
+        console.error("Transcription error:", error);
+        alert("Fehler bei der Spracherkennung. Bitte versuchen Sie es erneut.");
+        return;
+      }
+
+      const { parsed, transcription } = data;
+      console.log("Transcription:", transcription);
+      console.log("Parsed data:", parsed);
+
+      // Apply parsed data to form
+      if (parsed.duration) {
+        setDuration(parsed.duration.toString());
+      }
+
+      if (parsed.description) {
+        setDescription(parsed.description);
+      }
+
+      // Handle area selection
+      if (parsed.area) {
+        const area = areas.find((a) => a.name === parsed.area);
+        if (area) {
+          setSelectedArea(area.id);
+          // Load fields for this area and then handle field/activity selection
+          const fieldsData = await loadFieldsAndReturn(area.id);
+
+          if (parsed.field && fieldsData) {
+            const field = fieldsData.find((f) => f.name === parsed.field);
+            if (field) {
+              setSelectedField(field.id);
+
+              // Load activities and handle activity selection
+              const activitiesData = await loadActivitiesAndReturn(field.id);
+
+              if (parsed.activity && activitiesData) {
+                const activity = activitiesData.find(
+                  (a) => a.name === parsed.activity,
+                );
+                if (activity) {
+                  setSelectedActivity(activity.id);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Show success message
+      alert(
+        `Spracheingabe erfolgreich verarbeitet!\nTranskription: "${transcription}"`,
+      );
+    } catch (error) {
+      console.error("Error processing voice input:", error);
+      alert("Fehler bei der Verarbeitung der Spracheingabe.");
+    }
+  };
+
+  // Helper functions to load data and return it
+  const loadFieldsAndReturn = async (areaId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("fields")
+        .select("*")
+        .eq("area_id", areaId)
+        .eq("is_active", true)
+        .order("name");
+
+      if (error) throw error;
+      setFields(data || []);
+      return data || [];
+    } catch (error) {
+      console.error("Error loading fields:", error);
+      return [];
+    }
+  };
+
+  const loadActivitiesAndReturn = async (fieldId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("activities")
+        .select("*")
+        .eq("field_id", fieldId)
+        .eq("is_active", true)
+        .order("name");
+
+      if (error) throw error;
+      setActivities(data || []);
+      return data || [];
+    } catch (error) {
+      console.error("Error loading activities:", error);
+      return [];
     }
   };
 
@@ -276,7 +407,17 @@ export default function TimeEntryForm({
     formData.append("date", date);
     formData.append("description", description);
 
-    await createTimeEntry(formData);
+    const result = await createTimeEntry(formData);
+
+    // Call the onSubmit callback to refresh parent data
+    onSubmit({
+      area_id: selectedArea,
+      field_id: selectedField,
+      activity_id: selectedActivity,
+      duration: parseFloat(duration),
+      date,
+      description,
+    });
 
     // Reset form
     setSelectedArea("");
