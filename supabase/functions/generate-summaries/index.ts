@@ -34,12 +34,12 @@ Deno.serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o",
+          model: "gpt-4o-2024-08-06",
           messages: [
             {
               role: "system",
               content:
-                "Du bist ein Assistent, der Zeiterfassungsdaten zusammenfasst. Antworte auf Deutsch und in einem professionellen Ton.",
+                "Du bist ein intelligenter Assistent, der Zeiterfassungsdaten analysiert und zusammenfasst. Antworte auf Deutsch und in einem professionellen Ton. Wichtig: Verwende für Hervorhebungen und wichtige Begriffe Markdown-Formatierung mit genau zwei Sternchen für fett (**fett**), aber vermeide übermäßige oder mehrfache Sternchen. Nutze alle Einträge des jeweiligen Tages als Kontext für eine umfassende Analyse. Biete tiefere Einblicke in Produktivitätsmuster, Zeitverteilung und potenzielle Optimierungsmöglichkeiten. Identifiziere Trends und gib konstruktive Vorschläge.",
             },
             {
               role: "user",

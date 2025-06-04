@@ -875,6 +875,11 @@ export default function TimeEntryForm({
       return;
     }
 
+    if (!duration || parseFloat(duration) <= 0) {
+      alert("Bitte geben Sie eine gültige Dauer ein.");
+      return;
+    }
+
     const formData = new FormData();
     formData.append("area_id", selectedArea);
     formData.append("field_id", selectedField);
@@ -884,93 +889,78 @@ export default function TimeEntryForm({
     formData.append("description", description);
 
     try {
-      // Get area, field, and activity names for better data passing
-      const areaName = areas.find((a) => a.id === selectedArea)?.name || "";
-      const fieldName = fields.find((f) => f.id === selectedField)?.name || "";
-      const activityName =
-        activities.find((a) => a.id === selectedActivity)?.name || "";
-      const areaColor =
-        areas.find((a) => a.id === selectedArea)?.color || "#6B7280";
-
-      // Generate a unique ID for the time entry
-      const entryId = `entry-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-
-      // Create a complete time entry object
-      const timeEntryObject = {
-        id: entryId,
-        user_id: (await supabase.auth.getUser()).data.user?.id || "anonymous",
+      console.log("Submitting time entry with data:", {
         area_id: selectedArea,
         field_id: selectedField,
         activity_id: selectedActivity,
         duration: parseFloat(duration),
         date,
         description,
-        created_at: new Date().toISOString(),
-        // Add structured data for components
-        areas: { name: areaName, color: areaColor },
-        fields: { name: fieldName },
-        activities: { name: activityName },
-        users: {
-          full_name:
-            (await supabase.auth.getUser()).data.user?.user_metadata
-              ?.full_name || "Demo User",
-          email:
-            (await supabase.auth.getUser()).data.user?.email ||
-            "demo@example.com",
-        },
-      };
+      });
 
-      // Try to save to database
-      try {
-        const result = await createTimeEntry(formData);
-        console.log("Time entry saved to database:", result);
-      } catch (dbError) {
-        console.warn(
-          "Could not save to database, but will continue with local data:",
-          dbError,
-        );
-        // We'll continue with the local object even if the database save fails
-      }
+      // Try to save to database using the server action
+      const result = await createTimeEntry(formData);
 
-      // Call the onSubmit callback to refresh parent data with enhanced data
-      onSubmit(timeEntryObject);
+      if (result.success && result.data) {
+        console.log("Time entry saved successfully:", result.data);
 
-      // Show success notification
-      const notification = document.createElement("div");
-      notification.className =
-        "fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300";
-      notification.textContent = "Zeiteintrag erfolgreich gespeichert!";
-      document.body.appendChild(notification);
+        // Call the onSubmit callback with the actual database result
+        onSubmit(result.data);
 
-      // Remove notification after 3 seconds
-      setTimeout(() => {
-        notification.style.opacity = "0";
+        // Show success notification
+        const notification = document.createElement("div");
+        notification.className =
+          "fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300";
+        notification.textContent =
+          "Zeiteintrag erfolgreich in der Datenbank gespeichert!";
+        document.body.appendChild(notification);
+
+        // Remove notification after 3 seconds
         setTimeout(() => {
-          if (document.body.contains(notification)) {
-            document.body.removeChild(notification);
-          }
-        }, 300);
-      }, 3000);
+          notification.style.opacity = "0";
+          setTimeout(() => {
+            if (document.body.contains(notification)) {
+              document.body.removeChild(notification);
+            }
+          }, 300);
+        }, 3000);
 
-      // Reset form
-      setSelectedArea("");
-      setSelectedField("");
-      setSelectedActivity("");
-      setFields([]);
-      setActivities([]);
-      setDuration("");
-      setDescription("");
-      setDate(new Date().toISOString().split("T")[0]);
+        // Reset form
+        setSelectedArea("");
+        setSelectedField("");
+        setSelectedActivity("");
+        setFields([]);
+        setActivities([]);
+        setDuration("");
+        setDescription("");
+        setDate(new Date().toISOString().split("T")[0]);
 
-      // Trigger custom event to refresh other components
-      window.dispatchEvent(
-        new CustomEvent("timeEntryAdded", { detail: timeEntryObject }),
-      );
+        // Trigger custom event to refresh other components
+        window.dispatchEvent(
+          new CustomEvent("timeEntryAdded", { detail: result.data }),
+        );
+      } else {
+        throw new Error(result.message || "Failed to create time entry");
+      }
     } catch (error) {
       console.error("Error creating time entry:", error);
-      alert(
-        "Fehler beim Erstellen des Zeiteintrags. Bitte versuchen Sie es erneut.",
-      );
+
+      // Show error notification
+      const errorNotification = document.createElement("div");
+      errorNotification.className =
+        "fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300";
+      errorNotification.textContent = `Fehler beim Erstellen des Zeiteintrags: ${error.message || error}`;
+      document.body.appendChild(errorNotification);
+
+      // Remove error notification after 5 seconds
+      setTimeout(() => {
+        errorNotification.style.opacity = "0";
+        setTimeout(() => {
+          if (document.body.contains(errorNotification)) {
+            document.body.removeChild(errorNotification);
+          }
+        }, 300);
+      }, 5000);
     }
   };
 

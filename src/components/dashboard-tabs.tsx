@@ -21,6 +21,7 @@ import { useCallback, useState, useEffect } from "react";
 import { createClient } from "../../supabase/client";
 import AIDailySummary from "@/components/ai-daily-summary";
 import AIWeeklySummary from "@/components/ai-weekly-summary";
+import RecentTimeEntry from "@/components/recent-time-entry";
 
 interface DashboardTabsProps {
   userRole: "manager" | "employee";
@@ -35,6 +36,7 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [recentTimeEntry, setRecentTimeEntry] = useState<any>(null);
 
   const supabase = createClient();
 
@@ -218,20 +220,8 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
     async (data: any) => {
       console.log("Time entry submitted:", data);
 
-      // Show success notification
-      const notification = document.createElement("div");
-      notification.className =
-        "fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300";
-      notification.textContent = "Zeiteintrag erfolgreich gespeichert!";
-      document.body.appendChild(notification);
-
-      // Remove notification after 3 seconds
-      setTimeout(() => {
-        notification.style.opacity = "0";
-        setTimeout(() => {
-          document.body.removeChild(notification);
-        }, 300);
-      }, 3000);
+      // Set the recent time entry to show for 30 seconds
+      setRecentTimeEntry(data);
 
       // Refresh data without full page reload
       await loadQuickData();
@@ -247,6 +237,23 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
     },
     [loadQuickData],
   );
+
+  const handleRecentEntryUpdate = useCallback(
+    (updatedEntry: any) => {
+      setRecentTimeEntry(updatedEntry);
+      // Refresh data to reflect the update
+      loadQuickData();
+      // Trigger event for other components
+      window.dispatchEvent(
+        new CustomEvent("timeEntryUpdated", { detail: updatedEntry }),
+      );
+    },
+    [loadQuickData],
+  );
+
+  const handleRecentEntryExpire = useCallback(() => {
+    setRecentTimeEntry(null);
+  }, []);
 
   const getAreaColorClasses = (hexColor: string) => {
     const colorMap: { [key: string]: string } = {
@@ -540,7 +547,20 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
           </TabsContent>
 
           <TabsContent value="new-entry" className="p-6">
-            <TimeEntryForm onSubmit={handleTimeEntrySubmit} />
+            <div className="space-y-6">
+              <TimeEntryForm onSubmit={handleTimeEntrySubmit} />
+
+              {/* Recent Time Entry Display */}
+              {recentTimeEntry && (
+                <div className="mt-6">
+                  <RecentTimeEntry
+                    entry={recentTimeEntry}
+                    onUpdate={handleRecentEntryUpdate}
+                    onExpire={handleRecentEntryExpire}
+                  />
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="entries" className="p-6">

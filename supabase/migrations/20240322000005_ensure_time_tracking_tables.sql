@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS time_entries (
   duration NUMERIC(10, 2) NOT NULL,
   date DATE NOT NULL,
   description TEXT,
+  status TEXT DEFAULT 'active' CHECK (status IN ('pending', 'approved', 'rejected', 'active')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -125,7 +126,7 @@ BEGIN
 END $$;
 
 -- Enable realtime for all tables (only if not already added)
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_publication_tables 
@@ -161,4 +162,4 @@ BEGIN
   ) THEN
     EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.users';
   END IF;
-END $;
+END $$;

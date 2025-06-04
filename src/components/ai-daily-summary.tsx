@@ -24,10 +24,10 @@ export default function AIDailySummary({
 
   // Generate summary when time entries change
   useEffect(() => {
-    if (timeEntries.length > 0 && !loading) {
+    if (!loading) {
       generateSummary();
     }
-  }, [timeEntries, loading]);
+  }, [timeEntries, loading, todayHours]);
 
   // Listen for time entry updates
   useEffect(() => {
@@ -48,8 +48,8 @@ export default function AIDailySummary({
   }, []);
 
   const generateSummary = async () => {
-    if (timeEntries.length === 0) {
-      setSummary("Keine Zeiteinträge für heute verfügbar.");
+    // Continue even if there are no entries, to show a message about no entries for today
+    if (loading) {
       return;
     }
 
@@ -82,7 +82,11 @@ export default function AIDailySummary({
 
       // Extract the daily summary from the response
       const fullText = data.choices[0].message.content;
-      const dailySummary = fullText.split("\n\n")[0]; // Get first paragraph (daily summary)
+      // Normalize markdown formatting with asterisks (replace multiple asterisks with proper markdown)
+      const cleanedText = fullText
+        .replace(/\*{3,}/g, "**")
+        .replace(/\*\*\s*\*\*/g, "**");
+      const dailySummary = cleanedText.split("\n\n")[0]; // Get first paragraph (daily summary)
 
       setSummary(dailySummary || "Keine Zusammenfassung verfügbar.");
     } catch (err: any) {
@@ -154,7 +158,13 @@ export default function AIDailySummary({
         </div>
       ) : summary ? (
         <div className="p-4 bg-purple-50 rounded-lg">
-          <p className="text-purple-900">{summary}</p>
+          <p className="text-purple-900 whitespace-pre-line font-normal">
+            {summary
+              .split(/\*\*([^*]+)\*\*/)
+              .map((part, i) =>
+                i % 2 === 0 ? part : <strong key={i}>{part}</strong>,
+              )}
+          </p>
         </div>
       ) : (
         <div className="text-center py-6 text-gray-500">

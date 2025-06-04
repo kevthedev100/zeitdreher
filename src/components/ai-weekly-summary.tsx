@@ -155,7 +155,11 @@ export default function AIWeeklySummary({
 
       // Extract the weekly summary from the response
       const fullText = data.choices[0].message.content;
-      const parts = fullText.split("\n\n");
+      // Normalize markdown formatting with asterisks (replace multiple asterisks with proper markdown)
+      const cleanedText = fullText
+        .replace(/\*{3,}/g, "**")
+        .replace(/\*\*\s*\*\*/g, "**");
+      const parts = cleanedText.split("\n\n");
       const weeklySummary =
         parts.length > 1
           ? parts.slice(1).join("\n\n")
@@ -281,7 +285,13 @@ export default function AIWeeklySummary({
         </div>
       ) : summary ? (
         <div className="p-4 bg-blue-50 rounded-lg">
-          <p className="text-blue-900 whitespace-pre-line">{summary}</p>
+          <p className="text-blue-900 whitespace-pre-line font-normal">
+            {summary
+              .split(/\*\*([^*]+)\*\*/)
+              .map((part, i) =>
+                i % 2 === 0 ? part : <strong key={i}>{part}</strong>,
+              )}
+          </p>
         </div>
       ) : (
         <div className="text-center py-6 text-gray-500">

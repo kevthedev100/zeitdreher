@@ -160,9 +160,14 @@ export default function AIChat({ userRole = "employee" }) {
 
       const aiResponse = response.data;
 
+      // Normalize markdown formatting with asterisks (replace multiple asterisks with proper markdown)
+      const content = aiResponse.choices[0].message.content
+        .replace(/\*{3,}/g, "**")
+        .replace(/\*\*\s*\*\*/g, "**");
+
       const assistantMessage: AIMessage = {
         role: "assistant",
-        content: aiResponse.choices[0].message.content,
+        content: content,
         timestamp: new Date(),
       };
 
@@ -255,7 +260,17 @@ export default function AIChat({ userRole = "employee" }) {
                     <div
                       className={`inline-block max-w-[80%] rounded-lg p-3 ${message.role === "user" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}`}
                     >
-                      <p className="whitespace-pre-wrap">{message.content}</p>
+                      <p className="whitespace-pre-wrap">
+                        {message.content
+                          .split(/\*\*([^*]+)\*\*/)
+                          .map((part, i) =>
+                            i % 2 === 0 ? (
+                              part
+                            ) : (
+                              <strong key={i}>{part}</strong>
+                            ),
+                          )}
+                      </p>
                       <div
                         className={`text-xs mt-1 ${message.role === "user" ? "text-blue-600" : "text-gray-500"}`}
                       >
