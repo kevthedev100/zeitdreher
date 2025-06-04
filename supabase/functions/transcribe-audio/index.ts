@@ -1,5 +1,86 @@
 import { corsHeaders } from "@shared/cors.ts";
 
+// Exponential backoff retry function
+async function exponentialBackoffRetry(
+  fn: () => Promise<any>,
+  retries = 3,
+  delay = 1000,
+): Promise<any> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries === 0) throw error;
+
+    // Check if error is retryable
+    const isRetryable =
+      error instanceof Error &&
+      (error.message.includes("timeout") ||
+        error.message.includes("network") ||
+        error.message.includes("502") ||
+        error.message.includes("503") ||
+        error.message.includes("504"));
+
+    if (!isRetryable) throw error;
+
+    console.log(`Retrying in ${delay}ms... (${retries} retries left)`);
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    return exponentialBackoffRetry(fn, retries - 1, delay * 2);
+  }
+}
+
+// Enhanced AI-powered parsing using GPT
+async function parseWithAI(transcriptionText: string): Promise<any> {
+  const messages = [
+    {
+      role: "system",
+      content: `Du bist ein Assistent, der deutsche Spracheingaben für Zeiterfassung in strukturierte Daten umwandelt. 
+      Extrahiere folgende Informationen aus dem Text:
+      - duration: Dauer in Stunden (z.B. "2 Stunden" -> 2, "30 Minuten" -> 0.5)
+      - area: Arbeitsbereich (Entwicklung, Design, Marketing, Management)
+      - field: Arbeitsfeld (Frontend, Backend, UI Design, etc.)
+      - activity: Spezifische Aktivität
+      - date: Datum ("heute" -> heutiges Datum, "gestern" -> gestriges Datum, etc.)
+      - description: Beschreibung der Arbeit
+      
+      Antworte nur mit einem JSON-Objekt ohne zusätzlichen Text.`,
+    },
+    {
+      role: "user",
+      content: transcriptionText,
+    },
+  ];
+
+  const chatResponse = await exponentialBackoffRetry(() =>
+    fetch("https://api.picaos.com/v1/passthrough/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "x-pica-secret": Deno.env.get("PICA_SECRET_KEY")!,
+        "x-pica-connection-key": Deno.env.get("PICA_OPENAI_CONNECTION_KEY")!,
+        "x-pica-action-id": "conn_mod_def::GDzgi1QfvM4::4OjsWvZhRxmAVuLAuWgfVA",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages,
+        temperature: 0,
+        max_completion_tokens: 1000,
+      }),
+    }).then((res) => {
+      if (!res.ok)
+        throw new Error(`Chat Completion API error: ${res.statusText}`);
+      return res.json();
+    }),
+  );
+
+  try {
+    const parsedContent = JSON.parse(chatResponse.choices[0].message.content);
+    return parsedContent;
+  } catch (parseError) {
+    console.warn("AI parsing failed, falling back to rule-based parsing");
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", {
@@ -11,6 +92,7 @@ Deno.serve(async (req) => {
   try {
     const formData = await req.formData();
     const audioFile = formData.get("audio") as File;
+    const language = (formData.get("language") as string) || "de";
 
     if (!audioFile) {
       return new Response(JSON.stringify({ error: "No audio file provided" }), {
@@ -19,16 +101,35 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Validate file size (25MB limit)
+    const maxSize = 25 * 1024 * 1024; // 25MB
+    if (audioFile.size > maxSize) {
+      return new Response(
+        JSON.stringify({
+          error: "File size exceeds limit",
+          details: `File size ${(audioFile.size / 1024 / 1024).toFixed(2)}MB exceeds 25MB limit`,
+        }),
+        {
+          status: 413,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
     // Create FormData for OpenAI API via Pica Passthrough
     const openAIFormData = new FormData();
     openAIFormData.append("file", audioFile, "audio.webm");
     openAIFormData.append("model", "whisper-1");
-    openAIFormData.append("language", "de"); // German language
+    openAIFormData.append("language", language);
+    openAIFormData.append("response_format", "verbose_json");
+    openAIFormData.append(
+      "timestamp_granularities",
+      JSON.stringify(["word", "segment"]),
+    );
 
-    // Call OpenAI Whisper API via Pica Passthrough
-    const response = await fetch(
-      "https://api.picaos.com/v1/passthrough/v1/audio/transcriptions",
-      {
+    // Call OpenAI Whisper API via Pica Passthrough with retry logic
+    const transcriptionResult = await exponentialBackoffRetry(() =>
+      fetch("https://api.picaos.com/v1/passthrough/v1/audio/transcriptions", {
         method: "POST",
         headers: {
           "x-pica-secret": Deno.env.get("PICA_SECRET_KEY")!,
@@ -37,31 +138,50 @@ Deno.serve(async (req) => {
             "conn_mod_def::GDzgH4tQCbA::kJ8mPI-0SmO6UV04cpjyZw",
         },
         body: openAIFormData,
-      },
+      }).then(async (response) => {
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(
+            `Transcription API error: ${response.status} ${errorText}`,
+          );
+        }
+        return response.json();
+      }),
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("OpenAI API error:", errorText);
-      return new Response(
-        JSON.stringify({ error: "Transcription failed", details: errorText }),
-        {
-          status: 502,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    const transcriptionResult = await response.json();
     const transcribedText = transcriptionResult.text;
 
-    // Parse the transcribed text to extract time entry information
-    const parsedData = parseTimeEntryFromText(transcribedText);
+    // Calculate average confidence from segments
+    let averageConfidence = 0;
+    if (
+      transcriptionResult.segments &&
+      transcriptionResult.segments.length > 0
+    ) {
+      const totalConfidence = transcriptionResult.segments.reduce(
+        (sum: number, segment: any) => sum + (segment.confidence || 0),
+        0,
+      );
+      averageConfidence = totalConfidence / transcriptionResult.segments.length;
+    }
+
+    // Try AI-powered parsing first, then fall back to rule-based parsing
+    let parsedData = await parseWithAI(transcribedText);
+    if (!parsedData) {
+      parsedData = parseTimeEntryFromText(transcribedText);
+    }
+
+    // Add natural language date parsing
+    if (parsedData.date && typeof parsedData.date === "string") {
+      parsedData.date = parseNaturalDate(parsedData.date);
+    }
 
     return new Response(
       JSON.stringify({
         transcription: transcribedText,
         parsed: parsedData,
+        confidence: averageConfidence,
+        segments: transcriptionResult.segments || [],
+        processingMethod: parsedData ? "ai" : "rule-based",
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -70,18 +190,75 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error("Error in transcribe-audio function:", error);
+
+    // Determine if error is retryable
+    const isRetryable =
+      error instanceof Error &&
+      (error.message.includes("timeout") ||
+        error.message.includes("network") ||
+        error.message.includes("502") ||
+        error.message.includes("503") ||
+        error.message.includes("504"));
+
     return new Response(
       JSON.stringify({
-        error: "Internal server error",
+        error: "Transcription processing failed",
         details: error.message,
+        retryable: isRetryable,
       }),
       {
-        status: 500,
+        status: isRetryable ? 503 : 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );
   }
 });
+
+// Natural language date parsing
+function parseNaturalDate(dateString: string): string {
+  const today = new Date();
+  const lowerDate = dateString.toLowerCase();
+
+  if (lowerDate.includes("heute") || lowerDate.includes("today")) {
+    return today.toISOString().split("T")[0];
+  }
+
+  if (lowerDate.includes("gestern") || lowerDate.includes("yesterday")) {
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    return yesterday.toISOString().split("T")[0];
+  }
+
+  if (lowerDate.includes("vorgestern")) {
+    const dayBeforeYesterday = new Date(today);
+    dayBeforeYesterday.setDate(today.getDate() - 2);
+    return dayBeforeYesterday.toISOString().split("T")[0];
+  }
+
+  // Parse weekdays
+  const weekdays = {
+    montag: 1,
+    dienstag: 2,
+    mittwoch: 3,
+    donnerstag: 4,
+    freitag: 5,
+    samstag: 6,
+    sonntag: 0,
+  };
+
+  for (const [day, dayNum] of Object.entries(weekdays)) {
+    if (lowerDate.includes(day)) {
+      const targetDate = new Date(today);
+      const currentDay = today.getDay();
+      const daysBack =
+        currentDay === 0 ? (7 - dayNum) % 7 : (currentDay - dayNum + 7) % 7;
+      targetDate.setDate(today.getDate() - daysBack);
+      return targetDate.toISOString().split("T")[0];
+    }
+  }
+
+  return today.toISOString().split("T")[0]; // Default to today
+}
 
 function parseTimeEntryFromText(text: string) {
   const lowerText = text.toLowerCase();

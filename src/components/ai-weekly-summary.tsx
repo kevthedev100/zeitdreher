@@ -1,0 +1,294 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Bot, RefreshCw, Calendar } from "lucide-react";
+import { createClient } from "../../supabase/client";
+
+interface AIWeeklySummaryProps {
+  weekHours: number;
+  loading: boolean;
+}
+
+export default function AIWeeklySummary({
+  weekHours,
+  loading,
+}: AIWeeklySummaryProps) {
+  const [summary, setSummary] = useState<string>("");
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [weeklyEntries, setWeeklyEntries] = useState<any[]>([]);
+
+  const supabase = createClient();
+
+  // Load weekly entries when component mounts
+  useEffect(() => {
+    if (!loading) {
+      loadWeeklyEntries();
+    }
+  }, [loading]);
+
+  // Generate summary when weekly entries change
+  useEffect(() => {
+    if (weeklyEntries.length > 0) {
+      generateSummary();
+    }
+  }, [weeklyEntries]);
+
+  // Listen for time entry updates
+  useEffect(() => {
+    const handleTimeEntryAdded = () => {
+      loadWeeklyEntries();
+    };
+
+    window.addEventListener(
+      "timeEntryAdded",
+      handleTimeEntryAdded as EventListener,
+    );
+    return () => {
+      window.removeEventListener(
+        "timeEntryAdded",
+        handleTimeEntryAdded as EventListener,
+      );
+    };
+  }, []);
+
+  const loadWeeklyEntries = async () => {
+    try {
+      // Get current week's start and end dates
+      const now = new Date();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6); // Sunday
+      endOfWeek.setHours(23, 59, 59, 999);
+
+      // Format dates for query
+      const startDate = startOfWeek.toISOString().split("T")[0];
+      const endDate = endOfWeek.toISOString().split("T")[0];
+
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Query time entries for this week
+      const { data, error } = await supabase
+        .from("time_entries")
+        .select(
+          `
+          *,
+          areas(name, color),
+          fields(name),
+          activities(name)
+        `,
+        )
+        .eq("user_id", user.id)
+        .gte("date", startDate)
+        .lte("date", endDate)
+        .order("date", { ascending: false });
+
+      if (error) throw error;
+
+      // Format entries for display
+      const formattedEntries =
+        data?.map((entry) => ({
+          activity: entry.activities?.name || "Unbekannte Aktivität",
+          area: entry.areas?.name || "Unbekannter Bereich",
+          field: entry.fields?.name || "Unbekanntes Feld",
+          duration: entry.duration,
+          date: entry.date,
+        })) || [];
+
+      setWeeklyEntries(formattedEntries);
+    } catch (err) {
+      console.error("Error loading weekly entries:", err);
+      setError("Fehler beim Laden der wöchentlichen Einträge.");
+    }
+  };
+
+  const generateSummary = async () => {
+    if (weeklyEntries.length === 0) {
+      setSummary("Keine Zeiteinträge für diese Woche verfügbar.");
+      return;
+    }
+
+    try {
+      setIsGenerating(true);
+      setError(null);
+
+      // Group entries by day for better AI context
+      const entriesByDay = weeklyEntries.reduce((acc: any, entry: any) => {
+        if (!acc[entry.date]) acc[entry.date] = [];
+        acc[entry.date].push(entry);
+        return acc;
+      }, {});
+
+      // Format daily entries for the AI (we need this for the API call)
+      const today = new Date().toISOString().split("T")[0];
+      const dailyEntriesText = entriesByDay[today]
+        ? formatEntriesForDay(entriesByDay[today], "Heute")
+        : "Keine Einträge für heute";
+
+      // Format weekly entries for the AI
+      const weeklyEntriesText = Object.keys(entriesByDay)
+        .map((date) =>
+          formatEntriesForDay(entriesByDay[date], formatDate(date)),
+        )
+        .join("\n\n");
+
+      // Call the generate-summaries edge function
+      const { data, error } = await supabase.functions.invoke(
+        "supabase-functions-generate-summaries",
+        {
+          body: {
+            dailyEntries: dailyEntriesText,
+            weeklyEntries: weeklyEntriesText,
+          },
+        },
+      );
+
+      if (error) throw new Error(error.message);
+
+      // Extract the weekly summary from the response
+      const fullText = data.choices[0].message.content;
+      const parts = fullText.split("\n\n");
+      const weeklySummary =
+        parts.length > 1
+          ? parts.slice(1).join("\n\n")
+          : "Keine wöchentliche Zusammenfassung verfügbar.";
+
+      setSummary(weeklySummary);
+    } catch (err: any) {
+      console.error("Error generating weekly summary:", err);
+      setError("Fehler bei der Generierung der Zusammenfassung.");
+
+      // Use a fallback summary if the API call fails
+      if (weeklyEntries.length > 0) {
+        // Group entries by area
+        const areaHours: { [key: string]: number } = {};
+        let totalHours = 0;
+
+        weeklyEntries.forEach((entry) => {
+          const area = entry.area || "Unbekannt";
+          areaHours[area] = (areaHours[area] || 0) + entry.duration;
+          totalHours += entry.duration;
+        });
+
+        // Find top area
+        let topArea = "Unbekannt";
+        let topHours = 0;
+
+        Object.entries(areaHours).forEach(([area, hours]) => {
+          if (hours > topHours) {
+            topArea = area;
+            topHours = hours;
+          }
+        });
+
+        // Generate fallback summary
+        const fallbackSummary = `Diese Woche wurden insgesamt ${totalHours.toFixed(1)} Stunden erfasst. Der größte Zeitanteil wurde im Bereich ${topArea} (${topHours.toFixed(1)}h) verbracht. Die Produktivität liegt im normalen Bereich für diese Woche.\n\nZeitverteilung nach Bereichen:\n${Object.entries(
+          areaHours,
+        )
+          .map(
+            ([area, hours]) =>
+              `- ${area}: ${hours.toFixed(1)}h (${Math.round((hours / totalHours) * 100)}%)`,
+          )
+          .join("\n")}`;
+
+        setSummary(fallbackSummary);
+      } else {
+        setSummary("Keine Zeiteinträge für diese Woche verfügbar.");
+      }
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const formatEntriesForDay = (entries: any[], dayLabel: string): string => {
+    const totalHours = entries.reduce(
+      (sum: number, entry: any) => sum + entry.duration,
+      0,
+    );
+
+    let result = `${dayLabel} (${totalHours.toFixed(1)}h):\n`;
+
+    // Group by area
+    const entriesByArea = entries.reduce((acc: any, entry: any) => {
+      if (!acc[entry.area]) acc[entry.area] = [];
+      acc[entry.area].push(entry);
+      return acc;
+    }, {});
+
+    // Format each area's entries
+    Object.keys(entriesByArea).forEach((area) => {
+      const areaEntries = entriesByArea[area];
+      const areaHours = areaEntries.reduce(
+        (sum: number, entry: any) => sum + entry.duration,
+        0,
+      );
+
+      result += `- ${area} (${areaHours.toFixed(1)}h):\n`;
+      areaEntries.forEach((entry: any) => {
+        result += `  * ${entry.activity} (${entry.duration.toFixed(1)}h)\n`;
+      });
+    });
+
+    return result;
+  };
+
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+
+    if (dateString === today.toISOString().split("T")[0]) {
+      return "Heute";
+    } else if (dateString === yesterday.toISOString().split("T")[0]) {
+      return "Gestern";
+    } else {
+      return date.toLocaleDateString("de-DE", { weekday: "long" });
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl p-6 shadow-sm">
+      <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+        <Calendar className="w-5 h-5 text-blue-600" />
+        KI-Wochenzusammenfassung
+      </h3>
+
+      {loading || isGenerating ? (
+        <div className="animate-pulse space-y-3">
+          <div className="h-4 bg-gray-200 rounded w-full"></div>
+          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+          <div className="h-4 bg-gray-200 rounded w-4/6"></div>
+          <div className="flex items-center gap-2 mt-4 text-blue-500">
+            <RefreshCw className="w-4 h-4 animate-spin" />
+            <span className="text-sm">Generiere Zusammenfassung...</span>
+          </div>
+        </div>
+      ) : error ? (
+        <div className="p-4 bg-red-50 rounded-lg text-red-700">
+          <p>{error}</p>
+          <button onClick={generateSummary} className="text-sm underline mt-2">
+            Erneut versuchen
+          </button>
+        </div>
+      ) : summary ? (
+        <div className="p-4 bg-blue-50 rounded-lg">
+          <p className="text-blue-900 whitespace-pre-line">{summary}</p>
+        </div>
+      ) : (
+        <div className="text-center py-6 text-gray-500">
+          <Calendar className="w-10 h-10 mx-auto mb-2 opacity-50" />
+          <p>Keine Daten für die Zusammenfassung verfügbar</p>
+        </div>
+      )}
+    </div>
+  );
+}
