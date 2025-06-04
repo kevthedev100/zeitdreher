@@ -4,7 +4,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TimeEntryForm from "@/components/time-entry-form";
 import TimeAnalyticsDashboard from "@/components/time-analytics-dashboard";
 import TimeEntriesTable from "@/components/time-entries-table";
-import { Clock, BarChart3, Table, Plus, Settings } from "lucide-react";
+import CategoryManagement from "@/components/category-management";
+import {
+  Clock,
+  BarChart3,
+  Table,
+  Plus,
+  Settings,
+  FolderPlus,
+} from "lucide-react";
 import { useCallback } from "react";
 
 interface DashboardTabsProps {
@@ -73,6 +81,14 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
           >
             <Settings className="w-4 h-4" />
             Management
+          </TabsTrigger>
+
+          <TabsTrigger
+            value="categories"
+            className="w-full justify-start gap-2 mb-4"
+          >
+            <FolderPlus className="w-4 h-4" />
+            Kategorien verwalten
           </TabsTrigger>
 
           <TabsTrigger
@@ -201,6 +217,10 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
                 selectedArea="management"
               />
             </div>
+          </TabsContent>
+
+          <TabsContent value="categories" className="p-0">
+            <CategoryManagement />
           </TabsContent>
 
           <TabsContent value="new-entry" className="p-6">

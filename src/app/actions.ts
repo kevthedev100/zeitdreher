@@ -155,3 +155,167 @@ export const checkUserSubscription = async (userId: string) => {
 
   return !!subscription;
 };
+
+// Time tracking actions
+export const getAreas = async () => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("areas")
+    .select("*")
+    .eq("is_active", true)
+    .order("name");
+
+  if (error) throw error;
+  return data;
+};
+
+export const getFieldsByArea = async (areaId: string) => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("fields")
+    .select("*")
+    .eq("area_id", areaId)
+    .eq("is_active", true)
+    .order("name");
+
+  if (error) throw error;
+  return data;
+};
+
+export const getActivitiesByField = async (fieldId: string) => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("activities")
+    .select("*")
+    .eq("field_id", fieldId)
+    .eq("is_active", true)
+    .order("name");
+
+  if (error) throw error;
+  return data;
+};
+
+export const createArea = async (formData: FormData) => {
+  const name = formData.get("name")?.toString();
+  const description = formData.get("description")?.toString();
+  const color = formData.get("color")?.toString() || "#3B82F6";
+
+  if (!name) {
+    return encodedRedirect("error", "/dashboard", "Area name is required");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("areas")
+    .insert({ name, description, color });
+
+  if (error) {
+    return encodedRedirect("error", "/dashboard", error.message);
+  }
+
+  return encodedRedirect("success", "/dashboard", "Area created successfully");
+};
+
+export const createField = async (formData: FormData) => {
+  const areaId = formData.get("area_id")?.toString();
+  const name = formData.get("name")?.toString();
+  const description = formData.get("description")?.toString();
+
+  if (!areaId || !name) {
+    return encodedRedirect(
+      "error",
+      "/dashboard",
+      "Area and field name are required",
+    );
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("fields")
+    .insert({ area_id: areaId, name, description });
+
+  if (error) {
+    return encodedRedirect("error", "/dashboard", error.message);
+  }
+
+  return encodedRedirect("success", "/dashboard", "Field created successfully");
+};
+
+export const createActivity = async (formData: FormData) => {
+  const fieldId = formData.get("field_id")?.toString();
+  const name = formData.get("name")?.toString();
+  const description = formData.get("description")?.toString();
+
+  if (!fieldId || !name) {
+    return encodedRedirect(
+      "error",
+      "/dashboard",
+      "Field and activity name are required",
+    );
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("activities")
+    .insert({ field_id: fieldId, name, description });
+
+  if (error) {
+    return encodedRedirect("error", "/dashboard", error.message);
+  }
+
+  return encodedRedirect(
+    "success",
+    "/dashboard",
+    "Activity created successfully",
+  );
+};
+
+export const createTimeEntry = async (formData: FormData) => {
+  const areaId = formData.get("area_id")?.toString();
+  const fieldId = formData.get("field_id")?.toString();
+  const activityId = formData.get("activity_id")?.toString();
+  const duration = parseFloat(formData.get("duration")?.toString() || "0");
+  const date = formData.get("date")?.toString();
+  const description = formData.get("description")?.toString();
+
+  if (!areaId || !fieldId || !activityId || !duration || !date) {
+    return encodedRedirect(
+      "error",
+      "/dashboard",
+      "All required fields must be filled",
+    );
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return encodedRedirect(
+      "error",
+      "/sign-in",
+      "Please sign in to create time entries",
+    );
+  }
+
+  const { error } = await supabase.from("time_entries").insert({
+    user_id: user.id,
+    area_id: areaId,
+    field_id: fieldId,
+    activity_id: activityId,
+    duration,
+    date,
+    description,
+  });
+
+  if (error) {
+    return encodedRedirect("error", "/dashboard", error.message);
+  }
+
+  return encodedRedirect(
+    "success",
+    "/dashboard",
+    "Time entry created successfully",
+  );
+};
