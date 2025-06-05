@@ -46,6 +46,12 @@ export default async function Home() {
                     <p className="text-gray-600 italic">
                       "Heute 3 Stunden an Projekt Alpha gearbeitet..."
                     </p>
+                    <div className="mt-4 p-2 bg-blue-50 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm text-blue-700">
+                        <Clock className="w-4 h-4" />
+                        <span>Automatisch kategorisiert: Entwicklung > Frontend > Implementierung</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -56,14 +62,16 @@ export default async function Home() {
               </div>
               <h2 className="text-4xl font-bold mb-6">Sprach-Zeiterfassung</h2>
               <p className="text-xl text-gray-600 mb-6">
-                Erfassen Sie Ihre Arbeitszeit natürlich durch Sprechen. Unsere
-                KI-gestützte Spracherkennung mit OpenAI Whisper versteht Sie
-                perfekt und füllt automatisch alle Felder aus.
+                Erfassen Sie Ihre Arbeitszeit natürlich durch das Einsprechen
+                von dem was Sie gemacht haben. Unsere KI-gestützte
+                Spracherkennung versteht Sie perfekt und füllt automatisch alle
+                Felder aus. Einfach und schnell - Sodass Zeiterfassung nicht zum
+                Zeitaufwand wird...
               </p>
               <ul className="space-y-3 text-gray-600">
                 <li className="flex items-center gap-3">
                   <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                  <span>95% Genauigkeit bei der Spracherkennung</span>
+                  <span>Präzise Genauigkeit bei der Spracherkennung</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
@@ -71,7 +79,9 @@ export default async function Home() {
                 </li>
                 <li className="flex items-center gap-3">
                   <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                  <span>Unterstützt natürliche Sprache in Deutsch</span>
+                  <span>
+                    Unterstützt natürliche Sprache in Deutsch und Englisch
+                  </span>
                 </li>
               </ul>
             </div>
@@ -97,16 +107,34 @@ export default async function Home() {
                       </div>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Entwicklung</span>
-                      <span>60%</span>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Entwicklung</span>
+                        <span>60%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-500 h-2 rounded-full"
+                          style={{ width: "60%" }}
+                        ></div>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-500 h-2 rounded-full"
-                        style={{ width: "60%" }}
-                      ></div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Design</span>
+                        <span>25%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-purple-500 h-2 rounded-full"
+                          style={{ width: "25%" }}
+                        ></div>
+                      </div>
+                    </div>
+                    <div className="p-2 bg-green-50 rounded-lg text-sm text-green-700">
+                      <div className="font-medium">KI-Erkenntnis:</div>
+                      <div>Produktivitätssteigerung von 15% im Vergleich zur Vorwoche</div>
                     </div>
                   </div>
                 </div>
@@ -116,24 +144,29 @@ export default async function Home() {
               <div className="text-green-600 mb-4">
                 <BarChart3 className="w-8 h-8" />
               </div>
-              <h2 className="text-4xl font-bold mb-6">Intelligente Analytik</h2>
+              <h2 className="text-4xl font-bold mb-6">
+                Entdecke das Optimierungspotenzial durch den Einsatz von KI
+              </h2>
               <p className="text-xl text-gray-600 mb-6">
-                Verstehen Sie, wie Ihre Zeit investiert wird. Interaktive
-                Dashboards mit Kreisdiagrammen, Balkendiagrammen und
-                detaillierten Berichten geben Ihnen vollständige Transparenz.
+                Verstehen Sie, wie Ihre Zeit investiert wird und wo
+                Verbesserungspotenzial liegt. KI-gestützte Auswertungen
+                identifizieren Produktivitätsmuster, erkennen Kontextwechsel und
+                geben konkrete Vorschläge zur Optimierung Ihrer Arbeitsabläufe.
               </p>
               <ul className="space-y-3 text-gray-600">
                 <li className="flex items-center gap-3">
                   <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                  <span>Echtzeit-Dashboards mit interaktiven Diagrammen</span>
+                  <span>Tägliche und wöchentliche KI-Zusammenfassungen</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                  <span>Projektbasierte Zeitauswertung und Trends</span>
+                  <span>Erkennung von Kontextwechseln und Fokuszeiten</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                  <span>Exportierbare Berichte für Management</span>
+                  <span>
+                    Personalisierte Vorschläge zur Produktivitätssteigerung
+                  </span>
                 </li>
               </ul>
             </div>
@@ -176,6 +209,26 @@ export default async function Home() {
                         </span>
                       </div>
                     ))}
+                  </div>
+                  <div className="mt-4 border-t pt-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <span className="text-sm font-medium">Manager-Ansicht</span>
+                      </div>
+                      <div className="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full">
+                        Vollzugriff
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        <span className="text-sm font-medium">Mitarbeiter-Ansicht</span>
+                      </div>
+                      <div className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">
+                        Eingeschränkt
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
