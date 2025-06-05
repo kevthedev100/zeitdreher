@@ -20,8 +20,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createClient } from "../../supabase/client";
-import { UserCircle, Mail, Briefcase, Check, RefreshCw } from "lucide-react";
+import {
+  UserCircle,
+  Mail,
+  Briefcase,
+  Check,
+  RefreshCw,
+  Layers,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import CategorySetupWizard from "./category-setup-wizard";
 
 interface UserProfile {
   id: string;
@@ -156,138 +165,156 @@ export default function Profile() {
 
   return (
     <div className="bg-white p-6">
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <div className="flex flex-col items-center">
-            <Avatar className="h-24 w-24 mb-4">
-              <AvatarImage
-                src={
-                  profile?.avatar_url ||
-                  "https://api.dicebear.com/7.x/avataaars/svg?seed=" +
-                    profile?.email
-                }
-                alt={profile?.full_name || ""}
-              />
-              <AvatarFallback>
-                {profile?.full_name
-                  ?.split(" ")
-                  .map((n) => n[0])
-                  .join("") || "U"}
-              </AvatarFallback>
-            </Avatar>
-            <CardTitle className="text-2xl">
-              {profile?.full_name || "Dein Profil"}
-            </CardTitle>
-            <CardDescription>{profile?.email}</CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {errorMessage && (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md mb-4">
-              {errorMessage}
-            </div>
-          )}
-          {successMessage && (
-            <div className="bg-green-50 border border-green-200 text-green-700 p-3 rounded-md mb-4 flex items-center gap-2">
-              <Check className="w-4 h-4" />
-              {successMessage}
-            </div>
-          )}
+      <Tabs defaultValue="profile" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="profile" className="flex items-center gap-2">
+            <UserCircle className="w-4 h-4" /> Profil
+          </TabsTrigger>
+          <TabsTrigger value="categories" className="flex items-center gap-2">
+            <Layers className="w-4 h-4" /> Kategorien einrichten
+          </TabsTrigger>
+        </TabsList>
 
-          <div className="space-y-2">
-            <Label htmlFor="full_name" className="flex items-center gap-2">
-              <UserCircle className="w-4 h-4" /> Name
-            </Label>
-            <Input
-              id="full_name"
-              value={profile?.full_name || ""}
-              onChange={(e) => handleChange("full_name", e.target.value)}
-              placeholder="Dein vollständiger Name"
-            />
-          </div>
+        <TabsContent value="profile">
+          <Card className="max-w-2xl mx-auto">
+            <CardHeader>
+              <div className="flex flex-col items-center">
+                <Avatar className="h-24 w-24 mb-4">
+                  <AvatarImage
+                    src={
+                      profile?.avatar_url ||
+                      "https://api.dicebear.com/7.x/avataaars/svg?seed=" +
+                        profile?.email
+                    }
+                    alt={profile?.full_name || ""}
+                  />
+                  <AvatarFallback>
+                    {profile?.full_name
+                      ?.split(" ")
+                      .map((n) => n[0])
+                      .join("") || "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <CardTitle className="text-2xl">
+                  {profile?.full_name || "Dein Profil"}
+                </CardTitle>
+                <CardDescription>{profile?.email}</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {errorMessage && (
+                <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md mb-4">
+                  {errorMessage}
+                </div>
+              )}
+              {successMessage && (
+                <div className="bg-green-50 border border-green-200 text-green-700 p-3 rounded-md mb-4 flex items-center gap-2">
+                  <Check className="w-4 h-4" />
+                  {successMessage}
+                </div>
+              )}
 
-          <div className="space-y-2">
-            <Label htmlFor="email" className="flex items-center gap-2">
-              <Mail className="w-4 h-4" /> E-Mail
-            </Label>
-            <Input
-              id="email"
-              value={profile?.email || ""}
-              disabled
-              className="bg-gray-50"
-            />
-            <p className="text-xs text-gray-500">
-              Die E-Mail-Adresse kann nicht geändert werden.
-            </p>
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="full_name" className="flex items-center gap-2">
+                  <UserCircle className="w-4 h-4" /> Name
+                </Label>
+                <Input
+                  id="full_name"
+                  value={profile?.full_name || ""}
+                  onChange={(e) => handleChange("full_name", e.target.value)}
+                  placeholder="Dein vollständiger Name"
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="role" className="flex items-center gap-2">
-              <Briefcase className="w-4 h-4" /> Rolle
-            </Label>
-            <Select
-              value={profile?.role || "employee"}
-              onValueChange={(value) => handleChange("role", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Wähle deine Rolle" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="employee">Mitarbeiter</SelectItem>
-                <SelectItem value="manager">Manager</SelectItem>
-                <SelectItem value="admin">Administrator</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="email" className="flex items-center gap-2">
+                  <Mail className="w-4 h-4" /> E-Mail
+                </Label>
+                <Input
+                  id="email"
+                  value={profile?.email || ""}
+                  disabled
+                  className="bg-gray-50"
+                />
+                <p className="text-xs text-gray-500">
+                  Die E-Mail-Adresse kann nicht geändert werden.
+                </p>
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="department" className="flex items-center gap-2">
-              <Briefcase className="w-4 h-4" /> Abteilung
-            </Label>
-            <Input
-              id="department"
-              value={profile?.department || ""}
-              onChange={(e) => handleChange("department", e.target.value)}
-              placeholder="Deine Abteilung"
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="role" className="flex items-center gap-2">
+                  <Briefcase className="w-4 h-4" /> Rolle
+                </Label>
+                <Select
+                  value={profile?.role || "employee"}
+                  onValueChange={(value) => handleChange("role", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Wähle deine Rolle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="employee">Mitarbeiter</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="admin">Administrator</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="position" className="flex items-center gap-2">
-              <Briefcase className="w-4 h-4" /> Position
-            </Label>
-            <Input
-              id="position"
-              value={profile?.position || ""}
-              onChange={(e) => handleChange("position", e.target.value)}
-              placeholder="Deine Position"
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="department" className="flex items-center gap-2">
+                  <Briefcase className="w-4 h-4" /> Abteilung
+                </Label>
+                <Input
+                  id="department"
+                  value={profile?.department || ""}
+                  onChange={(e) => handleChange("department", e.target.value)}
+                  placeholder="Deine Abteilung"
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phone" className="flex items-center gap-2">
-              <Briefcase className="w-4 h-4" /> Telefon
-            </Label>
-            <Input
-              id="phone"
-              value={profile?.phone || ""}
-              onChange={(e) => handleChange("phone", e.target.value)}
-              placeholder="Deine Telefonnummer"
-            />
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button onClick={handleSave} disabled={saving} className="w-full">
-            {saving ? (
-              <>
-                <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Speichern...
-              </>
-            ) : (
-              "Profil speichern"
-            )}
-          </Button>
-        </CardFooter>
-      </Card>
+              <div className="space-y-2">
+                <Label htmlFor="position" className="flex items-center gap-2">
+                  <Briefcase className="w-4 h-4" /> Position
+                </Label>
+                <Input
+                  id="position"
+                  value={profile?.position || ""}
+                  onChange={(e) => handleChange("position", e.target.value)}
+                  placeholder="Deine Position"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="flex items-center gap-2">
+                  <Briefcase className="w-4 h-4" /> Telefon
+                </Label>
+                <Input
+                  id="phone"
+                  value={profile?.phone || ""}
+                  onChange={(e) => handleChange("phone", e.target.value)}
+                  placeholder="Deine Telefonnummer"
+                />
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleSave} disabled={saving} className="w-full">
+                {saving ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />{" "}
+                    Speichern...
+                  </>
+                ) : (
+                  "Profil speichern"
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="categories">
+          <CategorySetupWizard />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

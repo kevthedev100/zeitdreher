@@ -44,11 +44,15 @@ import {
 interface TimeEntryFormProps {
   onSubmit?: (data: any) => void;
   selectedArea?: string;
+  selectedField?: string;
+  selectedActivity?: string;
 }
 
 export default function TimeEntryForm({
   onSubmit = () => {},
   selectedArea: initialArea = "",
+  selectedField: initialField = "",
+  selectedActivity: initialActivity = "",
 }: TimeEntryFormProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [selectedArea, setSelectedArea] = useState(initialArea);
@@ -73,10 +77,94 @@ export default function TimeEntryForm({
 
   const supabase = createClient();
 
-  // Load data from database
+  // Load areas from database
   useEffect(() => {
     loadAreas();
   }, []);
+
+  // Handle initial selections from props with sequential loading
+  useEffect(() => {
+    console.log("TimeEntryForm props changed:", {
+      initialArea,
+      initialField,
+      initialActivity,
+    });
+
+    const setInitialSelections = async () => {
+      // Check if any of the initial values are different from current selections
+      const areaChanged = initialArea && initialArea !== selectedArea;
+      const fieldChanged = initialField && initialField !== selectedField;
+      const activityChanged =
+        initialActivity && initialActivity !== selectedActivity;
+
+      if (
+        (areaChanged || fieldChanged || activityChanged) &&
+        areas.length > 0
+      ) {
+        console.log("Setting initial selections:", {
+          areaChanged,
+          fieldChanged,
+          activityChanged,
+        });
+
+        // Always start by setting the area if provided
+        if (initialArea) {
+          console.log("Setting initial area:", initialArea);
+          setSelectedArea(initialArea);
+
+          // Wait a bit for the area to be set, then load and set field
+          setTimeout(async () => {
+            if (initialField) {
+              const fieldsData = await loadFieldsAndReturn(initialArea);
+              console.log("Loaded fields for initial area:", fieldsData);
+
+              // Set the initial field if it exists
+              const fieldExists = fieldsData.some(
+                (field) => field.id === initialField,
+              );
+              if (fieldExists) {
+                console.log("Setting initial field:", initialField);
+                setSelectedField(initialField);
+
+                // Wait a bit for the field to be set, then load and set activity
+                setTimeout(async () => {
+                  if (initialActivity) {
+                    const activitiesData =
+                      await loadActivitiesAndReturn(initialField);
+                    console.log(
+                      "Loaded activities for initial field:",
+                      activitiesData,
+                    );
+
+                    // Set the initial activity if it exists
+                    const activityExists = activitiesData.some(
+                      (activity) => activity.id === initialActivity,
+                    );
+                    if (activityExists) {
+                      console.log("Setting initial activity:", initialActivity);
+                      setSelectedActivity(initialActivity);
+                    }
+                  }
+                }, 100);
+              }
+            }
+          }, 100);
+        }
+      }
+    };
+
+    if ((initialArea || initialField || initialActivity) && areas.length > 0) {
+      setInitialSelections();
+    }
+  }, [
+    initialArea,
+    initialField,
+    initialActivity,
+    selectedArea,
+    selectedField,
+    selectedActivity,
+    areas,
+  ]);
 
   useEffect(() => {
     if (selectedArea) {
@@ -108,39 +196,9 @@ export default function TimeEntryForm({
 
       if (error) throw error;
 
-      // If no areas found, create mock areas
-      if (!data || data.length === 0) {
-        const mockAreas = [
-          {
-            id: "area1",
-            name: "Entwicklung",
-            color: "#3B82F6",
-            is_active: true,
-          },
-          { id: "area2", name: "Design", color: "#8B5CF6", is_active: true },
-          { id: "area3", name: "Marketing", color: "#10B981", is_active: true },
-          {
-            id: "area4",
-            name: "Management",
-            color: "#F59E0B",
-            is_active: true,
-          },
-        ];
-        setAreas(mockAreas);
-        console.log("Using mock areas data:", mockAreas);
-
-        // Set initial area if provided
-        if (initialArea) {
-          const area = mockAreas.find(
-            (a) => a.name.toLowerCase() === initialArea.toLowerCase(),
-          );
-          if (area) {
-            setSelectedArea(area.id);
-          }
-        }
-      } else {
+      if (data && data.length > 0) {
         setAreas(data);
-        console.log("Loaded real areas data:", data.length, "areas");
+        console.log("Loaded areas data:", data.length, "areas");
 
         // Set initial area if provided
         if (initialArea && data) {
@@ -151,27 +209,13 @@ export default function TimeEntryForm({
             setSelectedArea(area.id);
           }
         }
+      } else {
+        setAreas([]);
+        console.log("No areas found in database");
       }
     } catch (error) {
       console.error("Error loading areas:", error);
-      // Use mock areas as fallback
-      const mockAreas = [
-        { id: "area1", name: "Entwicklung", color: "#3B82F6", is_active: true },
-        { id: "area2", name: "Design", color: "#8B5CF6", is_active: true },
-        { id: "area3", name: "Marketing", color: "#10B981", is_active: true },
-        { id: "area4", name: "Management", color: "#F59E0B", is_active: true },
-      ];
-      setAreas(mockAreas);
-
-      // Set initial area if provided
-      if (initialArea) {
-        const area = mockAreas.find(
-          (a) => a.name.toLowerCase() === initialArea.toLowerCase(),
-        );
-        if (area) {
-          setSelectedArea(area.id);
-        }
-      }
+      setAreas([]);
     } finally {
       setLoading(false);
     }
@@ -188,145 +232,22 @@ export default function TimeEntryForm({
 
       if (error) throw error;
 
-      // If no fields found, create mock fields based on the area
-      if (!data || data.length === 0) {
-        let mockFields = [];
-
-        // Generate appropriate mock fields based on the area
-        if (areaId === "area1" || areaId.includes("Entwicklung")) {
-          mockFields = [
-            {
-              id: "field1",
-              area_id: areaId,
-              name: "Frontend",
-              is_active: true,
-            },
-            { id: "field2", area_id: areaId, name: "Backend", is_active: true },
-            { id: "field3", area_id: areaId, name: "Testing", is_active: true },
-          ];
-        } else if (areaId === "area2" || areaId.includes("Design")) {
-          mockFields = [
-            {
-              id: "field4",
-              area_id: areaId,
-              name: "UI Design",
-              is_active: true,
-            },
-            {
-              id: "field5",
-              area_id: areaId,
-              name: "UX Research",
-              is_active: true,
-            },
-            {
-              id: "field6",
-              area_id: areaId,
-              name: "Prototyping",
-              is_active: true,
-            },
-          ];
-        } else if (areaId === "area3" || areaId.includes("Marketing")) {
-          mockFields = [
-            {
-              id: "field7",
-              area_id: areaId,
-              name: "Content Creation",
-              is_active: true,
-            },
-            {
-              id: "field8",
-              area_id: areaId,
-              name: "Social Media",
-              is_active: true,
-            },
-            {
-              id: "field9",
-              area_id: areaId,
-              name: "Campaigns",
-              is_active: true,
-            },
-          ];
-        } else if (areaId === "area4" || areaId.includes("Management")) {
-          mockFields = [
-            {
-              id: "field10",
-              area_id: areaId,
-              name: "Planning",
-              is_active: true,
-            },
-            {
-              id: "field11",
-              area_id: areaId,
-              name: "Meetings",
-              is_active: true,
-            },
-            {
-              id: "field12",
-              area_id: areaId,
-              name: "Reporting",
-              is_active: true,
-            },
-          ];
-        } else {
-          // Generic fields for any other area
-          mockFields = [
-            {
-              id: `field-${areaId}-1`,
-              area_id: areaId,
-              name: "Planning",
-              is_active: true,
-            },
-            {
-              id: `field-${areaId}-2`,
-              area_id: areaId,
-              name: "Execution",
-              is_active: true,
-            },
-            {
-              id: `field-${areaId}-3`,
-              area_id: areaId,
-              name: "Review",
-              is_active: true,
-            },
-          ];
-        }
-
-        setFields(mockFields);
-        console.log("Using mock fields data for area", areaId, ":", mockFields);
-      } else {
+      if (data && data.length > 0) {
         setFields(data);
         console.log(
-          "Loaded real fields data for area",
+          "Loaded fields data for area",
           areaId,
           ":",
           data.length,
           "fields",
         );
+      } else {
+        setFields([]);
+        console.log("No fields found for this area");
       }
     } catch (error) {
       console.error("Error loading fields:", error);
-      // Use generic mock fields as fallback
-      const mockFields = [
-        {
-          id: `field-${areaId}-1`,
-          area_id: areaId,
-          name: "Planning",
-          is_active: true,
-        },
-        {
-          id: `field-${areaId}-2`,
-          area_id: areaId,
-          name: "Execution",
-          is_active: true,
-        },
-        {
-          id: `field-${areaId}-3`,
-          area_id: areaId,
-          name: "Review",
-          is_active: true,
-        },
-      ];
-      setFields(mockFields);
+      setFields([]);
     }
   };
 
@@ -341,160 +262,22 @@ export default function TimeEntryForm({
 
       if (error) throw error;
 
-      // If no activities found, create mock activities based on the field
-      if (!data || data.length === 0) {
-        let mockActivities = [];
-
-        // Generate appropriate mock activities based on the field ID or name
-        if (fieldId === "field1" || fieldId.includes("Frontend")) {
-          mockActivities = [
-            {
-              id: "activity1",
-              field_id: fieldId,
-              name: "React Development",
-              is_active: true,
-            },
-            {
-              id: "activity2",
-              field_id: fieldId,
-              name: "CSS/Styling",
-              is_active: true,
-            },
-            {
-              id: "activity3",
-              field_id: fieldId,
-              name: "Performance Optimization",
-              is_active: true,
-            },
-          ];
-        } else if (fieldId === "field2" || fieldId.includes("Backend")) {
-          mockActivities = [
-            {
-              id: "activity4",
-              field_id: fieldId,
-              name: "API Development",
-              is_active: true,
-            },
-            {
-              id: "activity5",
-              field_id: fieldId,
-              name: "Database Work",
-              is_active: true,
-            },
-            {
-              id: "activity6",
-              field_id: fieldId,
-              name: "Deployment",
-              is_active: true,
-            },
-          ];
-        } else if (fieldId === "field3" || fieldId.includes("Testing")) {
-          mockActivities = [
-            {
-              id: "activity7",
-              field_id: fieldId,
-              name: "Unit Testing",
-              is_active: true,
-            },
-            {
-              id: "activity8",
-              field_id: fieldId,
-              name: "Integration Testing",
-              is_active: true,
-            },
-            {
-              id: "activity9",
-              field_id: fieldId,
-              name: "Bug Fixing",
-              is_active: true,
-            },
-          ];
-        } else if (fieldId === "field4" || fieldId.includes("UI Design")) {
-          mockActivities = [
-            {
-              id: "activity10",
-              field_id: fieldId,
-              name: "Wireframing",
-              is_active: true,
-            },
-            {
-              id: "activity11",
-              field_id: fieldId,
-              name: "Visual Design",
-              is_active: true,
-            },
-            {
-              id: "activity12",
-              field_id: fieldId,
-              name: "Icon Design",
-              is_active: true,
-            },
-          ];
-        } else {
-          // Generic activities for any other field
-          mockActivities = [
-            {
-              id: `activity-${fieldId}-1`,
-              field_id: fieldId,
-              name: "Research",
-              is_active: true,
-            },
-            {
-              id: `activity-${fieldId}-2`,
-              field_id: fieldId,
-              name: "Implementation",
-              is_active: true,
-            },
-            {
-              id: `activity-${fieldId}-3`,
-              field_id: fieldId,
-              name: "Review",
-              is_active: true,
-            },
-          ];
-        }
-
-        setActivities(mockActivities);
-        console.log(
-          "Using mock activities data for field",
-          fieldId,
-          ":",
-          mockActivities,
-        );
-      } else {
+      if (data && data.length > 0) {
         setActivities(data);
         console.log(
-          "Loaded real activities data for field",
+          "Loaded activities data for field",
           fieldId,
           ":",
           data.length,
           "activities",
         );
+      } else {
+        setActivities([]);
+        console.log("No activities found for this field");
       }
     } catch (error) {
       console.error("Error loading activities:", error);
-      // Use generic mock activities as fallback
-      const mockActivities = [
-        {
-          id: `activity-${fieldId}-1`,
-          field_id: fieldId,
-          name: "Research",
-          is_active: true,
-        },
-        {
-          id: `activity-${fieldId}-2`,
-          field_id: fieldId,
-          name: "Implementation",
-          is_active: true,
-        },
-        {
-          id: `activity-${fieldId}-3`,
-          field_id: fieldId,
-          name: "Review",
-          is_active: true,
-        },
-      ];
-      setActivities(mockActivities);
+      setActivities([]);
     }
   };
 

@@ -7,6 +7,7 @@ import TimeEntriesTable from "@/components/time-entries-table";
 import CategoryManagement from "@/components/category-management";
 import AIChat from "@/components/ai-chat";
 import Profile from "@/components/profile";
+import HierarchicalNavigation from "@/components/hierarchical-navigation";
 import {
   Clock,
   BarChart3,
@@ -16,7 +17,9 @@ import {
   FolderPlus,
   Bot,
   UserCircle,
+  Layers,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useCallback, useState, useEffect } from "react";
 import { createClient } from "../../supabase/client";
 import AIDailySummary from "@/components/ai-daily-summary";
@@ -37,6 +40,11 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [recentTimeEntry, setRecentTimeEntry] = useState<any>(null);
+  const [selectedAreaId, setSelectedAreaId] = useState<string>("");
+  const [selectedFieldId, setSelectedFieldId] = useState<string>("");
+  const [selectedActivityId, setSelectedActivityId] = useState<string>("");
+  const [showHierarchicalNav, setShowHierarchicalNav] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<string>("analytics");
 
   const supabase = createClient();
 
@@ -230,10 +238,7 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
       window.dispatchEvent(new CustomEvent("timeEntryAdded", { detail: data }));
 
       // Switch to overview tab to show the updated data with AI summaries
-      const overviewTab = document.querySelector('[data-value="overview"]');
-      if (overviewTab) {
-        (overviewTab as HTMLElement).click();
-      }
+      setActiveTab("overview");
     },
     [loadQuickData],
   );
@@ -254,6 +259,18 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
   const handleRecentEntryExpire = useCallback(() => {
     setRecentTimeEntry(null);
   }, []);
+
+  const handleActivitySelect = useCallback(
+    (areaId: string, fieldId: string, activityId: string) => {
+      console.log("Activity selected:", { areaId, fieldId, activityId });
+      setSelectedAreaId(areaId);
+      setSelectedFieldId(fieldId);
+      setSelectedActivityId(activityId);
+      // Switch to new entry tab using state instead of DOM manipulation
+      setActiveTab("new-entry");
+    },
+    [],
+  );
 
   const getAreaColorClasses = (hexColor: string) => {
     const colorMap: { [key: string]: string } = {
@@ -283,7 +300,8 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
   return (
     <div className="flex h-screen bg-gray-50">
       <Tabs
-        defaultValue="analytics"
+        value={activeTab}
+        onValueChange={setActiveTab}
         className="flex w-full"
         orientation="vertical"
       >
@@ -327,45 +345,30 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
           </TabsTrigger>
 
           <div className="w-full border-t pt-4 mb-2">
-            <h3 className="text-sm font-medium text-gray-500 mb-2 px-3">
-              BEREICHE
-            </h3>
+            <div className="flex items-center justify-between px-3">
+              <h3 className="text-sm font-medium text-gray-500">KATEGORIEN</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => setShowHierarchicalNav(!showHierarchicalNav)}
+              >
+                {showHierarchicalNav ? "-" : "+"}
+              </Button>
+            </div>
           </div>
 
-          <TabsTrigger
-            value="development"
-            className="w-full justify-start gap-2 mb-1"
-          >
-            <Settings className="w-4 h-4" />
-            Entwicklung
-          </TabsTrigger>
-          <TabsTrigger
-            value="design"
-            className="w-full justify-start gap-2 mb-1"
-          >
-            <Settings className="w-4 h-4" />
-            Design
-          </TabsTrigger>
-          <TabsTrigger
-            value="marketing"
-            className="w-full justify-start gap-2 mb-1"
-          >
-            <Settings className="w-4 h-4" />
-            Marketing
-          </TabsTrigger>
-          <TabsTrigger
-            value="management"
-            className="w-full justify-start gap-2 mb-4"
-          >
-            <Settings className="w-4 h-4" />
-            Management
-          </TabsTrigger>
+          {showHierarchicalNav && (
+            <div className="mb-4 px-3">
+              <HierarchicalNavigation onSelectActivity={handleActivitySelect} />
+            </div>
+          )}
 
           <TabsTrigger
             value="categories"
             className="w-full justify-start gap-2 mb-4"
           >
-            <FolderPlus className="w-4 h-4" />
+            <Layers className="w-4 h-4" />
             Kategorien verwalten
           </TabsTrigger>
 
@@ -487,68 +490,18 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
             </div>
           </TabsContent>
 
-          <TabsContent value="development" className="p-6">
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-2xl font-bold mb-4">
-                Entwicklung - Bereiche
-              </h2>
-              <p className="text-gray-600 mb-4">
-                Verwalten Sie Felder und Aktivitäten für den
-                Entwicklungsbereich.
-              </p>
-              <TimeEntryForm
-                onSubmit={handleTimeEntrySubmit}
-                selectedArea="development"
-              />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="design" className="p-6">
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-2xl font-bold mb-4">Design - Bereiche</h2>
-              <p className="text-gray-600 mb-4">
-                Verwalten Sie Felder und Aktivitäten für den Designbereich.
-              </p>
-              <TimeEntryForm
-                onSubmit={handleTimeEntrySubmit}
-                selectedArea="design"
-              />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="marketing" className="p-6">
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-2xl font-bold mb-4">Marketing - Bereiche</h2>
-              <p className="text-gray-600 mb-4">
-                Verwalten Sie Felder und Aktivitäten für den Marketingbereich.
-              </p>
-              <TimeEntryForm
-                onSubmit={handleTimeEntrySubmit}
-                selectedArea="marketing"
-              />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="management" className="p-6">
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-2xl font-bold mb-4">Management - Bereiche</h2>
-              <p className="text-gray-600 mb-4">
-                Verwalten Sie Felder und Aktivitäten für den Managementbereich.
-              </p>
-              <TimeEntryForm
-                onSubmit={handleTimeEntrySubmit}
-                selectedArea="management"
-              />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="categories" className="p-0">
+          <TabsContent value="categories" className="p-6">
             <CategoryManagement />
           </TabsContent>
 
           <TabsContent value="new-entry" className="p-6">
             <div className="space-y-6">
-              <TimeEntryForm onSubmit={handleTimeEntrySubmit} />
+              <TimeEntryForm
+                onSubmit={handleTimeEntrySubmit}
+                selectedArea={selectedAreaId}
+                selectedField={selectedFieldId}
+                selectedActivity={selectedActivityId}
+              />
 
               {/* Recent Time Entry Display */}
               {recentTimeEntry && (
