@@ -48,7 +48,6 @@ export default function AIDailySummary({
   }, []);
 
   const generateSummary = async () => {
-    // Continue even if there are no entries, to show a message about no entries for today
     if (loading) {
       return;
     }
@@ -57,15 +56,45 @@ export default function AIDailySummary({
       setIsGenerating(true);
       setError(null);
 
-      // Format daily entries for the AI
+      // Load today's entries directly from database with full relations
       const today = new Date().toISOString().split("T")[0];
-      const dailyEntriesText = formatTimeEntriesForAI(
-        timeEntries.filter((entry) => entry.date === today),
-      );
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      // We need some data for the weekly summary too, even though this component only shows daily
-      const weeklyEntriesText =
-        "Diese Woche: " + todayHours.toFixed(1) + " Stunden";
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
+      // Get today's entries with full data including descriptions
+      const { data: todayEntries, error: todayError } = await supabase
+        .from("time_entries")
+        .select(
+          `
+          *,
+          areas(name, color),
+          fields(name),
+          activities(name)
+        `,
+        )
+        .eq("user_id", user.id)
+        .eq("date", today)
+        .order("created_at", { ascending: false });
+
+      if (todayError) {
+        console.error("Error loading today's entries:", todayError);
+        throw todayError;
+      }
+
+      console.log("Today's entries loaded:", todayEntries);
+
+      // Format entries for AI analysis
+      const dailyEntriesText = formatTimeEntriesForAI(todayEntries || []);
+
+      // Get basic weekly data for the API call requirement
+      const weeklyEntriesText = `Diese Woche: ${todayHours.toFixed(1)} Stunden erfasst`;
+
+      console.log("Sending to AI:", { dailyEntriesText, weeklyEntriesText });
 
       // Call the generate-summaries edge function
       const { data, error } = await supabase.functions.invoke(
@@ -78,56 +107,86 @@ export default function AIDailySummary({
         },
       );
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error("Edge function error:", error);
+        throw new Error(error.message || "Edge function failed");
+      }
 
-      // Extract the daily summary from the response
-      const fullText = data.choices[0].message.content;
-      // Normalize markdown formatting with asterisks (replace multiple asterisks with proper markdown)
-      const cleanedText = fullText
-        .replace(/\*{3,}/g, "**")
-        .replace(/\*\*\s*\*\*/g, "**");
-      const dailySummary = cleanedText.split("\n\n")[0]; // Get first paragraph (daily summary)
+      console.log("AI Response:", data);
 
-      setSummary(dailySummary || "Keine Zusammenfassung verfügbar.");
-    } catch (err: any) {
-      console.error("Error generating daily summary:", err);
-      setError("Fehler bei der Generierung der Zusammenfassung.");
+      // Extract only the daily summary from the response
+      let fullResponse = data.choices[0].message.content;
+      let dailySummary = "";
 
-      // Use a fallback summary if the API call fails
-      if (timeEntries.length > 0) {
-        const today = new Date().toISOString().split("T")[0];
-        const todayEntries = timeEntries.filter(
-          (entry) => entry.date === today,
-        );
+      // Split by separator to get only the daily part
+      if (fullResponse.includes("---SUMMARY_SEPARATOR---")) {
+        dailySummary = fullResponse.split("---SUMMARY_SEPARATOR---")[0].trim();
+      } else {
+        // Fallback: use the entire response as daily summary
+        dailySummary = fullResponse.trim();
+      }
 
-        if (todayEntries.length > 0) {
+      // Clean up any remaining markdown and labels
+      dailySummary = dailySummary
+        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*(.*?)\*/g, "<em>$1</em>")
+        .replace(
+          /^(tageszusammenfassung:|zusammenfassung:|tagesbericht:)\s*/gi,
+          "",
+        )
+        .replace(/^#{1,6}\s*/, "")
+        .trim();
+
+      // If no meaningful content, provide a simple message
+      if (dailySummary.length < 20 || dailySummary.includes("Keine Einträge")) {
+        if (todayEntries && todayEntries.length > 0) {
           const totalHours = todayEntries.reduce(
             (sum, entry) => sum + entry.duration,
             0,
           );
-          const activities = todayEntries
-            .map((entry) => entry.activity)
-            .join(", ");
+          const activities = todayEntries.map(
+            (entry) => entry.activities?.name || "Unbekannte Aktivität",
+          );
+          const uniqueActivities = [...new Set(activities)];
 
-          const fallbackSummary = `Heute wurden insgesamt ${totalHours.toFixed(1)} Stunden für folgende Aktivitäten aufgewendet: ${activities}. Die Produktivität liegt im normalen Bereich.`;
-          setSummary(fallbackSummary);
+          dailySummary = `<p>Heute wurden insgesamt <strong>${totalHours.toFixed(1)} Stunden</strong> für ${uniqueActivities.length} verschiedene Aktivitäten aufgewendet. Die Hauptaktivitäten umfassten <strong>${uniqueActivities.slice(0, 3).join(", ")}</strong>.</p>`;
         } else {
-          setSummary("Heute wurden noch keine Zeiteinträge erfasst.");
+          dailySummary = "<p>Heute wurden noch keine Zeiteinträge erfasst.</p>";
         }
-      } else {
-        setSummary("Keine Zeiteinträge für heute verfügbar.");
       }
+
+      setSummary(dailySummary);
+    } catch (err: any) {
+      console.error("Error generating daily summary:", err);
+      setError(`Fehler bei der Generierung: ${err.message}`);
+
+      // Simple fallback without API call
+      setSummary(
+        "<p>Die KI-Zusammenfassung konnte nicht generiert werden. Bitte versuchen Sie es später erneut.</p>",
+      );
     } finally {
       setIsGenerating(false);
     }
   };
 
   const formatTimeEntriesForAI = (entries: any[]): string => {
-    if (entries.length === 0) return "Keine Einträge";
+    if (!entries || entries.length === 0) {
+      return "Keine Zeiteinträge für heute vorhanden";
+    }
+
+    console.log("Formatting entries for AI:", entries);
 
     return entries
       .map((entry) => {
-        return `- ${entry.activity || "Unbekannte Aktivität"} (${entry.duration.toFixed(1)}h)`;
+        const area = entry.areas?.name || "Unbekannter Bereich";
+        const activity = entry.activities?.name || "Unbekannte Aktivität";
+        const field = entry.fields?.name || "Unbekanntes Feld";
+        const description =
+          entry.description || "Keine detaillierte Beschreibung verfügbar";
+        const duration = entry.duration?.toFixed(1) || "0.0";
+        const startTime = entry.start_time ? ` (${entry.start_time})` : "";
+
+        return `${area} > ${field} > ${activity} (${duration}h${startTime}) - ${description}`;
       })
       .join("\n");
   };
@@ -158,13 +217,10 @@ export default function AIDailySummary({
         </div>
       ) : summary ? (
         <div className="p-4 bg-purple-50 rounded-lg">
-          <p className="text-purple-900 whitespace-pre-line font-normal">
-            {summary
-              .split(/\*\*([^*]+)\*\*/)
-              .map((part, i) =>
-                i % 2 === 0 ? part : <strong key={i}>{part}</strong>,
-              )}
-          </p>
+          <div
+            className="text-purple-900 font-normal prose prose-sm max-w-none"
+            dangerouslySetInnerHTML={{ __html: summary }}
+          />
         </div>
       ) : (
         <div className="text-center py-6 text-gray-500">

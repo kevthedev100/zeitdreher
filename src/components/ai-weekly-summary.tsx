@@ -93,7 +93,7 @@ export default function AIWeeklySummary({
 
       if (error) throw error;
 
-      // Format entries for display
+      // Format entries for display with descriptions
       const formattedEntries =
         data?.map((entry) => ({
           activity: entry.activities?.name || "Unbekannte Aktivität",
@@ -101,6 +101,7 @@ export default function AIWeeklySummary({
           field: entry.fields?.name || "Unbekanntes Feld",
           duration: entry.duration,
           date: entry.date,
+          description: entry.description || "Keine Beschreibung",
         })) || [];
 
       setWeeklyEntries(formattedEntries);
@@ -112,13 +113,15 @@ export default function AIWeeklySummary({
 
   const generateSummary = async () => {
     if (weeklyEntries.length === 0) {
-      setSummary("Keine Zeiteinträge für diese Woche verfügbar.");
+      setSummary("<p>Keine Zeiteinträge für diese Woche verfügbar.</p>");
       return;
     }
 
     try {
       setIsGenerating(true);
       setError(null);
+
+      console.log("Weekly entries for AI:", weeklyEntries);
 
       // Group entries by day for better AI context
       const entriesByDay = weeklyEntries.reduce((acc: any, entry: any) => {
@@ -133,12 +136,15 @@ export default function AIWeeklySummary({
         ? formatEntriesForDay(entriesByDay[today], "Heute")
         : "Keine Einträge für heute";
 
-      // Format weekly entries for the AI
+      // Format weekly entries for the AI with full descriptions
       const weeklyEntriesText = Object.keys(entriesByDay)
+        .sort() // Sort dates chronologically
         .map((date) =>
           formatEntriesForDay(entriesByDay[date], formatDate(date)),
         )
         .join("\n\n");
+
+      console.log("Sending to AI:", { dailyEntriesText, weeklyEntriesText });
 
       // Call the generate-summaries edge function
       const { data, error } = await supabase.functions.invoke(
@@ -151,62 +157,60 @@ export default function AIWeeklySummary({
         },
       );
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error("Edge function error:", error);
+        throw new Error(error.message || "Edge function failed");
+      }
 
-      // Extract the weekly summary from the response
-      const fullText = data.choices[0].message.content;
-      // Normalize markdown formatting with asterisks (replace multiple asterisks with proper markdown)
-      const cleanedText = fullText
-        .replace(/\*{3,}/g, "**")
-        .replace(/\*\*\s*\*\*/g, "**");
-      const parts = cleanedText.split("\n\n");
-      const weeklySummary =
-        parts.length > 1
-          ? parts.slice(1).join("\n\n")
-          : "Keine wöchentliche Zusammenfassung verfügbar.";
+      console.log("AI Response:", data);
+
+      // Extract only the weekly summary from the response
+      let fullResponse = data.choices[0].message.content;
+      let weeklySummary = "";
+
+      // Split by separator to get only the weekly part
+      if (fullResponse.includes("---SUMMARY_SEPARATOR---")) {
+        weeklySummary =
+          fullResponse.split("---SUMMARY_SEPARATOR---")[1]?.trim() || "";
+      } else {
+        // Fallback: use the entire response as weekly summary
+        weeklySummary = fullResponse.trim();
+      }
+
+      // Clean up any remaining markdown and labels
+      weeklySummary = weeklySummary
+        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*(.*?)\*/g, "<em>$1</em>")
+        .replace(
+          /^(wochenzusammenfassung:|zusammenfassung:|wochenbericht:)\s*/gi,
+          "",
+        )
+        .replace(/^#{1,6}\s*/, "")
+        .trim();
+
+      // If no meaningful content, provide a simple message
+      if (
+        weeklySummary.length < 20 ||
+        weeklySummary.includes("Keine wöchentlichen Einträge")
+      ) {
+        const totalHours = weeklyEntries.reduce(
+          (sum, entry) => sum + entry.duration,
+          0,
+        );
+        const areas = [...new Set(weeklyEntries.map((entry) => entry.area))];
+
+        weeklySummary = `<p>Diese Woche wurden insgesamt <strong>${totalHours.toFixed(1)} Stunden</strong> in ${areas.length} verschiedenen Bereichen erfasst. Die Arbeit verteilte sich hauptsächlich auf <strong>${areas.slice(0, 3).join(", ")}</strong>.</p>`;
+      }
 
       setSummary(weeklySummary);
     } catch (err: any) {
       console.error("Error generating weekly summary:", err);
-      setError("Fehler bei der Generierung der Zusammenfassung.");
+      setError(`Fehler bei der Generierung: ${err.message}`);
 
-      // Use a fallback summary if the API call fails
-      if (weeklyEntries.length > 0) {
-        // Group entries by area
-        const areaHours: { [key: string]: number } = {};
-        let totalHours = 0;
-
-        weeklyEntries.forEach((entry) => {
-          const area = entry.area || "Unbekannt";
-          areaHours[area] = (areaHours[area] || 0) + entry.duration;
-          totalHours += entry.duration;
-        });
-
-        // Find top area
-        let topArea = "Unbekannt";
-        let topHours = 0;
-
-        Object.entries(areaHours).forEach(([area, hours]) => {
-          if (hours > topHours) {
-            topArea = area;
-            topHours = hours;
-          }
-        });
-
-        // Generate fallback summary
-        const fallbackSummary = `Diese Woche wurden insgesamt ${totalHours.toFixed(1)} Stunden erfasst. Der größte Zeitanteil wurde im Bereich ${topArea} (${topHours.toFixed(1)}h) verbracht. Die Produktivität liegt im normalen Bereich für diese Woche.\n\nZeitverteilung nach Bereichen:\n${Object.entries(
-          areaHours,
-        )
-          .map(
-            ([area, hours]) =>
-              `- ${area}: ${hours.toFixed(1)}h (${Math.round((hours / totalHours) * 100)}%)`,
-          )
-          .join("\n")}`;
-
-        setSummary(fallbackSummary);
-      } else {
-        setSummary("Keine Zeiteinträge für diese Woche verfügbar.");
-      }
+      // Simple fallback without API call
+      setSummary(
+        "<p>Die KI-Wochenzusammenfassung konnte nicht generiert werden. Bitte versuchen Sie es später erneut.</p>",
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -220,25 +224,16 @@ export default function AIWeeklySummary({
 
     let result = `${dayLabel} (${totalHours.toFixed(1)}h):\n`;
 
-    // Group by area
-    const entriesByArea = entries.reduce((acc: any, entry: any) => {
-      if (!acc[entry.area]) acc[entry.area] = [];
-      acc[entry.area].push(entry);
-      return acc;
-    }, {});
+    // Format each entry with full context
+    entries.forEach((entry: any) => {
+      const area = entry.area || "Unbekannter Bereich";
+      const field = entry.field || "Unbekanntes Feld";
+      const activity = entry.activity || "Unbekannte Aktivität";
+      const description =
+        entry.description || "Keine detaillierte Beschreibung verfügbar";
+      const duration = entry.duration?.toFixed(1) || "0.0";
 
-    // Format each area's entries
-    Object.keys(entriesByArea).forEach((area) => {
-      const areaEntries = entriesByArea[area];
-      const areaHours = areaEntries.reduce(
-        (sum: number, entry: any) => sum + entry.duration,
-        0,
-      );
-
-      result += `- ${area} (${areaHours.toFixed(1)}h):\n`;
-      areaEntries.forEach((entry: any) => {
-        result += `  * ${entry.activity} (${entry.duration.toFixed(1)}h)\n`;
-      });
+      result += `${area} > ${field} > ${activity} (${duration}h) - ${description}\n`;
     });
 
     return result;
@@ -285,13 +280,10 @@ export default function AIWeeklySummary({
         </div>
       ) : summary ? (
         <div className="p-4 bg-blue-50 rounded-lg">
-          <p className="text-blue-900 whitespace-pre-line font-normal">
-            {summary
-              .split(/\*\*([^*]+)\*\*/)
-              .map((part, i) =>
-                i % 2 === 0 ? part : <strong key={i}>{part}</strong>,
-              )}
-          </p>
+          <div
+            className="text-blue-900 font-normal prose prose-sm max-w-none"
+            dangerouslySetInnerHTML={{ __html: summary }}
+          />
         </div>
       ) : (
         <div className="text-center py-6 text-gray-500">

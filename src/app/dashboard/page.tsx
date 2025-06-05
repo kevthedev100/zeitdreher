@@ -3,6 +3,7 @@ import { createClient } from "../../../supabase/server";
 import { redirect } from "next/navigation";
 import { SubscriptionCheck } from "@/components/subscription-check";
 import DashboardTabs from "@/components/dashboard-tabs";
+import AddEntryButton from "@/components/add-entry-button";
 
 export default async function Dashboard() {
   const supabase = await createClient();
@@ -25,13 +26,18 @@ export default async function Dashboard() {
         <div className="container mx-auto px-4 py-8">
           {/* Header Section */}
           <header className="mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">
-              Zeitdreher Dashboard
-            </h1>
-            <p className="text-gray-600">
-              Zeit erfassen, Produktivität analysieren und Arbeitsstunden
-              verwalten
-            </p>
+            <div className="flex justify-between items-start">
+              <div>
+                <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                  Zeitdreher Dashboard
+                </h1>
+                <p className="text-gray-600">
+                  Zeit erfassen, Produktivität analysieren und Arbeitsstunden
+                  verwalten
+                </p>
+              </div>
+              <AddEntryButton />
+            </div>
           </header>
 
           {/* Tabbed Interface */}

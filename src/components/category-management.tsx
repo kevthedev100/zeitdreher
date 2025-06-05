@@ -28,9 +28,34 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Settings, Edit, Trash2, FolderPlus } from "lucide-react";
+import {
+  Plus,
+  Settings,
+  Edit,
+  Trash2,
+  FolderPlus,
+  AlertTriangle,
+} from "lucide-react";
 import { createClient } from "../../supabase/client";
-import { createArea, createField, createActivity } from "@/app/actions";
+import {
+  createArea,
+  createField,
+  createActivity,
+  deleteArea,
+  deleteField,
+  deleteActivity,
+} from "@/app/actions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Area {
   id: string;
@@ -63,6 +88,8 @@ export default function CategoryManagement() {
   const [isAddingField, setIsAddingField] = useState(false);
   const [isAddingActivity, setIsAddingActivity] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const supabase = createClient();
 
@@ -156,6 +183,78 @@ export default function CategoryManagement() {
     loadActivities(selectedField);
   };
 
+  const handleDeleteArea = async (areaId: string) => {
+    setDeleteLoading(areaId);
+    setDeleteError(null);
+
+    try {
+      const result = await deleteArea(areaId);
+
+      if (result.success) {
+        // Refresh areas list
+        loadAreas();
+        // Clear selections if deleted area was selected
+        if (selectedArea === areaId) {
+          setSelectedArea("");
+          setSelectedField("");
+          setFields([]);
+          setActivities([]);
+        }
+      } else {
+        setDeleteError(result.error || "Failed to delete area");
+      }
+    } catch (error: any) {
+      setDeleteError(error.message || "Failed to delete area");
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
+  const handleDeleteField = async (fieldId: string) => {
+    setDeleteLoading(fieldId);
+    setDeleteError(null);
+
+    try {
+      const result = await deleteField(fieldId);
+
+      if (result.success) {
+        // Refresh fields list
+        loadFields(selectedArea);
+        // Clear selections if deleted field was selected
+        if (selectedField === fieldId) {
+          setSelectedField("");
+          setActivities([]);
+        }
+      } else {
+        setDeleteError(result.error || "Failed to delete field");
+      }
+    } catch (error: any) {
+      setDeleteError(error.message || "Failed to delete field");
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
+  const handleDeleteActivity = async (activityId: string) => {
+    setDeleteLoading(activityId);
+    setDeleteError(null);
+
+    try {
+      const result = await deleteActivity(activityId);
+
+      if (result.success) {
+        // Refresh activities list
+        loadActivities(selectedField);
+      } else {
+        setDeleteError(result.error || "Failed to delete activity");
+      }
+    } catch (error: any) {
+      setDeleteError(error.message || "Failed to delete activity");
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="bg-white p-6">
@@ -189,6 +288,23 @@ export default function CategoryManagement() {
             </p>
           </div>
         </div>
+
+        {/* Error Message */}
+        {deleteError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md mb-4 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5" />
+            <div>
+              <p className="font-medium">Fehler beim Löschen</p>
+              <p className="text-sm">{deleteError}</p>
+            </div>
+            <button
+              onClick={() => setDeleteError(null)}
+              className="ml-auto text-red-500 hover:text-red-700"
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {/* Three Column Layout */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -265,22 +381,58 @@ export default function CategoryManagement() {
                 {areas.map((area) => (
                   <div
                     key={area.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    className={`p-3 rounded-lg border transition-colors ${
                       selectedArea === area.id
                         ? "border-blue-500 bg-blue-50"
                         : "border-gray-200 hover:border-gray-300"
                     }`}
-                    onClick={() => {
-                      setSelectedArea(area.id);
-                      setSelectedField("");
-                    }}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between">
                       <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: area.color }}
-                      ></div>
-                      <span className="font-medium">{area.name}</span>
+                        className="flex items-center gap-2 flex-1 cursor-pointer"
+                        onClick={() => {
+                          setSelectedArea(area.id);
+                          setSelectedField("");
+                        }}
+                      >
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: area.color }}
+                        ></div>
+                        <span className="font-medium">{area.name}</span>
+                      </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            disabled={deleteLoading === area.id}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Bereich löschen</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Sind Sie sicher, dass Sie den Bereich "{area.name}
+                              " löschen möchten? Diese Aktion kann nicht
+                              rückgängig gemacht werden. Der Bereich muss leer
+                              sein (keine Felder enthalten).
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteArea(area.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              Löschen
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                     {area.description && (
                       <p className="text-sm text-gray-600 mt-1">
@@ -366,19 +518,59 @@ export default function CategoryManagement() {
                     fields.map((field) => (
                       <div
                         key={field.id}
-                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                        className={`p-3 rounded-lg border transition-colors ${
                           selectedField === field.id
                             ? "border-green-500 bg-green-50"
                             : "border-gray-200 hover:border-gray-300"
                         }`}
-                        onClick={() => setSelectedField(field.id)}
                       >
-                        <span className="font-medium">{field.name}</span>
-                        {field.description && (
-                          <p className="text-sm text-gray-600 mt-1">
-                            {field.description}
-                          </p>
-                        )}
+                        <div className="flex items-center justify-between">
+                          <div
+                            className="flex-1 cursor-pointer"
+                            onClick={() => setSelectedField(field.id)}
+                          >
+                            <span className="font-medium">{field.name}</span>
+                            {field.description && (
+                              <p className="text-sm text-gray-600 mt-1">
+                                {field.description}
+                              </p>
+                            )}
+                          </div>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                disabled={deleteLoading === field.id}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Feld löschen
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Sind Sie sicher, dass Sie das Feld "
+                                  {field.name}" löschen möchten? Diese Aktion
+                                  kann nicht rückgängig gemacht werden. Das Feld
+                                  muss leer sein (keine Aktivitäten enthalten).
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteField(field.id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Löschen
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     ))
                   ) : (
@@ -470,12 +662,53 @@ export default function CategoryManagement() {
                         key={activity.id}
                         className="p-3 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
                       >
-                        <span className="font-medium">{activity.name}</span>
-                        {activity.description && (
-                          <p className="text-sm text-gray-600 mt-1">
-                            {activity.description}
-                          </p>
-                        )}
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <span className="font-medium">{activity.name}</span>
+                            {activity.description && (
+                              <p className="text-sm text-gray-600 mt-1">
+                                {activity.description}
+                              </p>
+                            )}
+                          </div>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                disabled={deleteLoading === activity.id}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Aktivität löschen
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Sind Sie sicher, dass Sie die Aktivität "
+                                  {activity.name}" löschen möchten? Diese Aktion
+                                  kann nicht rückgängig gemacht werden. Die
+                                  Aktivität darf keine aktiven Zeiteinträge
+                                  haben.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() =>
+                                    handleDeleteActivity(activity.id)
+                                  }
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Löschen
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     ))
                   ) : (

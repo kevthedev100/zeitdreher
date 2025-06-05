@@ -209,8 +209,10 @@ export type Database = {
           date: string
           description: string | null
           duration: number
+          end_time: string | null
           field_id: string | null
           id: string
+          start_time: string | null
           status: string | null
           updated_at: string
           user_id: string | null
@@ -222,8 +224,10 @@ export type Database = {
           date: string
           description?: string | null
           duration: number
+          end_time?: string | null
           field_id?: string | null
           id?: string
+          start_time?: string | null
           status?: string | null
           updated_at?: string
           user_id?: string | null
@@ -235,8 +239,10 @@ export type Database = {
           date?: string
           description?: string | null
           duration?: number
+          end_time?: string | null
           field_id?: string | null
           id?: string
+          start_time?: string | null
           status?: string | null
           updated_at?: string
           user_id?: string | null

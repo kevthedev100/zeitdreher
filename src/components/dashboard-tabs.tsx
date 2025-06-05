@@ -297,6 +297,10 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
     return date.toLocaleDateString("de-DE");
   };
 
+  const handleAddEntryClick = useCallback(() => {
+    setActiveTab("new-entry");
+  }, []);
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Tabs
@@ -359,7 +363,7 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
           </div>
 
           {showHierarchicalNav && (
-            <div className="mb-4 px-3">
+            <div className="mb-4 w-full">
               <HierarchicalNavigation onSelectActivity={handleActivitySelect} />
             </div>
           )}

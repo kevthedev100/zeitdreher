@@ -29,7 +29,10 @@ async function exponentialBackoffRetry(
 }
 
 // Enhanced AI-powered parsing using GPT
-async function parseWithAI(transcriptionText: string): Promise<any> {
+async function parseWithAI(
+  transcriptionText: string,
+  apiKey: string,
+): Promise<any> {
   const messages = [
     {
       role: "system",
@@ -51,23 +54,40 @@ async function parseWithAI(transcriptionText: string): Promise<any> {
   ];
 
   const chatResponse = await exponentialBackoffRetry(() =>
-    fetch("https://api.picaos.com/v1/passthrough/v1/chat/completions", {
+    fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "x-pica-secret": Deno.env.get("PICA_SECRET_KEY")!,
-        "x-pica-connection-key": Deno.env.get("PICA_OPENAI_CONNECTION_KEY")!,
-        "x-pica-action-id": "conn_mod_def::GDzgi1QfvM4::4OjsWvZhRxmAVuLAuWgfVA",
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model: "gpt-4o",
         messages,
         temperature: 0,
-        max_completion_tokens: 1000,
+        max_tokens: 1000,
       }),
-    }).then((res) => {
-      if (!res.ok)
-        throw new Error(`Chat Completion API error: ${res.statusText}`);
+    }).then(async (res) => {
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("OpenAI Chat Completion API error:", {
+          status: res.status,
+          statusText: res.statusText,
+          error: errorText,
+        });
+
+        // Parse error response if it's JSON
+        let errorDetails = errorText;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorDetails = errorJson.error?.message || errorText;
+        } catch (e) {
+          // Keep original error text if not JSON
+        }
+
+        throw new Error(
+          `Chat Completion API error (${res.status}): ${errorDetails}`,
+        );
+      }
       return res.json();
     }),
   );
@@ -76,8 +96,8 @@ async function parseWithAI(transcriptionText: string): Promise<any> {
     const parsedContent = JSON.parse(chatResponse.choices[0].message.content);
     return parsedContent;
   } catch (parseError) {
-    console.warn("AI parsing failed, falling back to rule-based parsing");
-    return null;
+    console.warn("AI parsing failed");
+    throw new Error("Failed to parse AI response: " + parseError.message);
   }
 }
 
@@ -116,7 +136,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create FormData for OpenAI API via Pica Passthrough
+    // Create FormData for OpenAI API
     const openAIFormData = new FormData();
     openAIFormData.append("file", audioFile, "audio.webm");
     openAIFormData.append("model", "whisper-1");
@@ -127,22 +147,42 @@ Deno.serve(async (req) => {
       JSON.stringify(["word", "segment"]),
     );
 
-    // Call OpenAI Whisper API via Pica Passthrough with retry logic
+    // Verify OpenAI API key is available
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+    if (!openaiApiKey) {
+      console.error("OpenAI API key is missing from environment variables");
+      throw new Error("OpenAI API key is not configured");
+    }
+    console.log("OpenAI API key is available:", openaiApiKey ? "Yes" : "No");
+
+    // Call OpenAI Whisper API directly with retry logic
     const transcriptionResult = await exponentialBackoffRetry(() =>
-      fetch("https://api.picaos.com/v1/passthrough/v1/audio/transcriptions", {
+      fetch("https://api.openai.com/v1/audio/transcriptions", {
         method: "POST",
         headers: {
-          "x-pica-secret": Deno.env.get("PICA_SECRET_KEY")!,
-          "x-pica-connection-key": Deno.env.get("PICA_OPENAI_CONNECTION_KEY")!,
-          "x-pica-action-id":
-            "conn_mod_def::GDzgH4tQCbA::kJ8mPI-0SmO6UV04cpjyZw",
+          Authorization: `Bearer ${openaiApiKey}`,
         },
         body: openAIFormData,
       }).then(async (response) => {
         if (!response.ok) {
           const errorText = await response.text();
+          console.error("OpenAI Transcription API error:", {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorText,
+          });
+
+          // Parse error response if it's JSON
+          let errorDetails = errorText;
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorDetails = errorJson.error?.message || errorText;
+          } catch (e) {
+            // Keep original error text if not JSON
+          }
+
           throw new Error(
-            `Transcription API error: ${response.status} ${errorText}`,
+            `Transcription API error (${response.status}): ${errorDetails}`,
           );
         }
         return response.json();
@@ -164,11 +204,8 @@ Deno.serve(async (req) => {
       averageConfidence = totalConfidence / transcriptionResult.segments.length;
     }
 
-    // Try AI-powered parsing first, then fall back to rule-based parsing
-    let parsedData = await parseWithAI(transcribedText);
-    if (!parsedData) {
-      parsedData = parseTimeEntryFromText(transcribedText);
-    }
+    // Use AI-powered parsing
+    const parsedData = await parseWithAI(transcribedText, openaiApiKey);
 
     // Add natural language date parsing
     if (parsedData.date && typeof parsedData.date === "string") {
@@ -181,7 +218,7 @@ Deno.serve(async (req) => {
         parsed: parsedData,
         confidence: averageConfidence,
         segments: transcriptionResult.segments || [],
-        processingMethod: parsedData ? "ai" : "rule-based",
+        processingMethod: "ai",
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -258,163 +295,4 @@ function parseNaturalDate(dateString: string): string {
   }
 
   return today.toISOString().split("T")[0]; // Default to today
-}
-
-function parseTimeEntryFromText(text: string) {
-  const lowerText = text.toLowerCase();
-
-  // Extract duration (look for patterns like "2 stunden", "1,5 stunden", "30 minuten")
-  let duration = null;
-  const hourPatterns = [
-    /([0-9]+[,.]?[0-9]*) stunden?/,
-    /([0-9]+[,.]?[0-9]*) std/,
-    /([0-9]+[,.]?[0-9]*) h/,
-  ];
-
-  const minutePatterns = [/([0-9]+) minuten?/, /([0-9]+) min/];
-
-  for (const pattern of hourPatterns) {
-    const match = lowerText.match(pattern);
-    if (match) {
-      duration = parseFloat(match[1].replace(",", "."));
-      break;
-    }
-  }
-
-  if (!duration) {
-    for (const pattern of minutePatterns) {
-      const match = lowerText.match(pattern);
-      if (match) {
-        duration = parseFloat(match[1]) / 60; // Convert minutes to hours
-        break;
-      }
-    }
-  }
-
-  // Extract area keywords
-  let area = null;
-  if (
-    lowerText.includes("entwicklung") ||
-    lowerText.includes("programmier") ||
-    lowerText.includes("code")
-  ) {
-    area = "Entwicklung";
-  } else if (
-    lowerText.includes("design") ||
-    lowerText.includes("ui") ||
-    lowerText.includes("ux")
-  ) {
-    area = "Design";
-  } else if (
-    lowerText.includes("marketing") ||
-    lowerText.includes("werbung") ||
-    lowerText.includes("social media")
-  ) {
-    area = "Marketing";
-  } else if (
-    lowerText.includes("management") ||
-    lowerText.includes("meeting") ||
-    lowerText.includes("planung")
-  ) {
-    area = "Management";
-  }
-
-  // Extract field keywords
-  let field = null;
-  if (area === "Entwicklung") {
-    if (
-      lowerText.includes("frontend") ||
-      lowerText.includes("react") ||
-      lowerText.includes("css")
-    ) {
-      field = "Frontend";
-    } else if (
-      lowerText.includes("backend") ||
-      lowerText.includes("api") ||
-      lowerText.includes("server")
-    ) {
-      field = "Backend";
-    } else if (lowerText.includes("test") || lowerText.includes("bug")) {
-      field = "Testing";
-    }
-  } else if (area === "Design") {
-    if (lowerText.includes("ui") || lowerText.includes("interface")) {
-      field = "UI Design";
-    } else if (lowerText.includes("ux") || lowerText.includes("research")) {
-      field = "UX Research";
-    } else if (lowerText.includes("prototyp")) {
-      field = "Prototyping";
-    }
-  } else if (area === "Marketing") {
-    if (lowerText.includes("content") || lowerText.includes("inhalt")) {
-      field = "Content Creation";
-    } else if (lowerText.includes("social")) {
-      field = "Social Media";
-    } else if (
-      lowerText.includes("kampagne") ||
-      lowerText.includes("campaign")
-    ) {
-      field = "Campaigns";
-    }
-  } else if (area === "Management") {
-    if (lowerText.includes("planung") || lowerText.includes("plan")) {
-      field = "Planning";
-    } else if (
-      lowerText.includes("meeting") ||
-      lowerText.includes("besprechung")
-    ) {
-      field = "Meetings";
-    } else if (lowerText.includes("report") || lowerText.includes("bericht")) {
-      field = "Reporting";
-    }
-  }
-
-  // Extract activity keywords
-  let activity = null;
-  if (field === "Frontend") {
-    if (lowerText.includes("react") || lowerText.includes("component")) {
-      activity = "React Development";
-    } else if (
-      lowerText.includes("css") ||
-      lowerText.includes("styling") ||
-      lowerText.includes("layout")
-    ) {
-      activity = "CSS/Styling";
-    } else if (
-      lowerText.includes("performance") ||
-      lowerText.includes("optimier")
-    ) {
-      activity = "Performance Optimization";
-    }
-  } else if (field === "Backend") {
-    if (lowerText.includes("api")) {
-      activity = "API Development";
-    } else if (
-      lowerText.includes("datenbank") ||
-      lowerText.includes("database")
-    ) {
-      activity = "Database Work";
-    } else if (
-      lowerText.includes("deployment") ||
-      lowerText.includes("deploy")
-    ) {
-      activity = "Deployment";
-    }
-  } else if (field === "Testing") {
-    if (lowerText.includes("unit")) {
-      activity = "Unit Testing";
-    } else if (lowerText.includes("integration")) {
-      activity = "Integration Testing";
-    } else if (lowerText.includes("bug") || lowerText.includes("fehler")) {
-      activity = "Bug Fixing";
-    }
-  }
-
-  return {
-    duration,
-    area,
-    field,
-    activity,
-    description: text, // Use original text as description
-  };
 }

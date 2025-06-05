@@ -157,22 +157,30 @@ export default function HierarchicalNavigation({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 w-full">
       {areas.map((area) => (
         <Collapsible
           key={area.id}
           open={openAreas.includes(area.id)}
           onOpenChange={() => toggleArea(area.id)}
-          className="border rounded-md overflow-hidden"
+          className="border rounded-md overflow-hidden w-full"
         >
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="w-full justify-start p-2 h-auto">
+            <Button
+              variant="ghost"
+              className="w-full justify-start p-2 h-auto min-h-[40px]"
+            >
               <div
-                className="w-3 h-3 rounded-full mr-2"
+                className="w-3 h-3 rounded-full mr-2 flex-shrink-0"
                 style={{ backgroundColor: area.color }}
               ></div>
-              <Folder className="w-4 h-4 mr-2" style={{ color: area.color }} />
-              {area.name}
+              <Folder
+                className="w-4 h-4 mr-2 flex-shrink-0"
+                style={{ color: area.color }}
+              />
+              <span className="flex-1 text-left text-sm truncate">
+                {area.name}
+              </span>
             </Button>
           </CollapsibleTrigger>
           <CollapsibleContent className="pl-6 pr-2 pb-2">
@@ -183,15 +191,17 @@ export default function HierarchicalNavigation({
                     key={field.id}
                     open={openFields.includes(field.id)}
                     onOpenChange={() => toggleField(field.id)}
-                    className="border-l border-gray-200"
+                    className="border-l border-gray-200 w-full"
                   >
                     <CollapsibleTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="w-full justify-start p-2 h-auto text-sm"
+                        className="w-full justify-start p-2 h-auto min-h-[36px] text-sm"
                       >
-                        <File className="w-3 h-3 mr-2" />
-                        {field.name}
+                        <File className="w-3 h-3 mr-2 flex-shrink-0" />
+                        <span className="flex-1 text-left text-sm truncate">
+                          {field.name}
+                        </span>
                       </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="pl-6 pr-2 pb-1">
@@ -202,7 +212,7 @@ export default function HierarchicalNavigation({
                             <Button
                               key={activity.id}
                               variant="ghost"
-                              className="w-full justify-start p-2 h-auto text-xs border-l border-gray-200"
+                              className="w-full justify-start p-2 h-auto min-h-[32px] text-xs border-l border-gray-200"
                               onClick={() =>
                                 handleActivityClick(
                                   area.id,
@@ -211,8 +221,10 @@ export default function HierarchicalNavigation({
                                 )
                               }
                             >
-                              <Activity className="w-3 h-3 mr-2" />
-                              {activity.name}
+                              <Activity className="w-3 h-3 mr-2 flex-shrink-0" />
+                              <span className="flex-1 text-left text-xs truncate">
+                                {activity.name}
+                              </span>
                             </Button>
                           ))}
                         </div>

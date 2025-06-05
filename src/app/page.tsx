@@ -10,6 +10,9 @@ import {
   BarChart3,
   Clock,
   Users,
+  Play,
+  Quote,
+  Star,
 } from "lucide-react";
 
 export default async function Home() {
@@ -267,35 +270,143 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-24 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-black opacity-10"></div>
+      {/* Customer Testimonials Section */}
+      <section className="py-24 bg-gradient-to-br from-gray-900 via-gray-900 to-black text-white relative overflow-hidden">
+        {/* Logo icon in background */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-5">
+          <div className="w-[600px] h-[600px] rotate-12 flex items-center justify-center">
+            <Clock className="w-[400px] h-[400px] text-white" />
+          </div>
+        </div>
+        
         <div className="container mx-auto px-4 relative">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">
-              Vertrauen Sie auf bewährte Ergebnisse
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-6 py-3 rounded-full border border-white/20 mb-6">
+              <Quote className="w-4 h-4 text-blue-300" />
+              <span className="text-sm font-medium text-blue-100">
+                Kundenstimmen
+              </span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6">
+              Das sagen Nutzer von Zeitdreher
             </h2>
-            <p className="text-blue-100 max-w-2xl mx-auto">
-              Tausende von Teams weltweit nutzen bereits Zeitdreher für ihre
-              Zeiterfassung
+            <p className="text-gray-300 max-w-3xl mx-auto text-lg">
+              Erfahren Sie, wie unsere Kunden ihre Produktivität mit Zeitdreher revolutioniert haben
             </p>
           </div>
-          <div className="grid md:grid-cols-4 gap-8 text-center">
-            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-6">
-              <div className="text-5xl font-bold mb-2">10.000+</div>
-              <div className="text-blue-100">Täglich erfasste Stunden</div>
+          
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Video Testimonial 1 */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
+              <div className="relative mb-6">
+                <div className="aspect-video bg-gradient-to-br from-blue-600/20 to-purple-600/20 rounded-xl flex items-center justify-center group cursor-pointer hover:from-blue-600/30 hover:to-purple-600/30 transition-all duration-300">
+                  <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:bg-white/30 transition-all duration-300">
+                    <Play className="w-8 h-8 text-white ml-1" />
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">MS</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">Maria Schmidt</h3>
+                    <p className="text-blue-200 text-sm">Projektleiterin, TechStart GmbH</p>
+                  </div>
+                </div>
+                <blockquote className="text-gray-300 italic">
+                  "Zeitdreher hat unsere Zeiterfassung revolutioniert. Die Spracheingabe spart uns täglich 30 Minuten pro Mitarbeiter."
+                </blockquote>
+                <div className="flex items-center gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                  ))}
+                  <span className="text-yellow-400 text-sm ml-2">5.0</span>
+                </div>
+              </div>
             </div>
-            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-6">
-              <div className="text-5xl font-bold mb-2">95%</div>
-              <div className="text-blue-100">Spracherkennungsgenauigkeit</div>
+
+            {/* Video Testimonial 2 */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
+              <div className="relative mb-6">
+                <div className="aspect-video bg-gradient-to-br from-green-600/20 to-blue-600/20 rounded-xl flex items-center justify-center group cursor-pointer hover:from-green-600/30 hover:to-blue-600/30 transition-all duration-300">
+                  <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:bg-white/30 transition-all duration-300">
+                    <Play className="w-8 h-8 text-white ml-1" />
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">TM</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">Thomas Müller</h3>
+                    <p className="text-blue-200 text-sm">CEO, DesignStudio Pro</p>
+                  </div>
+                </div>
+                <blockquote className="text-gray-300 italic">
+                  "Die KI-Analysen haben uns geholfen, unsere Produktivität um 25% zu steigern. Unglaublich wertvoll!"
+                </blockquote>
+                <div className="flex items-center gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                  ))}
+                  <span className="text-yellow-400 text-sm ml-2">5.0</span>
+                </div>
+              </div>
             </div>
-            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-6">
-              <div className="text-5xl font-bold mb-2">500+</div>
-              <div className="text-blue-100">Teams nutzen Zeitdreher</div>
+
+            {/* Video Testimonial 3 */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
+              <div className="relative mb-6">
+                <div className="aspect-video bg-gradient-to-br from-purple-600/20 to-pink-600/20 rounded-xl flex items-center justify-center group cursor-pointer hover:from-purple-600/30 hover:to-pink-600/30 transition-all duration-300">
+                  <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:bg-white/30 transition-all duration-300">
+                    <Play className="w-8 h-8 text-white ml-1" />
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">AK</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">Anna Klein</h3>
+                    <p className="text-blue-200 text-sm">Teamlead, DevCorp Solutions</p>
+                  </div>
+                </div>
+                <blockquote className="text-gray-300 italic">
+                  "Endlich eine Zeiterfassung, die nicht nervt! Unsere Entwickler lieben die natürliche Spracheingabe."
+                </blockquote>
+                <div className="flex items-center gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                  ))}
+                  <span className="text-yellow-400 text-sm ml-2">5.0</span>
+                </div>
+              </div>
             </div>
-            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-6">
-              <div className="text-5xl font-bold mb-2">24/7</div>
-              <div className="text-blue-100">Support & Verfügbarkeit</div>
+          </div>
+          
+          {/* Bottom Stats */}
+          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div className="space-y-2">
+              <div className="text-3xl font-bold text-white">98%</div>
+              <div className="text-blue-200 text-sm">Kundenzufriedenheit</div>
+            </div>
+            <div className="space-y-2">
+              <div className="text-3xl font-bold text-white">4.9/5</div>
+              <div className="text-blue-200 text-sm">Durchschnittsbewertung</div>
+            </div>
+            <div className="space-y-2">
+              <div className="text-3xl font-bold text-white">150+</div>
+              <div className="text-blue-200 text-sm">Positive Bewertungen</div>
+            </div>
+            <div className="space-y-2">
+              <div className="text-3xl font-bold text-white">24h</div>
+              <div className="text-blue-200 text-sm">Durchschn. Zeitersparnis/Woche</div>
             </div>
           </div>
         </div>
@@ -682,10 +793,143 @@ export default async function Home() {
               versteckten Gebühren.
             </p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {plans?.map((item: any) => (
-              <PricingCard key={item.id} item={item} user={user} />
-            ))}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            {/* Free Plan */}
+            <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 relative hover:border-blue-300 transition-colors">
+              <div className="text-center">
+                <h3 className="text-2xl font-bold mb-2">Free</h3>
+                <div className="text-4xl font-bold text-gray-900 mb-2">0€</div>
+                <p className="text-gray-600 mb-6">2 Wochen kostenlos testen</p>
+                <ul className="text-left space-y-3 mb-8">
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Grundlegende Zeiterfassung</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Spracheingabe</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Basis-Analytik</span>
+                  </li>
+                </ul>
+                <a
+                  href="/dashboard"
+                  className="w-full inline-flex items-center justify-center px-6 py-3 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors font-medium"
+                >
+                  Kostenlos testen
+                </a>
+              </div>
+            </div>
+
+            {/* Single User Plan */}
+            <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 relative hover:border-blue-300 transition-colors">
+              <div className="text-center">
+                <h3 className="text-2xl font-bold mb-2">Single User</h3>
+                <div className="text-4xl font-bold text-gray-900 mb-2">50€</div>
+                <p className="text-gray-600 mb-6">Pro Monat für Einzelnutzer</p>
+                <ul className="text-left space-y-3 mb-8">
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Alle Free-Features</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Erweiterte KI-Analysen</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Unbegrenzte Zeiteinträge</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Export-Funktionen</span>
+                  </li>
+                </ul>
+                <a
+                  href="/dashboard"
+                  className="w-full inline-flex items-center justify-center px-6 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Jetzt starten
+                </a>
+              </div>
+            </div>
+
+            {/* Team Plan */}
+            <div className="bg-white border-2 border-blue-500 rounded-2xl p-8 relative hover:border-blue-600 transition-colors">
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                <span className="bg-blue-500 text-white px-4 py-2 rounded-full text-sm font-medium">
+                  Beliebt
+                </span>
+              </div>
+              <div className="text-center">
+                <h3 className="text-2xl font-bold mb-2">Team</h3>
+                <div className="text-4xl font-bold text-gray-900 mb-2">299€</div>
+                <p className="text-gray-600 mb-6">Pro Monat für bis zu 5 Mitarbeiter</p>
+                <ul className="text-left space-y-3 mb-8">
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Alle Single User-Features</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Team-Dashboard</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Kollaborative Berichte</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Basis-Rollenverwaltung</span>
+                  </li>
+                </ul>
+                <a
+                  href="/dashboard"
+                  className="w-full inline-flex items-center justify-center px-6 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Team starten
+                </a>
+              </div>
+            </div>
+
+            {/* Enterprise Plan */}
+            <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 relative hover:border-purple-300 transition-colors">
+              <div className="text-center">
+                <h3 className="text-2xl font-bold mb-2">Enterprise</h3>
+                <div className="text-4xl font-bold text-gray-900 mb-2">Auf Anfrage</div>
+                <p className="text-gray-600 mb-6">Für größere Teams mit erweiterten Rollen</p>
+                <ul className="text-left space-y-3 mb-8">
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Alle Team-Features</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Unbegrenzte Nutzer</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Erweiterte Rollenverwaltung</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Dedizierter Support</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Custom Integrationen</span>
+                  </li>
+                </ul>
+                <a
+                  href="mailto:kontakt@zeitdreher.de"
+                  className="w-full inline-flex items-center justify-center px-6 py-3 text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors font-medium"
+                >
+                  Kontakt aufnehmen
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </section>

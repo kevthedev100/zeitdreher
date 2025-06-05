@@ -3,48 +3,141 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowUpRight, Check, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
+
+// Dynamic Clock Component
+function DynamicClock() {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const hours = time.getHours() % 12;
+  const minutes = time.getMinutes();
+  const seconds = time.getSeconds();
+
+  // Calculate angles for clock hands
+  const hourAngle = hours * 30 + minutes * 0.5; // 30 degrees per hour + minute adjustment
+  const minuteAngle = minutes * 6; // 6 degrees per minute
+  const secondAngle = seconds * 6; // 6 degrees per second
+
+  return (
+    <div className="w-[700px] h-[700px] relative">
+      {/* Clock face */}
+      <div className="w-full h-full rounded-full border-4 border-white/20 relative">
+        {/* Hour markers */}
+        {[...Array(12)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1.5 h-14 bg-white/50 origin-bottom"
+            style={{
+              left: "50%",
+              top: "12px",
+              transform: `translateX(-50%) rotate(${i * 30}deg)`,
+              transformOrigin: "50% 338px",
+            }}
+          />
+        ))}
+
+        {/* Hour hand */}
+        <div
+          className="absolute w-2.5 bg-white/50 origin-bottom rounded-full transition-transform duration-1000 ease-in-out"
+          style={{
+            height: "210px",
+            left: "50%",
+            bottom: "50%",
+            transform: `translateX(-50%) rotate(${hourAngle}deg)`,
+            transformOrigin: "50% 100%",
+          }}
+        />
+
+        {/* Minute hand */}
+        <div
+          className="absolute w-2 bg-white/50 origin-bottom rounded-full transition-transform duration-1000 ease-in-out"
+          style={{
+            height: "280px",
+            left: "50%",
+            bottom: "50%",
+            transform: `translateX(-50%) rotate(${minuteAngle}deg)`,
+            transformOrigin: "50% 100%",
+          }}
+        />
+
+        {/* Second hand */}
+        <div
+          className="absolute w-0.5 bg-red-300 origin-bottom rounded-full transition-transform duration-75 ease-linear"
+          style={{
+            height: "300px",
+            left: "50%",
+            bottom: "50%",
+            transform: `translateX(-50%) rotate(${secondAngle}deg)`,
+            transformOrigin: "50% 100%",
+          }}
+        />
+
+        {/* Center dot */}
+        <div className="absolute w-5 h-5 bg-white/90 rounded-full top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+      </div>
+    </div>
+  );
+}
 
 export default function Hero() {
-  // CSS for the pulsing animation
-  const pulsingGradientStyle = {
-    animation: "pulseGradient 3s infinite alternate",
-  };
   return (
-    <div className="bg-gradient-to-br from-black via-blue-950 to-purple-950 relative overflow-hidden">
-      <style jsx>{`
-        @keyframes pulseGradient {
+    <div className="bg-gradient-to-br from-gray-900 via-gray-900 to-black relative overflow-hidden">
+      <style jsx global>{`
+        @keyframes gradientShift {
           0% {
-            opacity: 0.8;
+            background-position: 0% 50%;
           }
           50% {
-            opacity: 1;
+            background-position: 100% 50%;
           }
           100% {
-            opacity: 0.8;
+            background-position: 0% 50%;
           }
         }
+        .gradient-text {
+          background: linear-gradient(
+            -45deg,
+            #60a5fa,
+            #a855f7,
+            #ec4899,
+            #3b82f6,
+            #8b5cf6
+          );
+          background-size: 400% 400%;
+          animation: gradientShift 6s ease-in-out infinite;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
       `}</style>
-      {/* Logo icon in background */}
-      <div className="absolute inset-0 flex items-center justify-center opacity-5">
-        <div className="w-[800px] h-[800px] rotate-12 flex items-center justify-center">
-          <Clock className="w-[600px] h-[600px] text-white" />
+      {/* Dynamic Clock in background */}
+      <div className="absolute inset-0 flex items-center justify-center opacity-20">
+        <div className="w-[900px] h-[900px] rotate-12 flex items-center justify-center">
+          <DynamicClock />
         </div>
       </div>
 
       <div className="relative pt-24 pb-32 sm:pt-32 sm:pb-40">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-4xl mx-auto">
-            <h1 className="text-5xl sm:text-6xl font-bold mb-8 tracking-tight">
-              <span
-                className="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300"
-                style={pulsingGradientStyle}
-              >
-                KI-Zeittracking und Analyse
-              </span>{" "}
+            <h1 className="text-5xl sm:text-6xl font-bold mb-6 tracking-tight">
+              <span className="gradient-text">KI-Zeittracking und Analyse</span>{" "}
               <span className="text-white">
                 für echte Produktivitätsgewinne – jeden Tag
               </span>
             </h1>
+
+            <h2 className="text-2xl sm:text-3xl font-medium mb-12 text-white">
+              Reflektieren. Analysieren. Optimieren.
+            </h2>
 
             <p className="text-xl text-gray-300 mb-12 max-w-2xl mx-auto leading-relaxed">
               Erfasse deine Zeit und Aufgaben mühelos per Sprache und gewinne

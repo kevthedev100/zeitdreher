@@ -60,6 +60,8 @@ export default function TimeEntryForm({
   const [selectedActivity, setSelectedActivity] = useState("");
   const [duration, setDuration] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [description, setDescription] = useState("");
   const [newAreaName, setNewAreaName] = useState("");
   const [newFieldName, setNewFieldName] = useState("");
@@ -283,17 +285,24 @@ export default function TimeEntryForm({
 
   // Timer functionality
   const startTimer = () => {
+    const now = new Date();
     setIsTimerRunning(true);
-    setTimerStartTime(new Date());
+    setTimerStartTime(now);
     setElapsedTime(0);
+
+    // Set start time automatically with seconds
+    const timeString = now.toTimeString().slice(0, 8); // HH:MM:SS format
+    setStartTime(timeString);
   };
 
   const stopTimer = () => {
     if (isTimerRunning && timerStartTime) {
-      const endTime = new Date();
-      const elapsed =
-        (endTime.getTime() - timerStartTime.getTime()) / (1000 * 60 * 60); // Convert to hours
-      setDuration(elapsed.toFixed(2));
+      const endTimeDate = new Date();
+
+      // Set end time automatically with seconds
+      const endTimeString = endTimeDate.toTimeString().slice(0, 8); // HH:MM:SS format
+      setEndTime(endTimeString);
+
       setIsTimerRunning(false);
       setTimerStartTime(null);
     }
@@ -412,6 +421,15 @@ export default function TimeEntryForm({
       // Handle date parsing
       if (parsed.date) {
         setDate(parsed.date);
+      }
+
+      // Handle time parsing
+      if (parsed.startTime) {
+        setStartTime(parsed.startTime);
+      }
+
+      if (parsed.endTime) {
+        setEndTime(parsed.endTime);
       }
 
       // Enhanced area selection with fuzzy matching
@@ -553,6 +571,74 @@ export default function TimeEntryForm({
     return matrix[str2.length][str1.length];
   };
 
+  // Function to calculate duration from start and end times
+  const calculateDurationFromTimes = (
+    startTimeStr: string,
+    endTimeStr: string,
+  ) => {
+    if (!startTimeStr || !endTimeStr) return;
+
+    try {
+      // Parse time strings (HH:MM:SS or HH:MM)
+      const parseTime = (timeStr: string) => {
+        const parts = timeStr.split(":").map(Number);
+        const hours = parts[0] || 0;
+        const minutes = parts[1] || 0;
+        const seconds = parts[2] || 0;
+        return { hours, minutes, seconds };
+      };
+
+      const startTime = parseTime(startTimeStr);
+      const endTime = parseTime(endTimeStr);
+
+      // Create Date objects for calculation
+      const startDate = new Date();
+      startDate.setHours(
+        startTime.hours,
+        startTime.minutes,
+        startTime.seconds,
+        0,
+      );
+
+      const endDate = new Date();
+      endDate.setHours(endTime.hours, endTime.minutes, endTime.seconds, 0);
+
+      // Handle case where end time is next day
+      if (endDate < startDate) {
+        endDate.setDate(endDate.getDate() + 1);
+      }
+
+      // Calculate duration in milliseconds
+      const durationMs = endDate.getTime() - startDate.getTime();
+
+      // Convert to hours, minutes, seconds
+      const totalSeconds = Math.floor(durationMs / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+
+      // Format as HH:MM:SS
+      const formattedDuration = `${hours.toString().padStart(1, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+
+      setDuration(formattedDuration);
+    } catch (error) {
+      console.error("Error calculating duration:", error);
+    }
+  };
+
+  // Function to format time for display (show seconds only if they exist)
+  const formatTimeDisplay = (timeStr: string) => {
+    if (!timeStr) return "";
+
+    const parts = timeStr.split(":");
+    if (parts.length === 3 && parts[2] !== "00") {
+      return timeStr; // Show full HH:MM:SS if seconds are not zero
+    } else if (parts.length >= 2) {
+      return `${parts[0]}:${parts[1]}`; // Show HH:MM if no seconds or seconds are zero
+    }
+    return timeStr;
+  };
+
   // Helper functions to load data and return it
   const loadFieldsAndReturn = async (areaId: string) => {
     try {
@@ -658,7 +744,25 @@ export default function TimeEntryForm({
       return;
     }
 
-    if (!duration || parseFloat(duration) <= 0) {
+    if (!duration || duration.trim() === "") {
+      alert("Bitte geben Sie eine gültige Dauer ein.");
+      return;
+    }
+
+    // Convert HH:MM:SS format to decimal hours for database storage
+    let durationInHours = 0;
+    if (duration.includes(":")) {
+      const parts = duration.split(":").map(Number);
+      const hours = parts[0] || 0;
+      const minutes = parts[1] || 0;
+      const seconds = parts[2] || 0;
+      durationInHours = hours + minutes / 60 + seconds / 3600;
+    } else {
+      // If it's already a decimal number, use it as is
+      durationInHours = parseFloat(duration) || 0;
+    }
+
+    if (durationInHours <= 0) {
       alert("Bitte geben Sie eine gültige Dauer ein.");
       return;
     }
@@ -667,8 +771,10 @@ export default function TimeEntryForm({
     formData.append("area_id", selectedArea);
     formData.append("field_id", selectedField);
     formData.append("activity_id", selectedActivity);
-    formData.append("duration", duration);
+    formData.append("duration", durationInHours.toString());
     formData.append("date", date);
+    if (startTime) formData.append("start_time", startTime);
+    if (endTime) formData.append("end_time", endTime);
     formData.append("description", description);
 
     try {
@@ -676,8 +782,10 @@ export default function TimeEntryForm({
         area_id: selectedArea,
         field_id: selectedField,
         activity_id: selectedActivity,
-        duration: parseFloat(duration),
+        duration: durationInHours,
         date,
+        start_time: startTime,
+        end_time: endTime,
         description,
       });
 
@@ -715,6 +823,8 @@ export default function TimeEntryForm({
         setFields([]);
         setActivities([]);
         setDuration("");
+        setStartTime("");
+        setEndTime("");
         setDescription("");
         setDate(new Date().toISOString().split("T")[0]);
 
@@ -1153,35 +1263,112 @@ export default function TimeEntryForm({
               </div>
             </div>
 
-            {/* Duration and Date */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="duration">Dauer (Stunden)</Label>
-                <Input
-                  id="duration"
-                  type="number"
-                  step="0.25"
-                  min="0"
-                  placeholder="2,5"
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="date">Datum</Label>
-                <div className="relative">
+            {/* Time Details */}
+            <div className="space-y-4">
+              {/* Duration and Date */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="duration">Dauer</Label>
                   <Input
-                    id="date"
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
+                    id="duration"
+                    type="text"
+                    placeholder={
+                      startTime && endTime
+                        ? "Wird automatisch berechnet"
+                        : "H:MM:SS (z.B. 0:12:17)"
+                    }
+                    value={duration}
+                    disabled={startTime && endTime}
+                    className={
+                      startTime && endTime ? "bg-gray-100 text-gray-500" : ""
+                    }
+                    onChange={(e) => {
+                      // Only allow manual input if start or end time is missing
+                      if (!startTime || !endTime) {
+                        setDuration(e.target.value);
+                      }
+                    }}
                     required
                   />
-                  <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  {startTime && endTime && (
+                    <p className="text-xs text-gray-500">
+                      Automatisch berechnet aus Start- und Endzeit
+                    </p>
+                  )}
+                  {!startTime && !endTime && (
+                    <p className="text-xs text-gray-500">
+                      Format: H:MM:SS (z.B. 0:12:17 für 12 Min. 17 Sek.)
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="date">Datum</Label>
+                  <div className="relative">
+                    <Input
+                      id="date"
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      required
+                    />
+                    <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  </div>
                 </div>
               </div>
+
+              {/* Start and End Time */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="startTime">Startzeit</Label>
+                  <Input
+                    id="startTime"
+                    type="time"
+                    step="1"
+                    value={startTime}
+                    onChange={(e) => {
+                      setStartTime(e.target.value);
+                      // Auto-calculate duration if end time is set
+                      if (endTime && e.target.value) {
+                        calculateDurationFromTimes(e.target.value, endTime);
+                      }
+                    }}
+                    placeholder="09:00:00"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="endTime">Endzeit</Label>
+                  <Input
+                    id="endTime"
+                    type="time"
+                    step="1"
+                    value={endTime}
+                    onChange={(e) => {
+                      setEndTime(e.target.value);
+                      // Auto-calculate duration if start time is set
+                      if (startTime && e.target.value) {
+                        calculateDurationFromTimes(startTime, e.target.value);
+                      }
+                    }}
+                    placeholder="17:00:00"
+                  />
+                </div>
+              </div>
+
+              {/* Time Range Display */}
+              {startTime && endTime && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <Clock className="w-4 h-4" />
+                    <span className="font-medium">
+                      Arbeitszeit: {formatTimeDisplay(startTime)} -{" "}
+                      {formatTimeDisplay(endTime)} Uhr
+                      {duration && ` (${duration})`}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Description */}
@@ -1197,12 +1384,15 @@ export default function TimeEntryForm({
             </div>
 
             {/* Validation Info */}
-            {(!selectedArea || !selectedField || !selectedActivity) && (
+            {(!selectedArea ||
+              !selectedField ||
+              !selectedActivity ||
+              !duration) && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <div className="flex items-center gap-2 text-yellow-700">
                   <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
                   <span className="text-sm font-medium">
-                    Bitte vervollständigen Sie die Hierarchie:
+                    Bitte vervollständigen Sie die Eingabe:
                   </span>
                 </div>
                 <ul className="mt-2 text-sm text-yellow-600 space-y-1">
@@ -1210,6 +1400,12 @@ export default function TimeEntryForm({
                   {selectedArea && !selectedField && <li>• Feld auswählen</li>}
                   {selectedField && !selectedActivity && (
                     <li>• Aktivität auswählen</li>
+                  )}
+                  {!duration && (
+                    <li>
+                      • Start- und Endzeit eingeben (Dauer wird automatisch
+                      berechnet)
+                    </li>
                   )}
                 </ul>
               </div>

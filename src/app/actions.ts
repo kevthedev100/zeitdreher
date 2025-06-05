@@ -270,12 +270,120 @@ export const createActivity = async (formData: FormData) => {
   );
 };
 
+// Delete functions for categories
+export const deleteArea = async (areaId: string) => {
+  const supabase = await createClient();
+
+  // Check if area has fields
+  const { data: fields, error: fieldsError } = await supabase
+    .from("fields")
+    .select("id")
+    .eq("area_id", areaId)
+    .eq("is_active", true);
+
+  if (fieldsError) {
+    return { success: false, error: fieldsError.message };
+  }
+
+  if (fields && fields.length > 0) {
+    return {
+      success: false,
+      error:
+        "Cannot delete area with existing fields. Please delete all fields first.",
+    };
+  }
+
+  // Soft delete the area
+  const { error } = await supabase
+    .from("areas")
+    .update({ is_active: false })
+    .eq("id", areaId);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+};
+
+export const deleteField = async (fieldId: string) => {
+  const supabase = await createClient();
+
+  // Check if field has activities
+  const { data: activities, error: activitiesError } = await supabase
+    .from("activities")
+    .select("id")
+    .eq("field_id", fieldId)
+    .eq("is_active", true);
+
+  if (activitiesError) {
+    return { success: false, error: activitiesError.message };
+  }
+
+  if (activities && activities.length > 0) {
+    return {
+      success: false,
+      error:
+        "Cannot delete field with existing activities. Please delete all activities first.",
+    };
+  }
+
+  // Soft delete the field
+  const { error } = await supabase
+    .from("fields")
+    .update({ is_active: false })
+    .eq("id", fieldId);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+};
+
+export const deleteActivity = async (activityId: string) => {
+  const supabase = await createClient();
+
+  // Check if activity has time entries
+  const { data: timeEntries, error: timeEntriesError } = await supabase
+    .from("time_entries")
+    .select("id")
+    .eq("activity_id", activityId)
+    .eq("status", "active");
+
+  if (timeEntriesError) {
+    return { success: false, error: timeEntriesError.message };
+  }
+
+  if (timeEntries && timeEntries.length > 0) {
+    return {
+      success: false,
+      error:
+        "Cannot delete activity with existing time entries. Please archive or delete time entries first.",
+    };
+  }
+
+  // Soft delete the activity
+  const { error } = await supabase
+    .from("activities")
+    .update({ is_active: false })
+    .eq("id", activityId);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+};
+
 export const createTimeEntry = async (formData: FormData) => {
   const areaId = formData.get("area_id")?.toString();
   const fieldId = formData.get("field_id")?.toString();
   const activityId = formData.get("activity_id")?.toString();
   const duration = parseFloat(formData.get("duration")?.toString() || "0");
   const date = formData.get("date")?.toString();
+  const startTime = formData.get("start_time")?.toString();
+  const endTime = formData.get("end_time")?.toString();
   const description = formData.get("description")?.toString();
 
   console.log("Creating time entry with data:", {
@@ -284,6 +392,8 @@ export const createTimeEntry = async (formData: FormData) => {
     activityId,
     duration,
     date,
+    startTime,
+    endTime,
     description,
   });
 
@@ -316,6 +426,8 @@ export const createTimeEntry = async (formData: FormData) => {
         activity_id: activityId,
         duration,
         date,
+        start_time: startTime,
+        end_time: endTime,
         description,
         status: "active",
         created_at: new Date().toISOString(),
@@ -371,6 +483,8 @@ export const createTimeEntry = async (formData: FormData) => {
       activity_id: activityId,
       duration,
       date,
+      start_time: startTime,
+      end_time: endTime,
       description,
       status: "active",
     })
