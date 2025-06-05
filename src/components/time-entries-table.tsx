@@ -19,14 +19,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Search,
   Filter,
   ArrowUpDown,
   Calendar,
   Clock,
   RefreshCw,
+  Edit,
+  Trash2,
 } from "lucide-react";
 import { createClient } from "../../supabase/client";
+import TimeEntryForm from "@/components/time-entry-form";
 
 interface TimeEntry {
   id: string;
@@ -63,6 +72,8 @@ export default function TimeEntriesTable({
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const supabase = createClient();
 
@@ -388,6 +399,114 @@ export default function TimeEntriesTable({
     loadTimeEntries();
   };
 
+  const handleEditEntry = async (entryId: string) => {
+    try {
+      // Load the time entry data from database
+      const { data: entry, error } = await supabase
+        .from("time_entries")
+        .select(
+          `
+          *,
+          areas(id, name, color),
+          fields(id, name),
+          activities(id, name),
+          users(full_name, email)
+        `,
+        )
+        .eq("id", entryId)
+        .single();
+
+      if (error) throw error;
+
+      if (entry) {
+        console.log("Loaded entry for editing:", entry);
+        setEditingEntry(entry);
+        setIsEditDialogOpen(true);
+      }
+    } catch (error) {
+      console.error("Error loading time entry for editing:", error);
+      alert("Fehler beim Laden des Zeiteintrags zum Bearbeiten.");
+    }
+  };
+
+  const handleDeleteEntry = async (entryId: string) => {
+    if (
+      !confirm("Sind Sie sicher, dass Sie diesen Zeiteintrag löschen möchten?")
+    ) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("time_entries")
+        .delete()
+        .eq("id", entryId);
+
+      if (error) throw error;
+
+      // Show success notification
+      const notification = document.createElement("div");
+      notification.className =
+        "fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300";
+      notification.textContent = "Zeiteintrag erfolgreich gelöscht!";
+      document.body.appendChild(notification);
+
+      // Remove notification after 3 seconds
+      setTimeout(() => {
+        notification.style.opacity = "0";
+        setTimeout(() => {
+          if (document.body.contains(notification)) {
+            document.body.removeChild(notification);
+          }
+        }, 300);
+      }, 3000);
+
+      // Refresh the data
+      loadTimeEntries();
+
+      // Trigger custom event to refresh other components
+      window.dispatchEvent(
+        new CustomEvent("timeEntryDeleted", { detail: { entryId } }),
+      );
+    } catch (error) {
+      console.error("Error deleting time entry:", error);
+
+      // Show error notification
+      const errorNotification = document.createElement("div");
+      errorNotification.className =
+        "fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300";
+      errorNotification.textContent = "Fehler beim Löschen des Zeiteintrags.";
+      document.body.appendChild(errorNotification);
+
+      // Remove error notification after 5 seconds
+      setTimeout(() => {
+        errorNotification.style.opacity = "0";
+        setTimeout(() => {
+          if (document.body.contains(errorNotification)) {
+            document.body.removeChild(errorNotification);
+          }
+        }, 300);
+      }, 5000);
+    }
+  };
+
+  const handleEditSubmit = (data: any) => {
+    // Close the dialog after submission
+    setIsEditDialogOpen(false);
+    setEditingEntry(null);
+
+    // Refresh the data
+    loadTimeEntries();
+
+    // Dispatch the timeEntryUpdated event to refresh other components
+    window.dispatchEvent(new CustomEvent("timeEntryUpdated", { detail: data }));
+  };
+
+  const handleEditDialogClose = () => {
+    setIsEditDialogOpen(false);
+    setEditingEntry(null);
+  };
+
   return (
     <div className="bg-white p-6">
       <Card className="max-w-7xl mx-auto">
@@ -560,15 +679,24 @@ export default function TimeEntriesTable({
             <table className="w-full">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left py-3 font-medium">Aktivität</th>
-                  <th className="text-left py-3 font-medium">Bereich</th>
+                  <th className="text-left py-3 px-4 font-medium">Aktivität</th>
+                  <th className="text-left py-3 px-4 font-medium">Bereich</th>
                   {userRole === "manager" && (
-                    <th className="text-left py-3 font-medium">Mitarbeiter</th>
+                    <th className="text-left py-3 px-4 font-medium">
+                      Mitarbeiter
+                    </th>
                   )}
-                  <th className="text-left py-3 font-medium">Dauer</th>
-                  <th className="text-left py-3 font-medium">Datum</th>
-                  <th className="text-left py-3 font-medium">Status</th>
-                  <th className="text-left py-3 font-medium">Beschreibung</th>
+                  <th className="text-left py-3 px-4 font-medium">Dauer</th>
+                  <th className="text-left py-3 px-4 font-medium">Datum</th>
+                  <th className="text-left py-3 px-4 font-medium">Status</th>
+                  <th className="text-left py-3 px-4 font-medium">
+                    Beschreibung
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium">Aktionen</th>
+                  <th className="text-left py-3 px-4 font-medium">
+                    Anfangszeit
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium">Endzeit</th>
                 </tr>
               </thead>
               <tbody>
@@ -576,31 +704,43 @@ export default function TimeEntriesTable({
                   ? // Loading skeleton
                     Array.from({ length: 5 }).map((_, index) => (
                       <tr key={index} className="border-b">
-                        <td className="py-4">
+                        <td className="py-4 px-4">
                           <div className="animate-pulse">
                             <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
                             <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                           </div>
                         </td>
-                        <td className="py-4">
+                        <td className="py-4 px-4">
                           <div className="h-6 bg-gray-200 rounded w-20 animate-pulse"></div>
                         </td>
                         {userRole === "manager" && (
-                          <td className="py-4">
+                          <td className="py-4 px-4">
                             <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
                           </td>
                         )}
-                        <td className="py-4">
+                        <td className="py-4 px-4">
                           <div className="h-4 bg-gray-200 rounded w-16 animate-pulse"></div>
                         </td>
-                        <td className="py-4">
+                        <td className="py-4 px-4">
                           <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
                         </td>
-                        <td className="py-4">
+                        <td className="py-4 px-4">
                           <div className="h-6 bg-gray-200 rounded w-16 animate-pulse"></div>
                         </td>
-                        <td className="py-4">
+                        <td className="py-4 px-4">
                           <div className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+                            <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="h-4 bg-gray-200 rounded w-16 animate-pulse"></div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="h-4 bg-gray-200 rounded w-16 animate-pulse"></div>
                         </td>
                       </tr>
                     ))
@@ -609,7 +749,7 @@ export default function TimeEntriesTable({
                         key={entry.id}
                         className="border-b hover:bg-gray-50 transition-colors"
                       >
-                        <td className="py-4">
+                        <td className="py-4 px-4">
                           <div>
                             <div className="font-medium">
                               {entry.activities?.name || "Unbekannte Aktivität"}
@@ -619,7 +759,7 @@ export default function TimeEntriesTable({
                             </div>
                           </div>
                         </td>
-                        <td className="py-4">
+                        <td className="py-4 px-4">
                           <Badge
                             variant="secondary"
                             className={getAreaColorFromHex(
@@ -639,7 +779,7 @@ export default function TimeEntriesTable({
                           </Badge>
                         </td>
                         {userRole === "manager" && (
-                          <td className="py-4">
+                          <td className="py-4 px-4">
                             <div className="font-medium">
                               {entry.users?.full_name || "Unbekannter Benutzer"}
                             </div>
@@ -648,7 +788,7 @@ export default function TimeEntriesTable({
                             </div>
                           </td>
                         )}
-                        <td className="py-4">
+                        <td className="py-4 px-4">
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4 text-gray-400" />
                             <span className="font-semibold">
@@ -656,13 +796,13 @@ export default function TimeEntriesTable({
                             </span>
                           </div>
                         </td>
-                        <td className="py-4">
+                        <td className="py-4 px-4">
                           <div className="flex items-center gap-1">
                             <Calendar className="w-4 h-4 text-gray-400" />
                             <span>{formatDate(entry.date)}</span>
                           </div>
                         </td>
-                        <td className="py-4">
+                        <td className="py-4 px-4">
                           <Badge
                             variant="secondary"
                             className="bg-green-100 text-green-800"
@@ -670,13 +810,55 @@ export default function TimeEntriesTable({
                             Erfasst
                           </Badge>
                         </td>
-                        <td className="py-4 max-w-xs">
+                        <td className="py-4 px-4 max-w-xs">
                           <p
                             className="text-sm text-gray-600 truncate"
                             title={entry.description || "Keine Beschreibung"}
                           >
                             {entry.description || "Keine Beschreibung"}
                           </p>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditEntry(entry.id)}
+                              className="h-8 w-8 p-0"
+                              title="Bearbeiten"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteEntry(entry.id)}
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title="Löschen"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-md">
+                            <Clock className="w-3 h-3 text-blue-600" />
+                            <span className="text-sm font-mono text-blue-700">
+                              {entry.start_time
+                                ? entry.start_time.substring(0, 5)
+                                : "--:--"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-1 bg-red-50 px-2 py-1 rounded-md">
+                            <Clock className="w-3 h-3 text-red-600" />
+                            <span className="text-sm font-mono text-red-700">
+                              {entry.end_time
+                                ? entry.end_time.substring(0, 5)
+                                : "--:--"}
+                            </span>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -743,6 +925,21 @@ export default function TimeEntriesTable({
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogClose}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Zeiteintrag bearbeiten</DialogTitle>
+          </DialogHeader>
+          {editingEntry && (
+            <TimeEntryForm
+              onSubmit={handleEditSubmit}
+              editingEntry={editingEntry}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

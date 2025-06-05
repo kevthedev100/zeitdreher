@@ -46,6 +46,7 @@ interface TimeEntryFormProps {
   selectedArea?: string;
   selectedField?: string;
   selectedActivity?: string;
+  editingEntry?: any;
 }
 
 export default function TimeEntryForm({
@@ -53,6 +54,7 @@ export default function TimeEntryForm({
   selectedArea: initialArea = "",
   selectedField: initialField = "",
   selectedActivity: initialActivity = "",
+  editingEntry = null,
 }: TimeEntryFormProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [selectedArea, setSelectedArea] = useState(initialArea);
@@ -76,12 +78,115 @@ export default function TimeEntryForm({
   const [fields, setFields] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
 
   const supabase = createClient();
 
   // Load areas from database
   useEffect(() => {
     loadAreas();
+  }, []);
+
+  // Handle editingEntry prop to populate form for editing
+  useEffect(() => {
+    if (editingEntry) {
+      console.log("Populating form with editingEntry:", editingEntry);
+
+      setIsEditing(true);
+      setEditingEntryId(editingEntry.id);
+
+      // Set the area, field, and activity IDs
+      setSelectedArea(editingEntry.area_id);
+
+      // Convert duration from decimal hours to HH:MM:SS format
+      if (editingEntry.duration) {
+        const hours = Math.floor(editingEntry.duration);
+        const minutes = Math.floor((editingEntry.duration - hours) * 60);
+        const seconds = Math.floor(
+          ((editingEntry.duration - hours) * 60 - minutes) * 60,
+        );
+        const formattedDuration = `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+        setDuration(formattedDuration);
+      }
+
+      setDate(editingEntry.date);
+      setStartTime(editingEntry.start_time || "");
+      setEndTime(editingEntry.end_time || "");
+      setDescription(editingEntry.description || "");
+
+      // Load fields and activities for the selected area and field
+      const loadEditingData = async () => {
+        if (editingEntry.area_id) {
+          const fieldsData = await loadFieldsAndReturn(editingEntry.area_id);
+          if (fieldsData && editingEntry.field_id) {
+            setSelectedField(editingEntry.field_id);
+
+            const activitiesData = await loadActivitiesAndReturn(
+              editingEntry.field_id,
+            );
+            if (activitiesData && editingEntry.activity_id) {
+              setSelectedActivity(editingEntry.activity_id);
+            }
+          }
+        }
+      };
+
+      // Load the dependent data after areas are loaded
+      if (areas.length > 0) {
+        loadEditingData();
+      }
+    }
+  }, [editingEntry, areas]);
+
+  // Listen for populateTimeEntryForm event to handle editing (legacy support)
+  useEffect(() => {
+    const handlePopulateForm = (event: CustomEvent) => {
+      const {
+        entryId,
+        areaId,
+        fieldId,
+        activityId,
+        duration,
+        date,
+        startTime,
+        endTime,
+        description,
+      } = event.detail;
+      console.log("Populating form for editing:", event.detail);
+
+      setIsEditing(true);
+      setEditingEntryId(entryId);
+      setSelectedArea(areaId);
+      setSelectedField(fieldId);
+      setSelectedActivity(activityId);
+
+      // Convert duration from decimal hours to HH:MM:SS format
+      if (duration) {
+        const hours = Math.floor(duration);
+        const minutes = Math.floor((duration - hours) * 60);
+        const seconds = Math.floor(((duration - hours) * 60 - minutes) * 60);
+        const formattedDuration = `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+        setDuration(formattedDuration);
+      }
+
+      setDate(date);
+      setStartTime(startTime || "");
+      setEndTime(endTime || "");
+      setDescription(description || "");
+    };
+
+    window.addEventListener(
+      "populateTimeEntryForm",
+      handlePopulateForm as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "populateTimeEntryForm",
+        handlePopulateForm as EventListener,
+      );
+    };
   }, []);
 
   // Handle initial selections from props with sequential loading
@@ -787,10 +892,36 @@ export default function TimeEntryForm({
         start_time: startTime,
         end_time: endTime,
         description,
+        isEditing,
+        editingEntryId,
       });
 
-      // Try to save to database using the server action
-      const result = await createTimeEntry(formData);
+      let result;
+
+      if (isEditing && editingEntryId) {
+        // Update existing entry
+        const { data, error } = await supabase
+          .from("time_entries")
+          .update({
+            area_id: selectedArea,
+            field_id: selectedField,
+            activity_id: selectedActivity,
+            duration: durationInHours,
+            date,
+            start_time: startTime || null,
+            end_time: endTime || null,
+            description,
+          })
+          .eq("id", editingEntryId)
+          .select()
+          .single();
+
+        if (error) throw error;
+        result = { success: true, data };
+      } else {
+        // Create new entry using the server action
+        result = await createTimeEntry(formData);
+      }
 
       if (result.success && result.data) {
         console.log("Time entry saved successfully:", result.data);
@@ -802,8 +933,9 @@ export default function TimeEntryForm({
         const notification = document.createElement("div");
         notification.className =
           "fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300";
-        notification.textContent =
-          "Zeiteintrag erfolgreich in der Datenbank gespeichert!";
+        notification.textContent = isEditing
+          ? "Zeiteintrag erfolgreich aktualisiert!"
+          : "Zeiteintrag erfolgreich in der Datenbank gespeichert!";
         document.body.appendChild(notification);
 
         // Remove notification after 3 seconds
@@ -827,10 +959,13 @@ export default function TimeEntryForm({
         setEndTime("");
         setDescription("");
         setDate(new Date().toISOString().split("T")[0]);
+        setIsEditing(false);
+        setEditingEntryId(null);
 
         // Trigger custom event to refresh other components
+        const eventName = isEditing ? "timeEntryUpdated" : "timeEntryAdded";
         window.dispatchEvent(
-          new CustomEvent("timeEntryAdded", { detail: result.data }),
+          new CustomEvent(eventName, { detail: result.data }),
         );
       } else {
         throw new Error(result.message || "Failed to create time entry");
@@ -945,12 +1080,17 @@ export default function TimeEntryForm({
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Clock className="w-5 h-5" />
-            Zeiteintrag
+            {isEditing ? (
+              <Edit className="w-5 h-5" />
+            ) : (
+              <Clock className="w-5 h-5" />
+            )}
+            {isEditing ? "Zeiteintrag bearbeiten" : "Zeiteintrag"}
           </CardTitle>
           <CardDescription>
-            Erfassen Sie Ihre Arbeitszeit mit Spracheingabe oder manueller
-            Eingabe
+            {isEditing
+              ? "Bearbeiten Sie Ihren bestehenden Zeiteintrag"
+              : "Erfassen Sie Ihre Arbeitszeit mit Spracheingabe oder manueller Eingabe"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -1412,19 +1552,47 @@ export default function TimeEntryForm({
             )}
 
             {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full"
-              size="lg"
-              disabled={
-                !selectedArea ||
-                !selectedField ||
-                !selectedActivity ||
-                !duration
-              }
-            >
-              Zeiteintrag erfassen
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                type="submit"
+                className="flex-1"
+                size="lg"
+                disabled={
+                  !selectedArea ||
+                  !selectedField ||
+                  !selectedActivity ||
+                  !duration
+                }
+              >
+                {isEditing
+                  ? "Zeiteintrag aktualisieren"
+                  : "Zeiteintrag erfassen"}
+              </Button>
+              {isEditing && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    // Reset form to new entry mode
+                    setIsEditing(false);
+                    setEditingEntryId(null);
+                    setSelectedArea("");
+                    setSelectedField("");
+                    setSelectedActivity("");
+                    setFields([]);
+                    setActivities([]);
+                    setDuration("");
+                    setStartTime("");
+                    setEndTime("");
+                    setDescription("");
+                    setDate(new Date().toISOString().split("T")[0]);
+                  }}
+                >
+                  Abbrechen
+                </Button>
+              )}
+            </div>
           </form>
         </CardContent>
       </Card>

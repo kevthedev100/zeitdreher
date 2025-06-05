@@ -1,19 +1,47 @@
+"use client";
+
 import DashboardNavbar from "@/components/dashboard-navbar";
-import { createClient } from "../../../supabase/server";
+import { createClient } from "../../../supabase/client";
 import { redirect } from "next/navigation";
 import { SubscriptionCheck } from "@/components/subscription-check";
 import DashboardTabs from "@/components/dashboard-tabs";
 import AddEntryButton from "@/components/add-entry-button";
+import { useEffect, useState } from "react";
+import { User } from "@supabase/supabase-js";
 
-export default async function Dashboard() {
-  const supabase = await createClient();
+export default function Dashboard() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  useEffect(() => {
+    const getUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        redirect("/sign-in");
+        return;
+      }
+
+      setUser(user);
+      setLoading(false);
+    };
+
+    getUser();
+  }, [supabase]);
+
+  if (loading) {
+    return (
+      <div className="w-full bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="text-gray-600">Loading...</div>
+      </div>
+    );
+  }
 
   if (!user) {
-    return redirect("/sign-in");
+    return null;
   }
 
   // Mock user role - in a real app, this would come from the database
@@ -36,7 +64,13 @@ export default async function Dashboard() {
                   verwalten
                 </p>
               </div>
-              <AddEntryButton />
+              <AddEntryButton
+                onAddEntry={() => {
+                  // This will be handled by the DashboardTabs component
+                  const event = new CustomEvent("openNewEntry");
+                  window.dispatchEvent(event);
+                }}
+              />
             </div>
           </header>
 

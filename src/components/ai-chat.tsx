@@ -134,10 +134,12 @@ export default function AIChat({ userRole = "employee" }) {
           Du hilfst Benutzern, ihre Zeiteinträge zu analysieren und gibst produktivitätsbezogene Empfehlungen.
           Du antwortest immer auf Deutsch und in einem freundlichen, professionellen Ton.
           
-          Hier sind die aktuellen Zeitdaten des Benutzers:
+          Hier sind die aktuellen Zeitdaten des Benutzers mit detaillierten Beschreibungen:
           ${timeContext}
           
           Die Benutzerrolle ist: ${userRole}
+          
+          Nutze die Beschreibungen der Zeiteinträge, um präzisere und hilfreichere Antworten zu geben. Beziehe dich auf konkrete Aktivitäten und Projekte aus den Beschreibungen, wenn du Empfehlungen gibst.
           `,
         },
         ...messages
@@ -218,10 +220,28 @@ export default function AIChat({ userRole = "employee" }) {
       context += `- ${area}: ${hours.toFixed(1)}h\n`;
     });
 
-    context += "\nLetzte Einträge:\n";
+    context += "\nLetzte Einträge mit Beschreibungen:\n";
     recentEntries.forEach((entry) => {
-      context += `- ${entry.date}: ${entry.activities?.name || "Unbekannte Aktivität"} (${entry.duration.toFixed(1)}h)\n`;
+      const area = entry.areas?.name || "Unbekannter Bereich";
+      const field = entry.fields?.name || "Unbekanntes Feld";
+      const activity = entry.activities?.name || "Unbekannte Aktivität";
+      const description = entry.description || "Keine Beschreibung";
+      const startTime = entry.start_time ? ` (${entry.start_time})` : "";
+
+      context += `- ${entry.date}: ${area} > ${field} > ${activity} (${entry.duration.toFixed(1)}h${startTime}) - ${description}\n`;
     });
+
+    // Add more detailed information about all entries (limited to 20 for context size)
+    if (timeEntries.length > 5) {
+      context += "\nAlle Zeiteinträge (bis zu 20):\n";
+      timeEntries.slice(0, 20).forEach((entry) => {
+        const area = entry.areas?.name || "Unbekannter Bereich";
+        const activity = entry.activities?.name || "Unbekannte Aktivität";
+        const description = entry.description || "Keine Beschreibung";
+
+        context += `- ${entry.date}: ${area} > ${activity} - ${description}\n`;
+      });
+    }
 
     return context;
   };

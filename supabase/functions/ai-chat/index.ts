@@ -33,12 +33,20 @@ Deno.serve(async (req) => {
     let enhancedMessages = [...messages];
 
     if (timeEntries && timeEntries.length > 0) {
-      // Format time entries context
+      // Format time entries context with more detailed information
       const timeEntriesContext = timeEntries
-        .map(
-          (entry: any) =>
-            `${entry.date}: ${entry.activities?.name || "Unbekannte Aktivität"} (${entry.areas?.name || "Unbekannter Bereich"}) - ${entry.duration}h - ${entry.description || "Keine Beschreibung"}`,
-        )
+        .map((entry: any) => {
+          const area = entry.areas?.name || "Unbekannter Bereich";
+          const field = entry.fields?.name || "Unbekanntes Feld";
+          const activity = entry.activities?.name || "Unbekannte Aktivität";
+          const description = entry.description || "Keine Beschreibung";
+          const startTime = entry.start_time
+            ? ` (Start: ${entry.start_time})`
+            : "";
+          const endTime = entry.end_time ? ` (Ende: ${entry.end_time})` : "";
+
+          return `${entry.date}: ${area} > ${field} > ${activity} - ${entry.duration}h${startTime}${endTime} - ${description}`;
+        })
         .join("\n");
 
       // Add system message with context

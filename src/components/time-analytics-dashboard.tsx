@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -30,6 +30,7 @@ type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
   fields: { name: string } | null;
   activities: { name: string } | null;
   users: { full_name: string; email: string } | null;
+  start_time?: string | null;
 };
 
 type Area = Database["public"]["Tables"]["areas"]["Row"];
@@ -46,12 +47,6 @@ export default function TimeAnalyticsDashboard({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
-  const [hasEnoughData, setHasEnoughData] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [lastTwoWeeksEntries, setLastTwoWeeksEntries] = useState<TimeEntry[]>(
-    [],
-  );
 
   const supabase = createClient();
 
@@ -65,11 +60,7 @@ export default function TimeAnalyticsDashboard({
     }
   }, [currentUser, userRole]);
 
-  useEffect(() => {
-    checkEnoughDataForAnalysis();
-  }, [timeEntries]);
-
-  // Listen for time entry updates
+  // Listen for time entry updates and edit requests
   useEffect(() => {
     const handleTimeEntryAdded = (event: CustomEvent) => {
       console.log(
@@ -82,14 +73,53 @@ export default function TimeAnalyticsDashboard({
       }, 500);
     };
 
+    const handleTimeEntryUpdated = (event: CustomEvent) => {
+      console.log(
+        "Time entry updated event received in analytics:",
+        event.detail,
+      );
+      // Reload data when entries are updated
+      setTimeout(() => {
+        loadData();
+      }, 500);
+    };
+
+    const handleTimeEntryDeleted = (event: CustomEvent) => {
+      console.log(
+        "Time entry deleted event received in analytics:",
+        event.detail,
+      );
+      // Reload data when entries are deleted
+      setTimeout(() => {
+        loadData();
+      }, 500);
+    };
+
     window.addEventListener(
       "timeEntryAdded",
       handleTimeEntryAdded as EventListener,
     );
+    window.addEventListener(
+      "timeEntryUpdated",
+      handleTimeEntryUpdated as EventListener,
+    );
+    window.addEventListener(
+      "timeEntryDeleted",
+      handleTimeEntryDeleted as EventListener,
+    );
+
     return () => {
       window.removeEventListener(
         "timeEntryAdded",
         handleTimeEntryAdded as EventListener,
+      );
+      window.removeEventListener(
+        "timeEntryUpdated",
+        handleTimeEntryUpdated as EventListener,
+      );
+      window.removeEventListener(
+        "timeEntryDeleted",
+        handleTimeEntryDeleted as EventListener,
       );
     };
   }, []);
@@ -105,115 +135,74 @@ export default function TimeAnalyticsDashboard({
     }
   };
 
-  const checkEnoughDataForAnalysis = () => {
-    // Get entries from the last two weeks
-    const twoWeeksAgo = new Date();
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+  // Generate mock time entries for demonstration
+  const generateMockTimeEntries = (userId: string, count: number) => {
+    const mockAreas = [
+      { id: "area1", name: "Entwicklung", color: "#3B82F6" },
+      { id: "area2", name: "Design", color: "#8B5CF6" },
+      { id: "area3", name: "Marketing", color: "#10B981" },
+      { id: "area4", name: "Management", color: "#F59E0B" },
+    ];
 
-    const recentEntries = timeEntries.filter((entry) => {
-      const entryDate = new Date(entry.date);
-      return entryDate >= twoWeeksAgo;
+    const mockFields = [
+      { id: "field1", name: "Frontend" },
+      { id: "field2", name: "Backend" },
+      { id: "field3", name: "UI Design" },
+      { id: "field4", name: "Content Creation" },
+    ];
+
+    const mockActivities = [
+      { id: "activity1", name: "React Development" },
+      { id: "activity2", name: "API Integration" },
+      { id: "activity3", name: "Wireframing" },
+      { id: "activity4", name: "Blog Writing" },
+    ];
+
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
+
+    return Array.from({ length: count }).map((_, index) => {
+      // Generate entries for today with different times
+      const date = today;
+
+      // Generate random start time between 8:00 and 18:00
+      const startHour = 8 + Math.floor(Math.random() * 10);
+      const startMinute = Math.floor(Math.random() * 60);
+      const startTime = `${startHour.toString().padStart(2, "0")}:${startMinute.toString().padStart(2, "0")}`;
+
+      const duration = 0.5 + Math.random() * 2.5; // 0.5-3 hours
+
+      // Calculate end time
+      const endHour = Math.floor(startHour + duration);
+      const endMinute = Math.floor((startMinute + (duration % 1) * 60) % 60);
+      const endTime = `${endHour.toString().padStart(2, "0")}:${endMinute.toString().padStart(2, "0")}`;
+
+      const areaIndex = index % mockAreas.length;
+      const fieldIndex = index % mockFields.length;
+      const activityIndex = index % mockActivities.length;
+
+      return {
+        id: `mock-${index}`,
+        user_id: userId,
+        area_id: mockAreas[areaIndex].id,
+        field_id: mockFields[fieldIndex].id,
+        activity_id: mockActivities[activityIndex].id,
+        duration: duration,
+        date: date,
+        start_time: startTime,
+        end_time: endTime,
+        description: `Mock time entry ${index + 1} for demonstration`,
+        created_at: new Date().toISOString(),
+        areas: mockAreas[areaIndex],
+        fields: mockFields[fieldIndex],
+        activities: mockActivities[activityIndex],
+        users: { full_name: "Demo User", email: "demo@example.com" },
+        status: "active",
+      };
     });
-
-    setLastTwoWeeksEntries(recentEntries);
-    setHasEnoughData(recentEntries.length >= 25);
-
-    // If we have enough data and no suggestions yet, pre-populate with some basic suggestions
-    if (recentEntries.length >= 25 && aiSuggestions.length === 0) {
-      setAiSuggestions([
-        {
-          title: "Fokuszeit optimieren",
-          description:
-            "Ihre Daten zeigen, dass Sie zwischen 9-11 Uhr am produktivsten sind. Versuchen Sie, wichtige Aufgaben in diesem Zeitfenster zu planen und Meetings auf den Nachmittag zu verlegen.",
-          potential: "Potenzielle Produktivitätssteigerung: +15%",
-          type: "purple",
-        },
-        {
-          title: "Kontextwechsel reduzieren",
-          description:
-            "Sie wechseln durchschnittlich 14x täglich zwischen verschiedenen Projekten. Versuchen Sie, ähnliche Aufgaben zu bündeln und für mindestens 90 Minuten am Stück an einem Projekt zu arbeiten.",
-          potential: "Potenzielle Zeitersparnis: 45 Min/Tag",
-          type: "blue",
-        },
-      ]);
-    }
   };
 
-  const runAiAnalysis = async () => {
-    try {
-      setIsAnalyzing(true);
-
-      // Format the time entries data for the AI analysis
-      const entriesData = lastTwoWeeksEntries.map((entry) => ({
-        date: entry.date,
-        duration: entry.duration,
-        area: entry.areas?.name || "Unbekannt",
-        field: entry.fields?.name || "Unbekannt",
-        activity: entry.activities?.name || "Unbekannt",
-        description: entry.description || "",
-      }));
-
-      // Call the AI analysis function
-      const { data, error } = await supabase.functions.invoke(
-        "supabase-functions-generate-summaries",
-        {
-          body: {
-            dailyEntries: "AI Analysis Request",
-            weeklyEntries: JSON.stringify(entriesData),
-            analysisType: "optimization",
-          },
-        },
-      );
-
-      if (error) throw error;
-
-      // Process the AI response
-      const aiResponse = data.choices[0].message.content;
-
-      // Parse the AI suggestions (assuming a specific format from the AI)
-      try {
-        // For now, we'll use a simplified approach and just update with more detailed suggestions
-        setAiSuggestions([
-          {
-            title: "Fokuszeit optimieren",
-            description:
-              "Detaillierte Analyse zeigt, dass Sie zwischen 9-11 Uhr am produktivsten sind. An Tagen mit Meetings in diesem Zeitfenster sinkt Ihre Produktivität um 23%. Versuchen Sie, wichtige Aufgaben in diesem Zeitfenster zu planen und Meetings auf den Nachmittag zu verlegen.",
-            potential: "Potenzielle Produktivitätssteigerung: +18%",
-            type: "purple",
-          },
-          {
-            title: "Kontextwechsel reduzieren",
-            description:
-              "Detaillierte Analyse zeigt, dass Sie durchschnittlich 14x täglich zwischen verschiedenen Projekten wechseln. An Tagen mit weniger als 8 Wechseln steigt Ihre Produktivität um 27%. Versuchen Sie, ähnliche Aufgaben zu bündeln und für mindestens 90 Minuten am Stück an einem Projekt zu arbeiten.",
-            potential: "Potenzielle Zeitersparnis: 52 Min/Tag",
-            type: "blue",
-          },
-          {
-            title: "Meeting-Effizienz",
-            description:
-              "Meetings machen 28% Ihrer Arbeitszeit aus, wobei 40% davon als 'wenig produktiv' eingestuft werden könnten. Erwägen Sie, einige Meetings auf 25 statt 30 Minuten zu kürzen und klare Agenden vorab festzulegen.",
-            potential: "Potenzielle Zeitersparnis: 3,2 Std/Woche",
-            type: "green",
-          },
-          {
-            title: "KI-Automatisierung",
-            description:
-              "Für wiederkehrende Dokumentationsaufgaben (ca. 15% Ihrer Zeit) könnten Sie KI-Tools einsetzen. Automatisieren Sie Berichte und Zusammenfassungen mit Vorlagen und KI-Assistenten.",
-            potential: "Potenzielle Zeitersparnis: 4,5 Std/Woche",
-            type: "amber",
-          },
-        ]);
-      } catch (parseError) {
-        console.error("Error parsing AI suggestions:", parseError);
-      }
-    } catch (error) {
-      console.error("Error running AI analysis:", error);
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -227,6 +216,9 @@ export default function TimeAnalyticsDashboard({
 
       if (areasError) throw areasError;
       setAreas(areasData || []);
+
+      // Get today's date for filtering
+      const today = new Date().toISOString().split("T")[0];
 
       // Load time entries with related data
       let query = supabase
@@ -278,59 +270,7 @@ export default function TimeAnalyticsDashboard({
     } finally {
       setLoading(false);
     }
-  };
-
-  // Generate mock time entries for demonstration
-  const generateMockTimeEntries = (userId: string, count: number) => {
-    const mockAreas = [
-      { id: "area1", name: "Entwicklung", color: "#3B82F6" },
-      { id: "area2", name: "Design", color: "#8B5CF6" },
-      { id: "area3", name: "Marketing", color: "#10B981" },
-      { id: "area4", name: "Management", color: "#F59E0B" },
-    ];
-
-    const mockFields = [
-      { id: "field1", name: "Frontend" },
-      { id: "field2", name: "Backend" },
-      { id: "field3", name: "UI Design" },
-      { id: "field4", name: "Content Creation" },
-    ];
-
-    const mockActivities = [
-      { id: "activity1", name: "React Development" },
-      { id: "activity2", name: "API Integration" },
-      { id: "activity3", name: "Wireframing" },
-      { id: "activity4", name: "Blog Writing" },
-    ];
-
-    const now = new Date();
-
-    return Array.from({ length: count }).map((_, index) => {
-      const dayOffset = index % 7;
-      const date = new Date(now);
-      date.setDate(date.getDate() - dayOffset);
-
-      const areaIndex = index % mockAreas.length;
-      const fieldIndex = index % mockFields.length;
-      const activityIndex = index % mockActivities.length;
-
-      return {
-        id: `mock-${index}`,
-        user_id: userId,
-        area_id: mockAreas[areaIndex].id,
-        field_id: mockFields[fieldIndex].id,
-        activity_id: mockActivities[activityIndex].id,
-        duration: 1 + Math.random() * 4, // 1-5 hours
-        date: date.toISOString().split("T")[0],
-        description: `Mock time entry ${index + 1} for demonstration`,
-        created_at: new Date().toISOString(),
-        areas: mockAreas[areaIndex],
-        fields: mockFields[fieldIndex],
-        activities: mockActivities[activityIndex],
-        users: { full_name: "Demo User", email: "demo@example.com" },
-      };
-    });
-  };
+  }, [currentUser, userRole]);
 
   const refreshData = () => {
     loadData();
@@ -340,16 +280,18 @@ export default function TimeAnalyticsDashboard({
   const calculateTimeData = () => {
     if (timeEntries.length === 0) {
       return {
-        totalHours: 0,
+        todayHours: 0,
         thisWeek: 0,
         lastWeek: 0,
-        avgDaily: 0,
+        thisMonth: 0,
         topActivity: "Keine Daten",
         productivity: 0,
       };
     }
 
     const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
     startOfWeek.setHours(0, 0, 0, 0);
@@ -359,7 +301,16 @@ export default function TimeAnalyticsDashboard({
 
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const totalHours = timeEntries
+    // Calculate today's hours
+    const todayHours = timeEntries
+      .filter((entry) => {
+        const entryDate = new Date(entry.date);
+        return entryDate.toDateString() === today.toDateString();
+      })
+      .reduce((sum, entry) => sum + entry.duration, 0);
+
+    // Calculate this month's hours
+    const thisMonthHours = timeEntries
       .filter((entry) => new Date(entry.date) >= startOfMonth)
       .reduce((sum, entry) => sum + entry.duration, 0);
 
@@ -377,18 +328,6 @@ export default function TimeAnalyticsDashboard({
       })
       .reduce((sum, entry) => sum + entry.duration, 0);
 
-    // Calculate average daily hours (last 30 days)
-    const last30Days = new Date(now);
-    last30Days.setDate(now.getDate() - 30);
-
-    const last30DaysEntries = timeEntries.filter(
-      (entry) => new Date(entry.date) >= last30Days,
-    );
-    const avgDaily =
-      last30DaysEntries.length > 0
-        ? last30DaysEntries.reduce((sum, entry) => sum + entry.duration, 0) / 30
-        : 0;
-
     // Find top activity
     const activityHours: { [key: string]: number } = {};
     timeEntries.forEach((entry) => {
@@ -405,14 +344,14 @@ export default function TimeAnalyticsDashboard({
         : "Keine Daten";
 
     return {
-      totalHours,
+      todayHours,
       thisWeek: thisWeekHours,
       lastWeek: lastWeekHours,
-      avgDaily,
+      thisMonth: thisMonthHours,
       topActivity,
       productivity:
-        totalHours > 0
-          ? Math.min(100, Math.round((totalHours / 160) * 100))
+        thisMonthHours > 0
+          ? Math.min(100, Math.round((thisMonthHours / 160) * 100))
           : 0, // Assuming 160h/month target
     };
   };
@@ -600,15 +539,15 @@ export default function TimeAnalyticsDashboard({
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Gesamtstunden
+                Heutige Stunden
               </CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {timeData.totalHours.toFixed(1)}h
+                {timeData.todayHours.toFixed(1)}h
               </div>
-              <p className="text-xs text-muted-foreground">Dieser Monat</p>
+              <p className="text-xs text-muted-foreground">Heute erfasst</p>
             </CardContent>
           </Card>
 
@@ -632,15 +571,15 @@ export default function TimeAnalyticsDashboard({
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Tagesdurchschnitt
+                Dieser Monat
               </CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {timeData.avgDaily.toFixed(1)}h
+                {timeData.thisMonth.toFixed(1)}h
               </div>
-              <p className="text-xs text-muted-foreground">Pro Arbeitstag</p>
+              <p className="text-xs text-muted-foreground">Monatsstunden</p>
             </CardContent>
           </Card>
 
@@ -661,6 +600,219 @@ export default function TimeAnalyticsDashboard({
             </CardContent>
           </Card>
         </div>
+
+        {/* Daily Time Distribution Bar */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              Tagesübersicht
+            </CardTitle>
+            <CardDescription>
+              Zeitverteilung über den Tag (5 Uhr bis 0 Uhr)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {timeEntries.length > 0 ? (
+                <div>
+                  <div className="flex justify-between text-xs text-gray-500 mb-2">
+                    {Array.from({ length: 20 }).map((_, i) => (
+                      <div key={i} className="text-center">
+                        {(i + 5) % 24}:00
+                      </div>
+                    ))}
+                  </div>
+                  <div className="h-10 bg-gray-100 rounded-lg relative">
+                    {/* Create a single continuous bar */}
+                    <div className="absolute top-0 left-0 h-full w-full">
+                      {/* Process entries to create time segments */}
+                      {(() => {
+                        // Create time segments for the entire day (5:00 to 0:00)
+                        // Each segment represents 5 minutes
+                        const totalMinutes = 19 * 60; // 19 hours from 5:00 to 0:00
+                        const segmentSize = 5; // 5-minute segments
+                        const segments = Array(totalMinutes / segmentSize)
+                          .fill(null)
+                          .map(() => []);
+
+                        // Format time for display
+                        const formatTime = (date: Date) => {
+                          return date.toLocaleTimeString("de-DE", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          });
+                        };
+
+                        // Map entries to segments
+                        timeEntries.forEach((entry) => {
+                          const startTime = entry.start_time
+                            ? new Date(`${entry.date}T${entry.start_time}`)
+                            : null;
+                          if (!startTime) return;
+
+                          const hour = startTime.getHours();
+                          if (hour < 5) return; // Only show entries between 5:00 and 24:00
+
+                          // Calculate start and end minutes from 5:00
+                          const startHourAdjusted =
+                            hour >= 5 ? hour - 5 : hour + 19;
+                          const startMinuteTotal =
+                            startHourAdjusted * 60 + startTime.getMinutes();
+
+                          // Calculate end time
+                          const endTime = new Date(startTime);
+                          endTime.setMinutes(
+                            endTime.getMinutes() + entry.duration * 60,
+                          );
+                          const endHour = endTime.getHours();
+                          const endHourAdjusted =
+                            endHour >= 5 ? endHour - 5 : endHour + 19;
+                          const endMinuteTotal =
+                            endHourAdjusted * 60 + endTime.getMinutes();
+
+                          // Assign entry to all segments it spans
+                          for (
+                            let minute = startMinuteTotal;
+                            minute < endMinuteTotal;
+                            minute += segmentSize
+                          ) {
+                            const segmentIndex = Math.floor(
+                              minute / segmentSize,
+                            );
+                            if (
+                              segmentIndex >= 0 &&
+                              segmentIndex < segments.length
+                            ) {
+                              segments[segmentIndex].push({
+                                ...entry,
+                                startTime,
+                                endTime,
+                                formatTime,
+                              });
+                            }
+                          }
+                        });
+
+                        // Render segments
+                        return segments.map(
+                          (entriesInSegment, segmentIndex) => {
+                            if (entriesInSegment.length === 0) return null;
+
+                            const position =
+                              ((segmentIndex * segmentSize) / totalMinutes) *
+                              100;
+                            const width = (segmentSize / totalMinutes) * 100;
+
+                            // If only one entry in this segment, render it normally
+                            if (entriesInSegment.length === 1) {
+                              const entry = entriesInSegment[0];
+                              return (
+                                <div
+                                  key={`segment-${segmentIndex}`}
+                                  className="absolute h-full cursor-pointer hover:opacity-100 hover:z-10 transition-all duration-200 group"
+                                  style={{
+                                    left: `${position}%`,
+                                    width: `${width}%`,
+                                    backgroundColor:
+                                      entry.areas?.color || "#6B7280",
+                                  }}
+                                  onClick={() => {
+                                    const editEvent = new CustomEvent(
+                                      "editTimeEntry",
+                                      {
+                                        detail: { entryId: entry.id },
+                                      },
+                                    );
+                                    window.dispatchEvent(editEvent);
+                                  }}
+                                  title={`${entry.activities?.name || "Aktivität"}: ${entry.duration.toFixed(1)}h (${entry.formatTime(entry.startTime)} - ${entry.formatTime(entry.endTime)})`}
+                                >
+                                  <div className="hidden group-hover:block absolute bottom-full left-0 bg-black text-white text-xs rounded p-2 mb-1 whitespace-nowrap z-20">
+                                    {entry.activities?.name || "Aktivität"}:{" "}
+                                    {entry.duration.toFixed(1)}h
+                                    <br />
+                                    {entry.formatTime(entry.startTime)} -{" "}
+                                    {entry.formatTime(entry.endTime)}
+                                    <br />
+                                    {entry.areas?.name || "Bereich"}
+                                    {entry.description && (
+                                      <>
+                                        <br />
+                                        {entry.description.substring(0, 50)}
+                                        {entry.description.length > 50
+                                          ? "..."
+                                          : ""}
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            } else {
+                              // Multiple entries in this segment - create a striped/gradient effect
+                              const entryCount = entriesInSegment.length;
+                              return (
+                                <div
+                                  key={`segment-${segmentIndex}`}
+                                  className="absolute h-full cursor-pointer hover:opacity-100 hover:z-10 transition-all duration-200 group"
+                                  style={{
+                                    left: `${position}%`,
+                                    width: `${width}%`,
+                                    background: `linear-gradient(90deg, ${entriesInSegment
+                                      .map(
+                                        (entry, i) =>
+                                          `${entry.areas?.color || "#6B7280"} ${(i / entryCount) * 100}%, ${entry.areas?.color || "#6B7280"} ${((i + 1) / entryCount) * 100}%`,
+                                      )
+                                      .join(", ")})`,
+                                  }}
+                                  onClick={() => {
+                                    // Show a dialog with all overlapping entries
+                                    alert(
+                                      `${entryCount} überlappende Einträge in diesem Zeitraum. Klicken Sie auf einen bestimmten Eintrag in der Tabelle unten, um ihn zu bearbeiten.`,
+                                    );
+                                  }}
+                                  title={`${entryCount} überlappende Einträge`}
+                                >
+                                  <div className="hidden group-hover:block absolute bottom-full left-0 bg-black text-white text-xs rounded p-2 mb-1 whitespace-nowrap z-20">
+                                    <strong>
+                                      {entryCount} überlappende Einträge:
+                                    </strong>
+                                    <br />
+                                    {entriesInSegment.map((entry, i) => (
+                                      <div key={i} className="mt-1">
+                                        {i + 1}.{" "}
+                                        {entry.activities?.name || "Aktivität"}:{" "}
+                                        {entry.duration.toFixed(1)}h
+                                        <br />
+                                        <span className="text-xs opacity-75">
+                                          {entry.formatTime(entry.startTime)} -{" "}
+                                          {entry.formatTime(entry.endTime)}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            }
+                          },
+                        );
+                      })()}
+                    </div>
+                  </div>
+                  <div className="mt-2 text-sm text-center text-gray-600">
+                    Der Balken zeigt Ihre Zeitverteilung über den Tag (klicken
+                    zum Bearbeiten)
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Clock className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>Keine Daten verfügbar</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Time Distribution Pie Chart */}
@@ -774,156 +926,6 @@ export default function TimeAnalyticsDashboard({
             </CardContent>
           </Card>
         </div>
-
-        {/* AI Optimization Suggestions */}
-        <Card className="border-2 border-purple-100 mb-6">
-          <CardHeader className="bg-purple-50">
-            <CardTitle className="flex items-center gap-2 text-purple-800">
-              <Bot className="w-5 h-5 text-purple-600" />
-              Vorschläge für KI-Optimierung
-            </CardTitle>
-            <CardDescription>
-              Basierend auf Ihren Daten der letzten zwei Wochen
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6">
-            {loading ? (
-              <div className="animate-pulse space-y-4">
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-                <div className="h-4 bg-gray-200 rounded w-4/5"></div>
-              </div>
-            ) : !hasEnoughData ? (
-              <div className="text-center py-8">
-                <AlertCircle className="w-12 h-12 mx-auto mb-4 text-amber-500 opacity-70" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Nicht genügend Daten
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Für KI-Optimierungsvorschläge werden mindestens 25
-                  Zeiteinträge aus den letzten zwei Wochen benötigt.
-                </p>
-                <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 text-amber-800 text-sm">
-                  <p className="font-medium">Aktueller Status:</p>
-                  <p>
-                    {lastTwoWeeksEntries.length} von 25 benötigten Einträgen
-                    vorhanden
-                  </p>
-                </div>
-              </div>
-            ) : isAnalyzing ? (
-              <div className="text-center py-8">
-                <div className="flex items-center justify-center mb-4">
-                  <Sparkles className="w-8 h-8 text-purple-500 animate-pulse" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  KI-Analyse läuft...
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Ihre Zeitdaten werden analysiert, um personalisierte
-                  Optimierungsvorschläge zu erstellen.
-                </p>
-                <div className="w-full max-w-md mx-auto bg-gray-200 rounded-full h-2.5 mb-4">
-                  <div
-                    className="bg-purple-600 h-2.5 rounded-full animate-[progress_2s_ease-in-out_infinite]"
-                    style={{ width: "70%" }}
-                  ></div>
-                </div>
-                <p className="text-sm text-gray-500">
-                  Dies kann einige Sekunden dauern
-                </p>
-              </div>
-            ) : aiSuggestions.length > 0 ? (
-              <div className="space-y-4">
-                {aiSuggestions.map((suggestion, index) => {
-                  const bgColor =
-                    suggestion.type === "purple"
-                      ? "bg-purple-50"
-                      : suggestion.type === "blue"
-                        ? "bg-blue-50"
-                        : suggestion.type === "green"
-                          ? "bg-green-50"
-                          : "bg-amber-50";
-
-                  const borderColor =
-                    suggestion.type === "purple"
-                      ? "border-purple-100"
-                      : suggestion.type === "blue"
-                        ? "border-blue-100"
-                        : suggestion.type === "green"
-                          ? "border-green-100"
-                          : "border-amber-100";
-
-                  const textColor =
-                    suggestion.type === "purple"
-                      ? "text-purple-800"
-                      : suggestion.type === "blue"
-                        ? "text-blue-800"
-                        : suggestion.type === "green"
-                          ? "text-green-800"
-                          : "text-amber-800";
-
-                  const accentColor =
-                    suggestion.type === "purple"
-                      ? "text-purple-600"
-                      : suggestion.type === "blue"
-                        ? "text-blue-600"
-                        : suggestion.type === "green"
-                          ? "text-green-600"
-                          : "text-amber-600";
-
-                  return (
-                    <div
-                      key={index}
-                      className={`p-4 ${bgColor} rounded-lg border ${borderColor}`}
-                    >
-                      <h4 className={`font-medium ${textColor} mb-2`}>
-                        {suggestion.title}
-                      </h4>
-                      <p className="text-gray-700 mb-3">
-                        {suggestion.description}
-                      </p>
-                      <div className={`text-sm font-medium ${accentColor}`}>
-                        {suggestion.potential}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                <div className="flex justify-center mt-6">
-                  <Button
-                    onClick={runAiAnalysis}
-                    className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2"
-                    disabled={isAnalyzing}
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    Detaillierte Analyse starten
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Bot className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Keine Vorschläge verfügbar
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Klicken Sie auf die Schaltfläche unten, um eine KI-Analyse
-                  Ihrer Zeitdaten zu starten.
-                </p>
-                <Button
-                  onClick={runAiAnalysis}
-                  className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2"
-                  disabled={isAnalyzing}
-                >
-                  <Sparkles className="w-4 h-4" />
-                  Analyse starten
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         {/* Recent Time Entries Table */}
         <Card>
