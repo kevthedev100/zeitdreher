@@ -462,6 +462,7 @@ export default function TimeEntryForm({
     }
   };
 
+  // Process voice input
   const processVoiceInput = async (audioBlob: Blob) => {
     try {
       // Show processing status
@@ -514,85 +515,68 @@ export default function TimeEntryForm({
       console.log("Confidence:", confidence);
       console.log("Processing method:", processingMethod);
 
-      // Apply parsed data to form with fuzzy matching
-      if (parsed.duration) {
-        setDuration(parsed.duration.toString());
+      // Apply parsed data to form with enhanced logic
+      console.log("Processing parsed voice data:", parsed);
+
+      // Reset form fields to ensure clean state
+      setSelectedField("");
+      setSelectedActivity("");
+      setFields([]);
+      setActivities([]);
+
+      // Handle duration - convert to HH:MM:SS format if it's a decimal number
+      if (parsed.duration && typeof parsed.duration === "number") {
+        const hours = Math.floor(parsed.duration);
+        const minutes = Math.floor((parsed.duration - hours) * 60);
+        const seconds = Math.floor(
+          ((parsed.duration - hours) * 60 - minutes) * 60,
+        );
+        const formattedDuration = `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+        setDuration(formattedDuration);
+      } else if (parsed.duration && typeof parsed.duration === "string") {
+        setDuration(parsed.duration);
       }
 
+      // Handle description
       if (parsed.description) {
         setDescription(parsed.description);
       }
 
-      // Handle date parsing
+      // Handle date parsing with enhanced natural language support
       if (parsed.date) {
         setDate(parsed.date);
       }
 
-      // Handle time parsing
+      // Handle time parsing with automatic duration calculation
       if (parsed.startTime) {
-        setStartTime(parsed.startTime);
-      }
+        // Ensure time is in HH:MM:SS format
+        const formattedStartTime = formatTimeString(parsed.startTime);
+        setStartTime(formattedStartTime);
 
-      if (parsed.endTime) {
-        setEndTime(parsed.endTime);
-      }
-
-      // Enhanced area selection with fuzzy matching
-      if (parsed.area) {
-        const area = findBestMatch(parsed.area, areas, "name");
-        if (area) {
-          setSelectedArea(area.id);
-          // Load fields for this area and then handle field/activity selection
-          const fieldsData = await loadFieldsAndReturn(area.id);
-
-          if (parsed.field && fieldsData) {
-            const field = findBestMatch(parsed.field, fieldsData, "name");
-            if (field) {
-              setSelectedField(field.id);
-
-              // Load activities and handle activity selection
-              const activitiesData = await loadActivitiesAndReturn(field.id);
-
-              if (parsed.activity && activitiesData) {
-                const activity = findBestMatch(
-                  parsed.activity,
-                  activitiesData,
-                  "name",
-                );
-                if (activity) {
-                  setSelectedActivity(activity.id);
-                }
-              }
-            }
-          }
+        // If we have both start and end time, calculate duration
+        if (parsed.endTime) {
+          const formattedEndTime = formatTimeString(parsed.endTime);
+          setEndTime(formattedEndTime);
+          calculateDurationFromTimes(formattedStartTime, formattedEndTime);
         }
+      } else if (parsed.endTime) {
+        // Only end time provided
+        const formattedEndTime = formatTimeString(parsed.endTime);
+        setEndTime(formattedEndTime);
       }
 
-      // Show success message with confidence score
-      const confidenceText = confidence
-        ? ` (Genauigkeit: ${(confidence * 100).toFixed(1)}%)`
-        : "";
-      const methodText =
-        processingMethod === "ai" ? " (KI-gestützt)" : " (Regelbasiert)";
+      // Enhanced hierarchical selection with intelligent fuzzy matching
+      console.log("Starting hierarchical selection process...");
+      await handleHierarchicalSelection(parsed);
+      console.log("Hierarchical selection process completed.");
 
-      const successDiv = document.createElement("div");
-      successDiv.className =
-        "fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-md";
-      successDiv.innerHTML = `
-        <div class="font-semibold mb-2">Spracheingabe erfolgreich verarbeitet!${methodText}</div>
-        <div class="text-sm opacity-90">"${transcription}"${confidenceText}</div>
-      `;
-      document.body.appendChild(successDiv);
-
-      // Remove success message after 5 seconds
-      setTimeout(() => {
-        successDiv.style.opacity = "0";
-        setTimeout(() => {
-          if (document.body.contains(successDiv)) {
-            document.body.removeChild(successDiv);
-          }
-        }, 300);
-      }, 5000);
+      // Show enhanced success message with detailed recognition feedback
+      showVoiceProcessingSuccess(
+        transcription,
+        parsed,
+        confidence,
+        processingMethod,
+      );
     } catch (error) {
       console.error("Error processing voice input:", error);
       alert("Fehler bei der Verarbeitung der Spracheingabe.");
@@ -747,6 +731,7 @@ export default function TimeEntryForm({
   // Helper functions to load data and return it
   const loadFieldsAndReturn = async (areaId: string) => {
     try {
+      console.log("Loading fields for area ID:", areaId);
       const { data, error } = await supabase
         .from("fields")
         .select("*")
@@ -755,6 +740,7 @@ export default function TimeEntryForm({
         .order("name");
 
       if (error) throw error;
+      console.log("Fields loaded successfully:", data?.length || 0, "fields");
       setFields(data || []);
       return data || [];
     } catch (error) {
@@ -765,6 +751,7 @@ export default function TimeEntryForm({
 
   const loadActivitiesAndReturn = async (fieldId: string) => {
     try {
+      console.log("Loading activities for field ID:", fieldId);
       const { data, error } = await supabase
         .from("activities")
         .select("*")
@@ -773,12 +760,321 @@ export default function TimeEntryForm({
         .order("name");
 
       if (error) throw error;
+      console.log(
+        "Activities loaded successfully:",
+        data?.length || 0,
+        "activities",
+      );
       setActivities(data || []);
       return data || [];
     } catch (error) {
       console.error("Error loading activities:", error);
       return [];
     }
+  };
+
+  // Enhanced hierarchical selection handler with sequential state updates
+  const handleHierarchicalSelection = async (parsed: any) => {
+    console.log("Starting hierarchical selection with:", parsed);
+
+    // Step 1: Handle area selection
+    if (parsed.area) {
+      const area = findBestMatch(parsed.area, areas, "name");
+      if (area) {
+        console.log("Found matching area:", area.name);
+
+        // Directly set the area ID
+        setSelectedArea(area.id);
+        console.log("Area set to:", area.name, "with ID:", area.id);
+
+        // Force a synchronous load of fields for this area
+        const fieldsData = await loadFieldsAndReturn(area.id);
+        console.log("Loaded fields for area:", fieldsData.length);
+
+        // Wait for a longer time to ensure React has updated the DOM
+        await new Promise<void>((resolve) => setTimeout(resolve, 300));
+
+        // Step 2: Handle field selection
+        if (parsed.field && fieldsData.length > 0) {
+          const field = findBestMatch(parsed.field, fieldsData, "name");
+          if (field) {
+            console.log("Found matching field:", field.name);
+
+            // Directly set the field ID
+            setSelectedField(field.id);
+            console.log("Field set to:", field.name, "with ID:", field.id);
+
+            // Force a synchronous load of activities for this field
+            const activitiesData = await loadActivitiesAndReturn(field.id);
+            console.log("Loaded activities for field:", activitiesData.length);
+
+            // Wait for a longer time to ensure React has updated the DOM
+            await new Promise<void>((resolve) => setTimeout(resolve, 300));
+
+            // Step 3: Handle activity selection
+            if (parsed.activity && activitiesData.length > 0) {
+              const activity = findBestMatch(
+                parsed.activity,
+                activitiesData,
+                "name",
+              );
+              if (activity) {
+                console.log("Found matching activity:", activity.name);
+                setSelectedActivity(activity.id);
+                console.log(
+                  "Activity set to:",
+                  activity.name,
+                  "with ID:",
+                  activity.id,
+                );
+              } else if (activitiesData.length === 1) {
+                // Auto-select if only one activity available
+                console.log(
+                  "Auto-selecting single activity:",
+                  activitiesData[0].name,
+                );
+                setSelectedActivity(activitiesData[0].id);
+                console.log("Activity auto-set to:", activitiesData[0].name);
+              }
+            } else if (activitiesData.length === 1) {
+              // Auto-select if only one activity available and no activity specified
+              console.log(
+                "Auto-selecting single activity (no activity specified):",
+                activitiesData[0].name,
+              );
+              setSelectedActivity(activitiesData[0].id);
+              console.log("Activity auto-set to:", activitiesData[0].name);
+            }
+          } else if (fieldsData.length === 1) {
+            // Auto-select if only one field available
+            console.log("Auto-selecting single field:", fieldsData[0].name);
+
+            // Directly set the field ID
+            setSelectedField(fieldsData[0].id);
+            console.log("Field auto-set to:", fieldsData[0].name);
+
+            // Force a synchronous load of activities for this field
+            const activitiesData = await loadActivitiesAndReturn(
+              fieldsData[0].id,
+            );
+            console.log(
+              "Loaded activities for auto-selected field:",
+              activitiesData.length,
+            );
+
+            // Wait for a longer time to ensure React has updated the DOM
+            await new Promise<void>((resolve) => setTimeout(resolve, 300));
+
+            if (parsed.activity && activitiesData.length > 0) {
+              const activity = findBestMatch(
+                parsed.activity,
+                activitiesData,
+                "name",
+              );
+              if (activity) {
+                console.log("Found matching activity:", activity.name);
+                setSelectedActivity(activity.id);
+                console.log("Activity set to:", activity.name);
+              } else if (activitiesData.length === 1) {
+                console.log(
+                  "Auto-selecting single activity:",
+                  activitiesData[0].name,
+                );
+                setSelectedActivity(activitiesData[0].id);
+                console.log("Activity auto-set to:", activitiesData[0].name);
+              }
+            } else if (activitiesData.length === 1) {
+              console.log(
+                "Auto-selecting single activity (no activity specified):",
+                activitiesData[0].name,
+              );
+              setSelectedActivity(activitiesData[0].id);
+              console.log("Activity auto-set to:", activitiesData[0].name);
+            }
+          }
+        } else if (fieldsData.length === 1) {
+          // Auto-select if only one field available and no field specified
+          console.log(
+            "Auto-selecting single field (no field specified):",
+            fieldsData[0].name,
+          );
+
+          // Directly set the field ID
+          setSelectedField(fieldsData[0].id);
+          console.log("Field auto-set to:", fieldsData[0].name);
+
+          // Force a synchronous load of activities for this field
+          const activitiesData = await loadActivitiesAndReturn(
+            fieldsData[0].id,
+          );
+          console.log(
+            "Loaded activities for auto-selected field:",
+            activitiesData.length,
+          );
+
+          // Wait for a longer time to ensure React has updated the DOM
+          await new Promise<void>((resolve) => setTimeout(resolve, 300));
+
+          if (parsed.activity && activitiesData.length > 0) {
+            const activity = findBestMatch(
+              parsed.activity,
+              activitiesData,
+              "name",
+            );
+            if (activity) {
+              console.log("Found matching activity:", activity.name);
+              setSelectedActivity(activity.id);
+              console.log("Activity set to:", activity.name);
+            } else if (activitiesData.length === 1) {
+              console.log(
+                "Auto-selecting single activity:",
+                activitiesData[0].name,
+              );
+              setSelectedActivity(activitiesData[0].id);
+              console.log("Activity auto-set to:", activitiesData[0].name);
+            }
+          } else if (activitiesData.length === 1) {
+            console.log(
+              "Auto-selecting single activity (no activity specified):",
+              activitiesData[0].name,
+            );
+            setSelectedActivity(activitiesData[0].id);
+            console.log("Activity auto-set to:", activitiesData[0].name);
+          }
+        }
+      } else {
+        console.log("No matching area found for:", parsed.area);
+      }
+    }
+  };
+
+  // Enhanced success notification with detailed feedback
+  const showVoiceProcessingSuccess = (
+    transcription: string,
+    parsed: any,
+    confidence: number,
+    processingMethod: string,
+  ) => {
+    const confidenceText = confidence
+      ? ` (Genauigkeit: ${(confidence * 100).toFixed(1)}%)`
+      : "";
+    const methodText =
+      processingMethod === "ai" ? " (KI-gestützt)" : " (Regelbasiert)";
+
+    // Create detailed list of recognized fields
+    const recognizedFields = [];
+    const matchedFields = [];
+
+    if (parsed.area) {
+      recognizedFields.push(`Bereich: ${parsed.area}`);
+      const matchedArea = areas.find((a) => a.id === selectedArea);
+      if (matchedArea) {
+        matchedFields.push(`✓ Bereich: ${matchedArea.name}`);
+      }
+    }
+
+    if (parsed.field) {
+      recognizedFields.push(`Feld: ${parsed.field}`);
+      const matchedField = fields.find((f) => f.id === selectedField);
+      if (matchedField) {
+        matchedFields.push(`✓ Feld: ${matchedField.name}`);
+      }
+    }
+
+    if (parsed.activity) {
+      recognizedFields.push(`Aktivität: ${parsed.activity}`);
+      const matchedActivity = activities.find((a) => a.id === selectedActivity);
+      if (matchedActivity) {
+        matchedFields.push(`✓ Aktivität: ${matchedActivity.name}`);
+      }
+    }
+
+    if (parsed.startTime)
+      recognizedFields.push(`Startzeit: ${parsed.startTime}`);
+    if (parsed.endTime) recognizedFields.push(`Endzeit: ${parsed.endTime}`);
+    if (parsed.duration)
+      recognizedFields.push(
+        `Dauer: ${typeof parsed.duration === "number" ? parsed.duration + "h" : parsed.duration}`,
+      );
+    if (parsed.date) recognizedFields.push(`Datum: ${parsed.date}`);
+    if (parsed.description) {
+      const desc =
+        parsed.description.length > 40
+          ? parsed.description.substring(0, 40) + "..."
+          : parsed.description;
+      recognizedFields.push(`Beschreibung: ${desc}`);
+    }
+
+    const recognizedFieldsHtml =
+      recognizedFields.length > 0
+        ? `<div class="text-xs mt-2 bg-green-600 p-2 rounded">
+          <div class="font-semibold mb-1">Erkannte Informationen:</div>
+          <ul class="list-disc pl-4">
+            ${recognizedFields.map((field) => `<li>${field}</li>`).join("")}
+          </ul>
+        </div>`
+        : "";
+
+    const matchedFieldsHtml =
+      matchedFields.length > 0
+        ? `<div class="text-xs mt-2 bg-blue-600 p-2 rounded">
+          <div class="font-semibold mb-1">Automatisch ausgewählt:</div>
+          <ul class="list-disc pl-4">
+            ${matchedFields.map((field) => `<li>${field}</li>`).join("")}
+          </ul>
+        </div>`
+        : "";
+
+    const successDiv = document.createElement("div");
+    successDiv.className =
+      "fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-md";
+    successDiv.innerHTML = `
+      <div class="font-semibold mb-2">Spracheingabe erfolgreich verarbeitet!${methodText}</div>
+      <div class="text-sm opacity-90 mb-2">"${transcription}"${confidenceText}</div>
+      ${recognizedFieldsHtml}
+      ${matchedFieldsHtml}
+    `;
+    document.body.appendChild(successDiv);
+
+    // Remove success message after 7 seconds (longer due to more content)
+    setTimeout(() => {
+      successDiv.style.opacity = "0";
+      setTimeout(() => {
+        if (document.body.contains(successDiv)) {
+          document.body.removeChild(successDiv);
+        }
+      }, 300);
+    }, 7000);
+  };
+
+  // Enhanced time string formatting
+  const formatTimeString = (timeStr: string): string => {
+    if (!timeStr) return "";
+
+    // Remove any non-numeric characters except colon
+    const cleanedStr = timeStr.replace(/[^0-9:]/g, "");
+
+    // If it's already in HH:MM or HH:MM:SS format, return it properly formatted
+    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(cleanedStr)) {
+      const parts = cleanedStr.split(":");
+      const hours = parts[0].padStart(2, "0");
+      const minutes = parts[1];
+      const seconds = parts[2] || "00";
+      return `${hours}:${minutes}:${seconds}`;
+    }
+
+    // If it's just a number (like "14"), assume it's hours and add minutes and seconds
+    if (/^\d{1,2}$/.test(cleanedStr)) {
+      return `${cleanedStr.padStart(2, "0")}:00:00`;
+    }
+
+    // Default fallback - try to parse as time
+    const timeMatch = timeStr.match(/(\d{1,2})[:.](\d{2})/);
+    if (timeMatch) {
+      return `${timeMatch[1].padStart(2, "0")}:${timeMatch[2]}:00`;
+    }
+
+    return timeStr;
   };
 
   // Keyboard shortcut handler

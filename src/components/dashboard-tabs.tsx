@@ -1,6 +1,12 @@
 "use client";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import TimeEntryForm from "@/components/time-entry-form";
 import TimeAnalyticsDashboard from "@/components/time-analytics-dashboard";
 import TimeEntriesTable from "@/components/time-entries-table";
@@ -59,6 +65,8 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
   const [hasEnoughData, setHasEnoughData] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
+  const [editingEntry, setEditingEntry] = useState<any>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const supabase = createClient();
 
@@ -70,12 +78,98 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
       setActiveTab("new-entry");
     };
 
-    // Note: Edit functionality is now handled directly in TimeEntriesTable with a dialog
+    // Listen for the openTimeEntryEditDialog event from time analytics dashboard
+    const handleOpenEditDialog = async (event: CustomEvent) => {
+      console.log(
+        "[DASHBOARD-TABS] Received openTimeEntryEditDialog event:",
+        event.detail,
+      );
+      const { entryId } = event.detail;
+
+      if (!entryId) {
+        console.error("[DASHBOARD-TABS] No entryId provided in event detail");
+        return;
+      }
+
+      try {
+        console.log(
+          "[DASHBOARD-TABS] Loading time entry for editing:",
+          entryId,
+        );
+        // Load the time entry data from database
+        const { data: entry, error } = await supabase
+          .from("time_entries")
+          .select(
+            `
+            *,
+            areas(id, name, color),
+            fields(id, name),
+            activities(id, name),
+            users(full_name, email)
+          `,
+          )
+          .eq("id", entryId)
+          .single();
+
+        if (error) {
+          console.error(
+            "[DASHBOARD-TABS] Database error loading entry:",
+            error,
+          );
+          throw error;
+        }
+
+        if (entry) {
+          console.log(
+            "[DASHBOARD-TABS] Loaded entry for editing from dashboard:",
+            entry,
+          );
+          setEditingEntry(entry);
+          setIsEditDialogOpen(true);
+          console.log(
+            "[DASHBOARD-TABS] Edit dialog should now be open, isEditDialogOpen:",
+            true,
+          );
+        } else {
+          console.error("[DASHBOARD-TABS] No entry found with ID:", entryId);
+          alert("Zeiteintrag nicht gefunden.");
+        }
+      } catch (error) {
+        console.error(
+          "[DASHBOARD-TABS] Error loading time entry for editing:",
+          error,
+        );
+        alert(
+          "Fehler beim Laden des Zeiteintrags zum Bearbeiten: " + error.message,
+        );
+      }
+    };
+
+    console.log("[DASHBOARD-TABS] Setting up event listeners");
 
     window.addEventListener("openNewEntry", handleOpenNewEntry);
+    window.addEventListener(
+      "openTimeEntryEditDialog",
+      handleOpenEditDialog as EventListener,
+    );
+
+    // Also listen on document as fallback
+    document.addEventListener(
+      "openTimeEntryEditDialog",
+      handleOpenEditDialog as EventListener,
+    );
 
     return () => {
+      console.log("[DASHBOARD-TABS] Cleaning up event listeners");
       window.removeEventListener("openNewEntry", handleOpenNewEntry);
+      window.removeEventListener(
+        "openTimeEntryEditDialog",
+        handleOpenEditDialog as EventListener,
+      );
+      document.removeEventListener(
+        "openTimeEntryEditDialog",
+        handleOpenEditDialog as EventListener,
+      );
     };
   }, [supabase]);
 
@@ -472,6 +566,23 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
     setActiveTab("new-entry");
   }, []);
 
+  const handleEditSubmit = (data: any) => {
+    // Close the dialog after submission
+    setIsEditDialogOpen(false);
+    setEditingEntry(null);
+
+    // Refresh data
+    loadQuickData();
+
+    // Dispatch the timeEntryUpdated event to refresh other components
+    window.dispatchEvent(new CustomEvent("timeEntryUpdated", { detail: data }));
+  };
+
+  const handleEditDialogClose = () => {
+    setIsEditDialogOpen(false);
+    setEditingEntry(null);
+  };
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Tabs
@@ -787,6 +898,21 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
           </TabsContent>
         </div>
       </Tabs>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogClose}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Zeiteintrag bearbeiten</DialogTitle>
+          </DialogHeader>
+          {editingEntry && (
+            <TimeEntryForm
+              onSubmit={handleEditSubmit}
+              editingEntry={editingEntry}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -198,6 +198,7 @@ export default function TimeAnalyticsDashboard({
         activities: mockActivities[activityIndex],
         users: { full_name: "Demo User", email: "demo@example.com" },
         status: "active",
+        isMockData: true, // Flag to identify mock data
       };
     });
   };
@@ -644,55 +645,60 @@ export default function TimeAnalyticsDashboard({
                           });
                         };
 
-                        // Map entries to segments
-                        timeEntries.forEach((entry) => {
-                          const startTime = entry.start_time
-                            ? new Date(`${entry.date}T${entry.start_time}`)
-                            : null;
-                          if (!startTime) return;
+                        // Get today's date for filtering
+                        const today = new Date().toISOString().split("T")[0];
 
-                          const hour = startTime.getHours();
-                          if (hour < 5) return; // Only show entries between 5:00 and 24:00
+                        // Map entries to segments - ONLY TODAY'S ENTRIES
+                        timeEntries
+                          .filter((entry) => entry.date === today) // Filter for today only
+                          .forEach((entry) => {
+                            const startTime = entry.start_time
+                              ? new Date(`${entry.date}T${entry.start_time}`)
+                              : null;
+                            if (!startTime) return;
 
-                          // Calculate start and end minutes from 5:00
-                          const startHourAdjusted =
-                            hour >= 5 ? hour - 5 : hour + 19;
-                          const startMinuteTotal =
-                            startHourAdjusted * 60 + startTime.getMinutes();
+                            const hour = startTime.getHours();
+                            if (hour < 5) return; // Only show entries between 5:00 and 24:00
 
-                          // Calculate end time
-                          const endTime = new Date(startTime);
-                          endTime.setMinutes(
-                            endTime.getMinutes() + entry.duration * 60,
-                          );
-                          const endHour = endTime.getHours();
-                          const endHourAdjusted =
-                            endHour >= 5 ? endHour - 5 : endHour + 19;
-                          const endMinuteTotal =
-                            endHourAdjusted * 60 + endTime.getMinutes();
+                            // Calculate start and end minutes from 5:00
+                            const startHourAdjusted =
+                              hour >= 5 ? hour - 5 : hour + 19;
+                            const startMinuteTotal =
+                              startHourAdjusted * 60 + startTime.getMinutes();
 
-                          // Assign entry to all segments it spans
-                          for (
-                            let minute = startMinuteTotal;
-                            minute < endMinuteTotal;
-                            minute += segmentSize
-                          ) {
-                            const segmentIndex = Math.floor(
-                              minute / segmentSize,
+                            // Calculate end time
+                            const endTime = new Date(startTime);
+                            endTime.setMinutes(
+                              endTime.getMinutes() + entry.duration * 60,
                             );
-                            if (
-                              segmentIndex >= 0 &&
-                              segmentIndex < segments.length
+                            const endHour = endTime.getHours();
+                            const endHourAdjusted =
+                              endHour >= 5 ? endHour - 5 : endHour + 19;
+                            const endMinuteTotal =
+                              endHourAdjusted * 60 + endTime.getMinutes();
+
+                            // Assign entry to all segments it spans
+                            for (
+                              let minute = startMinuteTotal;
+                              minute < endMinuteTotal;
+                              minute += segmentSize
                             ) {
-                              segments[segmentIndex].push({
-                                ...entry,
-                                startTime,
-                                endTime,
-                                formatTime,
-                              });
+                              const segmentIndex = Math.floor(
+                                minute / segmentSize,
+                              );
+                              if (
+                                segmentIndex >= 0 &&
+                                segmentIndex < segments.length
+                              ) {
+                                segments[segmentIndex].push({
+                                  ...entry,
+                                  startTime,
+                                  endTime,
+                                  formatTime,
+                                });
+                              }
                             }
-                          }
-                        });
+                          });
 
                         // Render segments
                         return segments.map(
@@ -717,14 +723,69 @@ export default function TimeAnalyticsDashboard({
                                     backgroundColor:
                                       entry.areas?.color || "#6B7280",
                                   }}
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+
+                                    console.log(
+                                      "Clicked on time entry:",
+                                      entry.id,
+                                      "isMock:",
+                                      entry.isMockData,
+                                    );
+
+                                    if (entry.isMockData) {
+                                      // For mock data, show a message
+                                      alert(
+                                        "Dies ist ein Demo-Eintrag. Erstellen Sie echte Zeiteinträge, um sie bearbeiten zu können.",
+                                      );
+                                      return;
+                                    }
+
+                                    // Dispatch event to open edit dialog for this entry
                                     const editEvent = new CustomEvent(
-                                      "editTimeEntry",
+                                      "openTimeEntryEditDialog",
                                       {
-                                        detail: { entryId: entry.id },
+                                        detail: {
+                                          entryId: entry.id,
+                                        },
+                                        bubbles: true,
+                                        cancelable: true,
                                       },
                                     );
-                                    window.dispatchEvent(editEvent);
+
+                                    console.log(
+                                      "About to dispatch openTimeEntryEditDialog event for:",
+                                      entry.id,
+                                    );
+
+                                    const dispatched =
+                                      window.dispatchEvent(editEvent);
+
+                                    console.log(
+                                      "Event dispatched successfully:",
+                                      dispatched,
+                                      "Event detail:",
+                                      editEvent.detail,
+                                    );
+
+                                    // Also try dispatching on document as fallback
+                                    setTimeout(() => {
+                                      const fallbackEvent = new CustomEvent(
+                                        "openTimeEntryEditDialog",
+                                        {
+                                          detail: {
+                                            entryId: entry.id,
+                                          },
+                                          bubbles: true,
+                                          cancelable: true,
+                                        },
+                                      );
+                                      document.dispatchEvent(fallbackEvent);
+                                      console.log(
+                                        "Fallback event dispatched on document",
+                                      );
+                                    }, 100);
                                   }}
                                   title={`${entry.activities?.name || "Aktivität"}: ${entry.duration.toFixed(1)}h (${entry.formatTime(entry.startTime)} - ${entry.formatTime(entry.endTime)})`}
                                 >
@@ -765,10 +826,41 @@ export default function TimeAnalyticsDashboard({
                                       )
                                       .join(", ")})`,
                                   }}
-                                  onClick={() => {
-                                    // Show a dialog with all overlapping entries
-                                    alert(
-                                      `${entryCount} überlappende Einträge in diesem Zeitraum. Klicken Sie auf einen bestimmten Eintrag in der Tabelle unten, um ihn zu bearbeiten.`,
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+
+                                    // For multiple entries, show the first one for editing
+                                    const firstEntry = entriesInSegment[0];
+                                    console.log(
+                                      "Clicked on multiple entries, editing first:",
+                                      firstEntry.id,
+                                      "isMock:",
+                                      firstEntry.isMockData,
+                                    );
+
+                                    if (firstEntry.isMockData) {
+                                      // For mock data, show a message
+                                      alert(
+                                        "Dies sind Demo-Einträge. Erstellen Sie echte Zeiteinträge, um sie bearbeiten zu können.",
+                                      );
+                                      return;
+                                    }
+
+                                    const editEvent = new CustomEvent(
+                                      "openTimeEntryEditDialog",
+                                      {
+                                        detail: {
+                                          entryId: firstEntry.id,
+                                        },
+                                        bubbles: true,
+                                        cancelable: true,
+                                      },
+                                    );
+                                    window.dispatchEvent(editEvent);
+                                    console.log(
+                                      "Dispatched openTimeEntryEditDialog event for:",
+                                      firstEntry.id,
                                     );
                                   }}
                                   title={`${entryCount} überlappende Einträge`}
