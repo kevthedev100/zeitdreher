@@ -773,9 +773,146 @@ export default function TimeEntryForm({
     }
   };
 
+  // Enhanced lookup function to find field and area based on activity name
+  const findFieldAndAreaByActivity = async (activityName: string) => {
+    console.log("Looking up field and area for activity:", activityName);
+    try {
+      // First, try exact match
+      const { data: exactMatchData, error: exactMatchError } = await supabase
+        .from("activities")
+        .select("id, name, field_id")
+        .eq("name", activityName)
+        .eq("is_active", true)
+        .limit(1);
+
+      // If no exact match, try case-insensitive partial match
+      const { data: activityData, error: activityError } =
+        !exactMatchData?.length
+          ? await supabase
+              .from("activities")
+              .select("id, name, field_id")
+              .ilike("name", `%${activityName}%`)
+              .eq("is_active", true)
+              .limit(1)
+          : { data: exactMatchData, error: null };
+
+      if (activityError || exactMatchError)
+        throw activityError || exactMatchError;
+      if (!activityData || activityData.length === 0) {
+        console.log(
+          "No matching activity found in database for:",
+          activityName,
+        );
+        return { fieldId: null, areaId: null, activityId: null };
+      }
+
+      const activity = activityData[0];
+      console.log("Found activity in database:", activity);
+
+      // Now find the field using the field_id from the activity
+      const { data: fieldData, error: fieldError } = await supabase
+        .from("fields")
+        .select("id, name, area_id")
+        .eq("id", activity.field_id)
+        .eq("is_active", true)
+        .single();
+
+      if (fieldError) throw fieldError;
+      if (!fieldData) {
+        console.log("No matching field found for activity:", activityName);
+        return { fieldId: null, areaId: null, activityId: activity.id };
+      }
+
+      console.log("Found field in database:", fieldData);
+
+      // Finally, find the area using the area_id from the field
+      const { data: areaData, error: areaError } = await supabase
+        .from("areas")
+        .select("id, name")
+        .eq("id", fieldData.area_id)
+        .eq("is_active", true)
+        .single();
+
+      if (areaError) throw areaError;
+      if (!areaData) {
+        console.log("No matching area found for field:", fieldData.name);
+        return { fieldId: fieldData.id, areaId: null, activityId: activity.id };
+      }
+
+      console.log("Found area in database:", areaData);
+
+      // Return all IDs for hierarchical selection
+      return {
+        fieldId: fieldData.id,
+        areaId: areaData.id,
+        activityId: activity.id,
+      };
+    } catch (error) {
+      console.error("Error finding field and area by activity:", error);
+      return { fieldId: null, areaId: null, activityId: null };
+    }
+  };
+
   // Enhanced hierarchical selection handler with sequential state updates
   const handleHierarchicalSelection = async (parsed: any) => {
     console.log("Starting hierarchical selection with:", parsed);
+
+    // PRIORITY 1: If we have an activity, always try to infer area and field first
+    // This is the main enhancement - try to infer hierarchy from activity regardless of whether area/field are provided
+    if (parsed.activity) {
+      console.log(
+        "Attempting to infer area and field from activity:",
+        parsed.activity,
+      );
+      const { fieldId, areaId, activityId } = await findFieldAndAreaByActivity(
+        parsed.activity,
+      );
+
+      if (areaId && fieldId && activityId) {
+        console.log("Successfully inferred complete hierarchy from activity:", {
+          areaId,
+          fieldId,
+          activityId,
+        });
+
+        // Set area first
+        setSelectedArea(areaId);
+        console.log("Area set to ID:", areaId);
+
+        // Force a synchronous load of fields for this area
+        const fieldsData = await loadFieldsAndReturn(areaId);
+        console.log("Loaded fields for inferred area:", fieldsData.length);
+
+        // Wait for a longer time to ensure React has updated the DOM
+        await new Promise<void>((resolve) => setTimeout(resolve, 300));
+
+        // Set field
+        setSelectedField(fieldId);
+        console.log("Field set to ID:", fieldId);
+
+        // Force a synchronous load of activities for this field
+        const activitiesData = await loadActivitiesAndReturn(fieldId);
+        console.log(
+          "Loaded activities for inferred field:",
+          activitiesData.length,
+        );
+
+        // Wait for a longer time to ensure React has updated the DOM
+        await new Promise<void>((resolve) => setTimeout(resolve, 300));
+
+        // Set activity
+        setSelectedActivity(activityId);
+        console.log("Activity set to ID:", activityId);
+
+        // Successfully set the complete hierarchy
+        return;
+      } else {
+        console.log(
+          "Could not infer complete hierarchy from activity. Falling back to standard selection.",
+        );
+        // Continue with standard selection process below
+      }
+    }
 
     // Step 1: Handle area selection
     if (parsed.area) {
@@ -945,6 +1082,26 @@ export default function TimeEntryForm({
       } else {
         console.log("No matching area found for:", parsed.area);
       }
+    } else if (parsed.activity) {
+      // If we have only activity but no area/field, try one more time with direct DB lookup
+      console.log("Only activity provided, attempting direct DB lookup");
+      const { fieldId, areaId, activityId } = await findFieldAndAreaByActivity(
+        parsed.activity,
+      );
+
+      if (areaId && fieldId && activityId) {
+        // Set the complete hierarchy in sequence
+        setSelectedArea(areaId);
+        await loadFieldsAndReturn(areaId);
+        await new Promise<void>((resolve) => setTimeout(resolve, 300));
+
+        setSelectedField(fieldId);
+        await loadActivitiesAndReturn(fieldId);
+        await new Promise<void>((resolve) => setTimeout(resolve, 300));
+
+        setSelectedActivity(activityId);
+        console.log("Set complete hierarchy from activity lookup");
+      }
     }
   };
 
@@ -964,12 +1121,21 @@ export default function TimeEntryForm({
     // Create detailed list of recognized fields
     const recognizedFields = [];
     const matchedFields = [];
+    const inferredFields = [];
 
     if (parsed.area) {
       recognizedFields.push(`Bereich: ${parsed.area}`);
       const matchedArea = areas.find((a) => a.id === selectedArea);
       if (matchedArea) {
         matchedFields.push(`✓ Bereich: ${matchedArea.name}`);
+      }
+    } else if (selectedArea) {
+      // Area was inferred from activity
+      const inferredArea = areas.find((a) => a.id === selectedArea);
+      if (inferredArea) {
+        inferredFields.push(
+          `⚡ Bereich: ${inferredArea.name} (automatisch abgeleitet)`,
+        );
       }
     }
 
@@ -978,6 +1144,14 @@ export default function TimeEntryForm({
       const matchedField = fields.find((f) => f.id === selectedField);
       if (matchedField) {
         matchedFields.push(`✓ Feld: ${matchedField.name}`);
+      }
+    } else if (selectedField) {
+      // Field was inferred from activity
+      const inferredField = fields.find((f) => f.id === selectedField);
+      if (inferredField) {
+        inferredFields.push(
+          `⚡ Feld: ${inferredField.name} (automatisch abgeleitet)`,
+        );
       }
     }
 
@@ -1025,6 +1199,27 @@ export default function TimeEntryForm({
         </div>`
         : "";
 
+    const inferredFieldsHtml =
+      inferredFields.length > 0
+        ? `<div class="text-xs mt-2 bg-purple-600 p-2 rounded">
+          <div class="font-semibold mb-1">Automatisch abgeleitet:</div>
+          <ul class="list-disc pl-4">
+            ${inferredFields.map((field) => `<li>${field}</li>`).join("")}
+          </ul>
+        </div>`
+        : "";
+
+    // Add a special note if activity was used to infer hierarchy
+    const hierarchyNote =
+      parsed.activity &&
+      !parsed.area &&
+      !parsed.field &&
+      inferredFields.length >= 2
+        ? `<div class="text-xs mt-2 bg-blue-700 p-2 rounded">
+          <div class="font-semibold">⚡ Hierarchie automatisch aus Aktivität "${parsed.activity}" abgeleitet</div>
+        </div>`
+        : "";
+
     const successDiv = document.createElement("div");
     successDiv.className =
       "fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-md";
@@ -1033,6 +1228,8 @@ export default function TimeEntryForm({
       <div class="text-sm opacity-90 mb-2">"${transcription}"${confidenceText}</div>
       ${recognizedFieldsHtml}
       ${matchedFieldsHtml}
+      ${inferredFieldsHtml}
+      ${hierarchyNote}
     `;
     document.body.appendChild(successDiv);
 

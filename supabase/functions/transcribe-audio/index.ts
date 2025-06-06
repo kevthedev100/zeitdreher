@@ -54,6 +54,12 @@ async function parseWithAI(transcriptionText: string): Promise<any> {
       - Deutsche Uhrzeiten: "halb" = :30, "viertel nach" = :15, "viertel vor" = :45
       - Wochentage beziehen sich auf die letzte Instanz dieses Tages
       
+      WICHTIG FÜR DIE BESCHREIBUNG:
+      - Gib die Beschreibung 1:1 wieder, wie sie gesprochen wurde
+      - Korrigiere nur offensichtliche Rechtschreibfehler
+      - Fasse die Beschreibung NICHT zusammen oder abstrahiere sie
+      - Behalte alle Details und den genauen Wortlaut bei
+      
       Antworte nur mit einem JSON-Objekt ohne zusätzlichen Text. Wenn eine Information nicht im Text vorhanden ist, setze den Wert auf null.
       
       Beispiel-Antwort:
