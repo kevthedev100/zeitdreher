@@ -542,11 +542,9 @@ export default function TimeEntryForm({
       // Apply parsed data to form with enhanced logic
       console.log("Processing parsed voice data:", parsed);
 
-      // Reset form fields to ensure clean state
-      setSelectedField("");
-      setSelectedActivity("");
-      setFields([]);
-      setActivities([]);
+      // IMPORTANT: Don't reset form fields anymore to preserve existing selections
+      // Only reset fields if we're going to set them based on the voice input
+      const shouldResetHierarchy = parsed.activity && !selectedActivity;
 
       // Handle duration - convert to HH:MM:SS format if it's a decimal number
       if (parsed.duration && typeof parsed.duration === "number") {
@@ -561,9 +559,15 @@ export default function TimeEntryForm({
         setDuration(parsed.duration);
       }
 
-      // Handle description
+      // Handle description - append to existing description if it exists
       if (parsed.description) {
-        setDescription(parsed.description);
+        if (description && !description.includes(parsed.description)) {
+          // Append to existing description
+          setDescription(description + "\n" + parsed.description);
+        } else {
+          // Set new description
+          setDescription(parsed.description);
+        }
       }
 
       // Handle date parsing with enhanced natural language support
@@ -582,11 +586,19 @@ export default function TimeEntryForm({
           const formattedEndTime = formatTimeString(parsed.endTime);
           setEndTime(formattedEndTime);
           calculateDurationFromTimes(formattedStartTime, formattedEndTime);
+        } else if (endTime) {
+          // If we already have an end time, recalculate duration
+          calculateDurationFromTimes(formattedStartTime, endTime);
         }
       } else if (parsed.endTime) {
         // Only end time provided
         const formattedEndTime = formatTimeString(parsed.endTime);
         setEndTime(formattedEndTime);
+
+        if (startTime) {
+          // If we already have a start time, calculate duration
+          calculateDurationFromTimes(startTime, formattedEndTime);
+        }
       }
 
       // Enhanced hierarchical selection with intelligent fuzzy matching
@@ -801,24 +813,54 @@ export default function TimeEntryForm({
   const findFieldAndAreaByActivity = async (activityName: string) => {
     console.log("Looking up field and area for activity:", activityName);
     try {
+      // Get current user ID for filtering
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
       // First, try exact match
       const { data: exactMatchData, error: exactMatchError } = await supabase
         .from("activities")
         .select("id, name, field_id")
         .eq("name", activityName)
         .eq("is_active", true)
+        .eq("user_id", user.id)
         .limit(1);
 
       // If no exact match, try case-insensitive partial match
-      const { data: activityData, error: activityError } =
-        !exactMatchData?.length
-          ? await supabase
-              .from("activities")
-              .select("id, name, field_id")
-              .ilike("name", `%${activityName}%`)
-              .eq("is_active", true)
-              .limit(1)
-          : { data: exactMatchData, error: null };
+      let { data: activityData, error: activityError } = !exactMatchData?.length
+        ? await supabase
+            .from("activities")
+            .select("id, name, field_id")
+            .ilike("name", `%${activityName}%`)
+            .eq("is_active", true)
+            .eq("user_id", user.id)
+            .limit(1)
+        : { data: exactMatchData, error: null };
+
+      // If still no match, try fuzzy matching with all activities
+      if (!activityData?.length) {
+        console.log(
+          "No direct match found, trying fuzzy matching with all activities",
+        );
+        const { data: allActivities, error: allActivitiesError } =
+          await supabase
+            .from("activities")
+            .select("id, name, field_id")
+            .eq("is_active", true)
+            .eq("user_id", user.id);
+
+        if (allActivitiesError) throw allActivitiesError;
+        if (allActivities && allActivities.length > 0) {
+          // Use our fuzzy matching function to find the best match
+          const bestMatch = findBestMatch(activityName, allActivities, "name");
+          if (bestMatch) {
+            console.log("Found fuzzy match for activity:", bestMatch.name);
+            activityData = [bestMatch];
+          }
+        }
+      }
 
       if (activityError || exactMatchError)
         throw activityError || exactMatchError;
@@ -839,6 +881,7 @@ export default function TimeEntryForm({
         .select("id, name, area_id")
         .eq("id", activity.field_id)
         .eq("is_active", true)
+        .eq("user_id", user.id)
         .single();
 
       if (fieldError) throw fieldError;
@@ -855,6 +898,7 @@ export default function TimeEntryForm({
         .select("id, name")
         .eq("id", fieldData.area_id)
         .eq("is_active", true)
+        .eq("user_id", user.id)
         .single();
 
       if (areaError) throw areaError;
@@ -880,6 +924,58 @@ export default function TimeEntryForm({
   // Enhanced hierarchical selection handler with sequential state updates
   const handleHierarchicalSelection = async (parsed: any) => {
     console.log("Starting hierarchical selection with:", parsed);
+
+    // If we already have a complete hierarchy selected, only update what's explicitly mentioned
+    const hasCompleteHierarchy =
+      selectedArea && selectedField && selectedActivity;
+
+    if (hasCompleteHierarchy) {
+      console.log(
+        "Complete hierarchy already exists, only updating explicitly mentioned items",
+      );
+
+      // Only update area if explicitly mentioned
+      if (parsed.area) {
+        const area = findBestMatch(parsed.area, areas, "name");
+        if (area) {
+          console.log("Updating area to:", area.name);
+          setSelectedArea(area.id);
+
+          // Since area changed, we need to reset field and activity
+          setSelectedField("");
+          setSelectedActivity("");
+
+          // Load fields for the new area
+          const fieldsData = await loadFieldsAndReturn(area.id);
+          console.log("Loaded fields for updated area:", fieldsData.length);
+
+          // Continue with field selection if provided
+          if (parsed.field) {
+            await handleFieldSelection(
+              parsed.field,
+              fieldsData,
+              parsed.activity,
+            );
+          }
+        }
+      }
+      // Only update field if explicitly mentioned and area hasn't changed
+      else if (parsed.field && !parsed.area) {
+        const fieldsData = await loadFieldsAndReturn(selectedArea);
+        await handleFieldSelection(parsed.field, fieldsData, parsed.activity);
+      }
+      // Only update activity if explicitly mentioned and area/field haven't changed
+      else if (parsed.activity && !parsed.area && !parsed.field) {
+        const activitiesData = await loadActivitiesAndReturn(selectedField);
+        const activity = findBestMatch(parsed.activity, activitiesData, "name");
+        if (activity) {
+          console.log("Updating activity to:", activity.name);
+          setSelectedActivity(activity.id);
+        }
+      }
+
+      return;
+    }
 
     // PRIORITY 1: If we have an activity, always try to infer area and field first
     // This is the main enhancement - try to infer hierarchy from activity regardless of whether area/field are provided
@@ -957,102 +1053,7 @@ export default function TimeEntryForm({
 
         // Step 2: Handle field selection
         if (parsed.field && fieldsData.length > 0) {
-          const field = findBestMatch(parsed.field, fieldsData, "name");
-          if (field) {
-            console.log("Found matching field:", field.name);
-
-            // Directly set the field ID
-            setSelectedField(field.id);
-            console.log("Field set to:", field.name, "with ID:", field.id);
-
-            // Force a synchronous load of activities for this field
-            const activitiesData = await loadActivitiesAndReturn(field.id);
-            console.log("Loaded activities for field:", activitiesData.length);
-
-            // Wait for a longer time to ensure React has updated the DOM
-            await new Promise<void>((resolve) => setTimeout(resolve, 300));
-
-            // Step 3: Handle activity selection
-            if (parsed.activity && activitiesData.length > 0) {
-              const activity = findBestMatch(
-                parsed.activity,
-                activitiesData,
-                "name",
-              );
-              if (activity) {
-                console.log("Found matching activity:", activity.name);
-                setSelectedActivity(activity.id);
-                console.log(
-                  "Activity set to:",
-                  activity.name,
-                  "with ID:",
-                  activity.id,
-                );
-              } else if (activitiesData.length === 1) {
-                // Auto-select if only one activity available
-                console.log(
-                  "Auto-selecting single activity:",
-                  activitiesData[0].name,
-                );
-                setSelectedActivity(activitiesData[0].id);
-                console.log("Activity auto-set to:", activitiesData[0].name);
-              }
-            } else if (activitiesData.length === 1) {
-              // Auto-select if only one activity available and no activity specified
-              console.log(
-                "Auto-selecting single activity (no activity specified):",
-                activitiesData[0].name,
-              );
-              setSelectedActivity(activitiesData[0].id);
-              console.log("Activity auto-set to:", activitiesData[0].name);
-            }
-          } else if (fieldsData.length === 1) {
-            // Auto-select if only one field available
-            console.log("Auto-selecting single field:", fieldsData[0].name);
-
-            // Directly set the field ID
-            setSelectedField(fieldsData[0].id);
-            console.log("Field auto-set to:", fieldsData[0].name);
-
-            // Force a synchronous load of activities for this field
-            const activitiesData = await loadActivitiesAndReturn(
-              fieldsData[0].id,
-            );
-            console.log(
-              "Loaded activities for auto-selected field:",
-              activitiesData.length,
-            );
-
-            // Wait for a longer time to ensure React has updated the DOM
-            await new Promise<void>((resolve) => setTimeout(resolve, 300));
-
-            if (parsed.activity && activitiesData.length > 0) {
-              const activity = findBestMatch(
-                parsed.activity,
-                activitiesData,
-                "name",
-              );
-              if (activity) {
-                console.log("Found matching activity:", activity.name);
-                setSelectedActivity(activity.id);
-                console.log("Activity set to:", activity.name);
-              } else if (activitiesData.length === 1) {
-                console.log(
-                  "Auto-selecting single activity:",
-                  activitiesData[0].name,
-                );
-                setSelectedActivity(activitiesData[0].id);
-                console.log("Activity auto-set to:", activitiesData[0].name);
-              }
-            } else if (activitiesData.length === 1) {
-              console.log(
-                "Auto-selecting single activity (no activity specified):",
-                activitiesData[0].name,
-              );
-              setSelectedActivity(activitiesData[0].id);
-              console.log("Activity auto-set to:", activitiesData[0].name);
-            }
-          }
+          await handleFieldSelection(parsed.field, fieldsData, parsed.activity);
         } else if (fieldsData.length === 1) {
           // Auto-select if only one field available and no field specified
           console.log(
@@ -1125,6 +1126,100 @@ export default function TimeEntryForm({
 
         setSelectedActivity(activityId);
         console.log("Set complete hierarchy from activity lookup");
+      }
+    }
+  };
+
+  // Helper function to handle field selection and subsequent activity selection
+  const handleFieldSelection = async (
+    fieldName: string,
+    fieldsData: any[],
+    activityName?: string,
+  ) => {
+    const field = findBestMatch(fieldName, fieldsData, "name");
+    if (field) {
+      console.log("Found matching field:", field.name);
+
+      // Directly set the field ID
+      setSelectedField(field.id);
+      console.log("Field set to:", field.name, "with ID:", field.id);
+
+      // Force a synchronous load of activities for this field
+      const activitiesData = await loadActivitiesAndReturn(field.id);
+      console.log("Loaded activities for field:", activitiesData.length);
+
+      // Wait for a longer time to ensure React has updated the DOM
+      await new Promise<void>((resolve) => setTimeout(resolve, 300));
+
+      // Step 3: Handle activity selection
+      if (activityName && activitiesData.length > 0) {
+        const activity = findBestMatch(activityName, activitiesData, "name");
+        if (activity) {
+          console.log("Found matching activity:", activity.name);
+          setSelectedActivity(activity.id);
+          console.log(
+            "Activity set to:",
+            activity.name,
+            "with ID:",
+            activity.id,
+          );
+        } else if (activitiesData.length === 1) {
+          // Auto-select if only one activity available
+          console.log(
+            "Auto-selecting single activity:",
+            activitiesData[0].name,
+          );
+          setSelectedActivity(activitiesData[0].id);
+          console.log("Activity auto-set to:", activitiesData[0].name);
+        }
+      } else if (activitiesData.length === 1) {
+        // Auto-select if only one activity available and no activity specified
+        console.log(
+          "Auto-selecting single activity (no activity specified):",
+          activitiesData[0].name,
+        );
+        setSelectedActivity(activitiesData[0].id);
+        console.log("Activity auto-set to:", activitiesData[0].name);
+      }
+    } else if (fieldsData.length === 1) {
+      // Auto-select if only one field available
+      console.log("Auto-selecting single field:", fieldsData[0].name);
+
+      // Directly set the field ID
+      setSelectedField(fieldsData[0].id);
+      console.log("Field auto-set to:", fieldsData[0].name);
+
+      // Force a synchronous load of activities for this field
+      const activitiesData = await loadActivitiesAndReturn(fieldsData[0].id);
+      console.log(
+        "Loaded activities for auto-selected field:",
+        activitiesData.length,
+      );
+
+      // Wait for a longer time to ensure React has updated the DOM
+      await new Promise<void>((resolve) => setTimeout(resolve, 300));
+
+      if (activityName && activitiesData.length > 0) {
+        const activity = findBestMatch(activityName, activitiesData, "name");
+        if (activity) {
+          console.log("Found matching activity:", activity.name);
+          setSelectedActivity(activity.id);
+          console.log("Activity set to:", activity.name);
+        } else if (activitiesData.length === 1) {
+          console.log(
+            "Auto-selecting single activity:",
+            activitiesData[0].name,
+          );
+          setSelectedActivity(activitiesData[0].id);
+          console.log("Activity auto-set to:", activitiesData[0].name);
+        }
+      } else if (activitiesData.length === 1) {
+        console.log(
+          "Auto-selecting single activity (no activity specified):",
+          activitiesData[0].name,
+        );
+        setSelectedActivity(activitiesData[0].id);
+        console.log("Activity auto-set to:", activitiesData[0].name);
       }
     }
   };

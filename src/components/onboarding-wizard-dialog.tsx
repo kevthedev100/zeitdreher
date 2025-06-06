@@ -42,6 +42,9 @@ export default function OnboardingWizardDialog({
 
       setOpen(false);
       if (onComplete) onComplete();
+
+      // Reload the page to ensure all user data and categories are properly loaded
+      window.location.reload();
     } catch (error) {
       console.error("Error updating onboarding status:", error);
       setOpen(false);
