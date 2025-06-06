@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -27,9 +27,18 @@ import {
   RefreshCw,
   ChevronRight,
   Layers,
+  Trash2,
+  Info,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
-export default function CategorySetupWizard() {
+interface CategorySetupWizardProps {
+  onComplete?: () => void;
+}
+
+export default function CategorySetupWizard({
+  onComplete,
+}: CategorySetupWizardProps = {}) {
   const [step, setStep] = useState<
     "areas" | "fields" | "activities" | "complete"
   >("areas");
@@ -56,10 +65,20 @@ export default function CategorySetupWizard() {
   const loadAreas = async () => {
     try {
       setLoading(true);
+
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
       const { data, error } = await supabase
         .from("areas")
         .select("*")
         .eq("is_active", true)
+        .eq("user_id", user.id) // Filter by current user
         .order("name");
 
       if (error) throw error;
@@ -76,11 +95,21 @@ export default function CategorySetupWizard() {
   const loadFields = async (areaId: string) => {
     try {
       setLoading(true);
+
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
       const { data, error } = await supabase
         .from("fields")
         .select("*")
         .eq("area_id", areaId)
         .eq("is_active", true)
+        .eq("user_id", user.id) // Filter by current user
         .order("name");
 
       if (error) throw error;
@@ -97,11 +126,21 @@ export default function CategorySetupWizard() {
   const loadActivities = async (fieldId: string) => {
     try {
       setLoading(true);
+
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
       const { data, error } = await supabase
         .from("activities")
         .select("*")
         .eq("field_id", fieldId)
         .eq("is_active", true)
+        .eq("user_id", user.id) // Filter by current user
         .order("name");
 
       if (error) throw error;
@@ -125,12 +164,21 @@ export default function CategorySetupWizard() {
       setLoading(true);
       setErrorMessage("");
 
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
       const { data, error } = await supabase
         .from("areas")
         .insert({
           name: newAreaName,
           color: newAreaColor,
           is_active: true,
+          user_id: user.id, // Associate with current user
         })
         .select()
         .single();
@@ -165,12 +213,21 @@ export default function CategorySetupWizard() {
       setLoading(true);
       setErrorMessage("");
 
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
       const { data, error } = await supabase
         .from("fields")
         .insert({
           name: newFieldName,
           area_id: selectedArea,
           is_active: true,
+          user_id: user.id, // Associate with current user
         })
         .select()
         .single();
@@ -205,12 +262,21 @@ export default function CategorySetupWizard() {
       setLoading(true);
       setErrorMessage("");
 
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
       const { data, error } = await supabase
         .from("activities")
         .insert({
           name: newActivityName,
           field_id: selectedField,
           is_active: true,
+          user_id: user.id, // Associate with current user
         })
         .select()
         .single();
@@ -266,9 +332,9 @@ export default function CategorySetupWizard() {
   };
 
   // Initialize component
-  useState(() => {
+  useEffect(() => {
     loadAreas();
-  });
+  }, []);
 
   return (
     <Card className="w-full max-w-4xl mx-auto">
@@ -431,6 +497,45 @@ export default function CategorySetupWizard() {
                         ></div>
                         <span>{area.name}</span>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={async () => {
+                          if (
+                            confirm(
+                              `Möchten Sie den Bereich "${area.name}" wirklich löschen?`,
+                            )
+                          ) {
+                            try {
+                              setLoading(true);
+                              const { error } = await supabase
+                                .from("areas")
+                                .update({ is_active: false })
+                                .eq("id", area.id);
+
+                              if (error) throw error;
+
+                              // Refresh areas list
+                              loadAreas();
+                              setSuccessMessage(
+                                `Bereich "${area.name}" erfolgreich gelöscht`,
+                              );
+                              setTimeout(() => setSuccessMessage(""), 3000);
+                            } catch (error) {
+                              console.error("Error deleting area:", error);
+                              setErrorMessage(
+                                "Fehler beim Löschen des Bereichs",
+                              );
+                            } finally {
+                              setLoading(false);
+                            }
+                          }
+                        }}
+                        title="Löschen"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -443,6 +548,54 @@ export default function CategorySetupWizard() {
                   </p>
                 </div>
               )}
+            </div>
+
+            {/* Example areas */}
+            <div className="mt-6 mb-4 bg-blue-50 p-4 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Info className="w-4 h-4 text-blue-600" />
+                <h3 className="text-sm font-medium text-blue-700">
+                  Beispiele für Bereiche
+                </h3>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-100">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: "#3B82F6" }}
+                    ></div>
+                    <span>Entwicklung</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    Beispiel
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-100">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: "#8B5CF6" }}
+                    ></div>
+                    <span>Design</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    Beispiel
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-100">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: "#10B981" }}
+                    ></div>
+                    <span>Marketing</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    Beispiel
+                  </Badge>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -519,6 +672,45 @@ export default function CategorySetupWizard() {
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                       >
                         <span>{field.name}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={async () => {
+                            if (
+                              confirm(
+                                `Möchten Sie das Feld "${field.name}" wirklich löschen?`,
+                              )
+                            ) {
+                              try {
+                                setLoading(true);
+                                const { error } = await supabase
+                                  .from("fields")
+                                  .update({ is_active: false })
+                                  .eq("id", field.id);
+
+                                if (error) throw error;
+
+                                // Refresh fields list
+                                loadFields(selectedArea);
+                                setSuccessMessage(
+                                  `Feld "${field.name}" erfolgreich gelöscht`,
+                                );
+                                setTimeout(() => setSuccessMessage(""), 3000);
+                              } catch (error) {
+                                console.error("Error deleting field:", error);
+                                setErrorMessage(
+                                  "Fehler beim Löschen des Feldes",
+                                );
+                              } finally {
+                                setLoading(false);
+                              }
+                            }
+                          }}
+                          title="Löschen"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -536,6 +728,42 @@ export default function CategorySetupWizard() {
                   <p>Bitte wählen Sie zuerst einen Bereich aus.</p>
                 </div>
               )}
+            </div>
+
+            {/* Example fields */}
+            <div className="mt-6 mb-4 bg-blue-50 p-4 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Info className="w-4 h-4 text-blue-600" />
+                <h3 className="text-sm font-medium text-blue-700">
+                  Beispiele für Felder
+                </h3>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-100">
+                  <div className="flex items-center gap-3">
+                    <span>Frontend</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    Beispiel für Entwicklung
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-100">
+                  <div className="flex items-center gap-3">
+                    <span>UI Design</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    Beispiel für Design
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-100">
+                  <div className="flex items-center gap-3">
+                    <span>Content Creation</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    Beispiel für Marketing
+                  </Badge>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -638,6 +866,48 @@ export default function CategorySetupWizard() {
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                       >
                         <span>{activity.name}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={async () => {
+                            if (
+                              confirm(
+                                `Möchten Sie die Aktivität "${activity.name}" wirklich löschen?`,
+                              )
+                            ) {
+                              try {
+                                setLoading(true);
+                                const { error } = await supabase
+                                  .from("activities")
+                                  .update({ is_active: false })
+                                  .eq("id", activity.id);
+
+                                if (error) throw error;
+
+                                // Refresh activities list
+                                loadActivities(selectedField);
+                                setSuccessMessage(
+                                  `Aktivität "${activity.name}" erfolgreich gelöscht`,
+                                );
+                                setTimeout(() => setSuccessMessage(""), 3000);
+                              } catch (error) {
+                                console.error(
+                                  "Error deleting activity:",
+                                  error,
+                                );
+                                setErrorMessage(
+                                  "Fehler beim Löschen der Aktivität",
+                                );
+                              } finally {
+                                setLoading(false);
+                              }
+                            }
+                          }}
+                          title="Löschen"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -655,6 +925,42 @@ export default function CategorySetupWizard() {
                   <p>Bitte wählen Sie zuerst ein Feld aus.</p>
                 </div>
               )}
+            </div>
+
+            {/* Example activities */}
+            <div className="mt-6 mb-4 bg-blue-50 p-4 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Info className="w-4 h-4 text-blue-600" />
+                <h3 className="text-sm font-medium text-blue-700">
+                  Beispiele für Aktivitäten
+                </h3>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-100">
+                  <div className="flex items-center gap-3">
+                    <span>React Development</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    Beispiel für Frontend
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-100">
+                  <div className="flex items-center gap-3">
+                    <span>Wireframing</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    Beispiel für UI Design
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-100">
+                  <div className="flex items-center gap-3">
+                    <span>Blog Writing</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    Beispiel für Content Creation
+                  </Badge>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -674,7 +980,13 @@ export default function CategorySetupWizard() {
             </p>
             <div className="flex justify-center">
               <Button
-                onClick={() => (window.location.href = "/dashboard")}
+                onClick={() => {
+                  if (onComplete) {
+                    onComplete();
+                  } else {
+                    window.location.href = "/dashboard";
+                  }
+                }}
                 className="bg-green-600 hover:bg-green-700"
               >
                 Zum Dashboard

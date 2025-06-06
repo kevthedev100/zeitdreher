@@ -55,10 +55,12 @@ interface TimeEntry {
 
 interface TimeEntriesTableProps {
   userRole?: "manager" | "employee";
+  isOnboarded?: boolean;
 }
 
 export default function TimeEntriesTable({
   userRole = "employee",
+  isOnboarded = false,
 }: TimeEntriesTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterArea, setFilterArea] = useState("all");
@@ -205,114 +207,26 @@ export default function TimeEntriesTable({
 
       if (error) throw error;
 
-      // If no real data, use mock data for demonstration
-      if (!data || data.length === 0) {
-        const mockData = generateMockTimeEntries(
-          currentUser?.id || "user1",
-          15,
-        );
-        setTimeEntries(mockData);
-        console.log("Using mock time entries data:", mockData);
-      } else {
-        setTimeEntries(data);
-        console.log("Loaded real time entries data:", data.length, "entries");
-      }
+      // Use real data from the database
+      setTimeEntries(data || []);
+      console.log(
+        "Loaded time entries data:",
+        data ? data.length : 0,
+        "entries",
+      );
     } catch (error) {
       console.error("Error loading time entries:", error);
-      // Use mock data as fallback on error
-      const mockData = generateMockTimeEntries(currentUser?.id || "user1", 15);
-      setTimeEntries(mockData);
+      // Show empty state on error
+      setTimeEntries([]);
+      console.log("Error loading time entries - showing empty state");
     } finally {
       setLoading(false);
     }
   };
 
-  // Generate mock time entries for demonstration
-  const generateMockTimeEntries = (userId: string, count: number) => {
-    const mockAreas = [
-      { id: "area1", name: "Entwicklung", color: "#3B82F6" },
-      { id: "area2", name: "Design", color: "#8B5CF6" },
-      { id: "area3", name: "Marketing", color: "#10B981" },
-      { id: "area4", name: "Management", color: "#F59E0B" },
-    ];
+  // No mock data generation - we only use real user data
 
-    const mockFields = [
-      { id: "field1", name: "Frontend" },
-      { id: "field2", name: "Backend" },
-      { id: "field3", name: "UI Design" },
-      { id: "field4", name: "Content Creation" },
-    ];
-
-    const mockActivities = [
-      { id: "activity1", name: "React Development" },
-      { id: "activity2", name: "API Integration" },
-      { id: "activity3", name: "Wireframing" },
-      { id: "activity4", name: "Blog Writing" },
-    ];
-
-    const now = new Date();
-
-    return Array.from({ length: count }).map((_, index) => {
-      const dayOffset = index % 14; // Spread over two weeks
-      const date = new Date(now);
-      date.setDate(date.getDate() - dayOffset);
-
-      const areaIndex = index % mockAreas.length;
-      const fieldIndex = index % mockFields.length;
-      const activityIndex = index % mockActivities.length;
-
-      return {
-        id: `mock-${index}`,
-        user_id: userId,
-        area_id: mockAreas[areaIndex].id,
-        field_id: mockFields[fieldIndex].id,
-        activity_id: mockActivities[activityIndex].id,
-        duration: 1 + Math.random() * 4, // 1-5 hours
-        date: date.toISOString().split("T")[0],
-        description: `${mockActivities[activityIndex].name} für ${mockAreas[areaIndex].name} Projekt durchgeführt`,
-        created_at: new Date().toISOString(),
-        areas: mockAreas[areaIndex],
-        fields: mockFields[fieldIndex],
-        activities: mockActivities[activityIndex],
-        users: { full_name: "Demo User", email: "demo@example.com" },
-      };
-    });
-  };
-
-  // Mock data for fallback
-  const mockTimeEntries: TimeEntry[] = [
-    {
-      id: "1",
-      user_id: "user1",
-      area_id: "area1",
-      field_id: "field1",
-      activity_id: "activity1",
-      duration: 4.5,
-      date: "2024-01-15",
-      description:
-        "Zeiterfassungsformular mit Spracheingabe-Funktionalität implementiert",
-      created_at: "2024-01-15T10:00:00Z",
-      areas: { name: "Entwicklung", color: "#3B82F6" },
-      fields: { name: "Frontend" },
-      activities: { name: "React Entwicklung" },
-      users: { full_name: "Max Mustermann", email: "max@example.com" },
-    },
-    {
-      id: "2",
-      user_id: "user2",
-      area_id: "area2",
-      field_id: "field2",
-      activity_id: "activity2",
-      duration: 3.0,
-      date: "2024-01-15",
-      description: "Wireframes für Dashboard-Analytik-Bereich erstellt",
-      created_at: "2024-01-15T11:00:00Z",
-      areas: { name: "Design", color: "#8B5CF6" },
-      fields: { name: "UI Design" },
-      activities: { name: "Wireframing" },
-      users: { full_name: "Anna Schmidt", email: "anna@example.com" },
-    },
-  ];
+  // No mock data - we only use real user data
 
   const getAreaColorFromHex = (hexColor: string) => {
     // Convert hex color to appropriate Tailwind classes
@@ -334,8 +248,8 @@ export default function TimeEntriesTable({
     return `${hours.toFixed(2)}h`;
   };
 
-  // Use real data if available, otherwise fallback to mock data
-  const displayEntries = timeEntries.length > 0 ? timeEntries : mockTimeEntries;
+  // Only use real data, no mock data
+  const displayEntries = timeEntries;
 
   // Filter and sort entries
   const filteredEntries = displayEntries

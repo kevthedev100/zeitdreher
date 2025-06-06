@@ -37,10 +37,12 @@ type Area = Database["public"]["Tables"]["areas"]["Row"];
 
 interface AnalyticsDashboardProps {
   userRole?: "manager" | "employee";
+  isOnboarded?: boolean;
 }
 
 export default function TimeAnalyticsDashboard({
   userRole = "employee",
+  isOnboarded = false,
 }: AnalyticsDashboardProps) {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
@@ -135,73 +137,7 @@ export default function TimeAnalyticsDashboard({
     }
   };
 
-  // Generate mock time entries for demonstration
-  const generateMockTimeEntries = (userId: string, count: number) => {
-    const mockAreas = [
-      { id: "area1", name: "Entwicklung", color: "#3B82F6" },
-      { id: "area2", name: "Design", color: "#8B5CF6" },
-      { id: "area3", name: "Marketing", color: "#10B981" },
-      { id: "area4", name: "Management", color: "#F59E0B" },
-    ];
-
-    const mockFields = [
-      { id: "field1", name: "Frontend" },
-      { id: "field2", name: "Backend" },
-      { id: "field3", name: "UI Design" },
-      { id: "field4", name: "Content Creation" },
-    ];
-
-    const mockActivities = [
-      { id: "activity1", name: "React Development" },
-      { id: "activity2", name: "API Integration" },
-      { id: "activity3", name: "Wireframing" },
-      { id: "activity4", name: "Blog Writing" },
-    ];
-
-    const now = new Date();
-    const today = now.toISOString().split("T")[0];
-
-    return Array.from({ length: count }).map((_, index) => {
-      // Generate entries for today with different times
-      const date = today;
-
-      // Generate random start time between 8:00 and 18:00
-      const startHour = 8 + Math.floor(Math.random() * 10);
-      const startMinute = Math.floor(Math.random() * 60);
-      const startTime = `${startHour.toString().padStart(2, "0")}:${startMinute.toString().padStart(2, "0")}`;
-
-      const duration = 0.5 + Math.random() * 2.5; // 0.5-3 hours
-
-      // Calculate end time
-      const endHour = Math.floor(startHour + duration);
-      const endMinute = Math.floor((startMinute + (duration % 1) * 60) % 60);
-      const endTime = `${endHour.toString().padStart(2, "0")}:${endMinute.toString().padStart(2, "0")}`;
-
-      const areaIndex = index % mockAreas.length;
-      const fieldIndex = index % mockFields.length;
-      const activityIndex = index % mockActivities.length;
-
-      return {
-        id: `mock-${index}`,
-        user_id: userId,
-        area_id: mockAreas[areaIndex].id,
-        field_id: mockFields[fieldIndex].id,
-        activity_id: mockActivities[activityIndex].id,
-        duration: duration,
-        date: date,
-        start_time: startTime,
-        end_time: endTime,
-        description: `Mock time entry ${index + 1} for demonstration`,
-        created_at: new Date().toISOString(),
-        areas: mockAreas[areaIndex],
-        fields: mockFields[fieldIndex],
-        activities: mockActivities[activityIndex],
-        users: { full_name: "Demo User", email: "demo@example.com" },
-        status: "active",
-        isMockData: true, // Flag to identify mock data
-      };
-    });
-  };
+  // No mock data generation - we only use real user data
 
   const loadData = useCallback(async () => {
     try {
@@ -244,30 +180,20 @@ export default function TimeAnalyticsDashboard({
 
       if (entriesError) throw entriesError;
 
-      // If no real data, use mock data for demonstration
-      if (!entriesData || entriesData.length === 0) {
-        const mockData = generateMockTimeEntries(
-          currentUser?.id || "user1",
-          10,
-        );
-        setTimeEntries(mockData);
-        console.log("Using mock time entries data:", mockData);
-      } else {
-        setTimeEntries(entriesData);
-        console.log(
-          "Loaded real time entries data:",
-          entriesData.length,
-          "entries",
-        );
-      }
+      // Only use real data, no mock data
+      setTimeEntries(entriesData || []);
+      console.log(
+        "Loaded time entries data:",
+        entriesData ? entriesData.length : 0,
+        "entries",
+      );
     } catch (error: any) {
       console.error("Error loading data:", error);
       setError(error.message || "Fehler beim Laden der Daten");
 
-      // Use mock data as fallback on error
-      const mockData = generateMockTimeEntries(currentUser?.id || "user1", 10);
-      setTimeEntries(mockData);
-      console.log("Using mock time entries data due to error:", mockData);
+      // Always show empty state on error, regardless of onboarding status
+      setTimeEntries([]);
+      console.log("Error loading data - showing empty state");
     } finally {
       setLoading(false);
     }
@@ -734,13 +660,7 @@ export default function TimeAnalyticsDashboard({
                                       entry.isMockData,
                                     );
 
-                                    if (entry.isMockData) {
-                                      // For mock data, show a message
-                                      alert(
-                                        "Dies ist ein Demo-Eintrag. Erstellen Sie echte Zeiteinträge, um sie bearbeiten zu können.",
-                                      );
-                                      return;
-                                    }
+                                    // All entries are real data now
 
                                     // Dispatch event to open edit dialog for this entry
                                     const editEvent = new CustomEvent(
@@ -839,13 +759,7 @@ export default function TimeAnalyticsDashboard({
                                       firstEntry.isMockData,
                                     );
 
-                                    if (firstEntry.isMockData) {
-                                      // For mock data, show a message
-                                      alert(
-                                        "Dies sind Demo-Einträge. Erstellen Sie echte Zeiteinträge, um sie bearbeiten zu können.",
-                                      );
-                                      return;
-                                    }
+                                    // All entries are real data now
 
                                     const editEvent = new CustomEvent(
                                       "openTimeEntryEditDialog",

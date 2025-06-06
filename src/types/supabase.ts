@@ -18,6 +18,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -27,6 +28,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -36,10 +38,11 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "activities_field_id_fkey"
+            foreignKeyName: "fk_activities_fields"
             columns: ["field_id"]
             isOneToOne: false
             referencedRelation: "fields"
@@ -56,6 +59,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           color?: string | null
@@ -65,6 +69,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           color?: string | null
@@ -74,6 +79,7 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -86,6 +92,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           area_id?: string | null
@@ -95,6 +102,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           area_id?: string | null
@@ -104,10 +112,11 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "fields_area_id_fkey"
+            foreignKeyName: "fk_fields_areas"
             columns: ["area_id"]
             isOneToOne: false
             referencedRelation: "areas"
@@ -197,7 +206,7 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["user_id"]
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -249,32 +258,32 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "time_entries_activity_id_fkey"
+            foreignKeyName: "fk_time_entries_activities"
             columns: ["activity_id"]
             isOneToOne: false
             referencedRelation: "activities"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "time_entries_area_id_fkey"
+            foreignKeyName: "fk_time_entries_areas"
             columns: ["area_id"]
             isOneToOne: false
             referencedRelation: "areas"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "time_entries_field_id_fkey"
+            foreignKeyName: "fk_time_entries_fields"
             columns: ["field_id"]
             isOneToOne: false
             referencedRelation: "fields"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "time_entries_user_id_fkey"
+            foreignKeyName: "fk_time_entries_users"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["user_id"]
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -283,13 +292,18 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           credits: string | null
+          department: string | null
           email: string | null
           full_name: string | null
           id: string
           image: string | null
           name: string | null
+          onboarded: boolean | null
+          phone: string | null
+          position: string | null
+          role: string | null
           subscription: string | null
-          token_identifier: string
+          token_identifier: string | null
           updated_at: string | null
           user_id: string | null
         }
@@ -297,13 +311,18 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           credits?: string | null
+          department?: string | null
           email?: string | null
           full_name?: string | null
           id: string
           image?: string | null
           name?: string | null
+          onboarded?: boolean | null
+          phone?: string | null
+          position?: string | null
+          role?: string | null
           subscription?: string | null
-          token_identifier: string
+          token_identifier?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
@@ -311,13 +330,18 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           credits?: string | null
+          department?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
           image?: string | null
           name?: string | null
+          onboarded?: boolean | null
+          phone?: string | null
+          position?: string | null
+          role?: string | null
           subscription?: string | null
-          token_identifier?: string
+          token_identifier?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
@@ -358,7 +382,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_or_create_user_profile: {
+        Args: { user_uuid: string }
+        Returns: {
+          user_id: string
+          full_name: string
+          email: string
+          avatar_url: string
+          role: string
+          department: string
+          position: string
+          phone: string
+          onboarded: boolean
+          token_identifier: string
+          created_at: string
+          updated_at: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

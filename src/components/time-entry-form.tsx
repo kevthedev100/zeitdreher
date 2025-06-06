@@ -295,10 +295,18 @@ export default function TimeEntryForm({
 
   const loadAreas = async () => {
     try {
+      // Get current user ID
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      // Only load areas that belong to the current user or have null user_id
       const { data, error } = await supabase
         .from("areas")
         .select("*")
         .eq("is_active", true)
+        .filter("user_id", "eq", user.id)
         .order("name");
 
       if (error) throw error;
@@ -330,11 +338,19 @@ export default function TimeEntryForm({
 
   const loadFields = async (areaId: string) => {
     try {
+      // Get current user ID
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      // Only load fields that belong to the current user or have null user_id
       const { data, error } = await supabase
         .from("fields")
         .select("*")
         .eq("area_id", areaId)
         .eq("is_active", true)
+        .filter("user_id", "eq", user.id)
         .order("name");
 
       if (error) throw error;
@@ -360,11 +376,19 @@ export default function TimeEntryForm({
 
   const loadActivities = async (fieldId: string) => {
     try {
+      // Get current user ID
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      // Only load activities that belong to the current user or have null user_id
       const { data, error } = await supabase
         .from("activities")
         .select("*")
         .eq("field_id", fieldId)
         .eq("is_active", true)
+        .filter("user_id", "eq", user.id)
         .order("name");
 
       if (error) throw error;
@@ -1487,13 +1511,20 @@ export default function TimeEntryForm({
 
   const handleAddArea = async () => {
     if (newAreaName.trim()) {
-      const formData = new FormData();
-      formData.append("name", newAreaName);
-
       try {
+        // Get current user ID
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+
         const { data, error } = await supabase
           .from("areas")
-          .insert({ name: newAreaName })
+          .insert({
+            name: newAreaName,
+            user_id: user.id,
+            is_active: true,
+          })
           .select()
           .single();
 
@@ -1511,9 +1542,20 @@ export default function TimeEntryForm({
   const handleAddField = async () => {
     if (newFieldName.trim() && selectedArea) {
       try {
+        // Get current user ID
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+
         const { data, error } = await supabase
           .from("fields")
-          .insert({ area_id: selectedArea, name: newFieldName })
+          .insert({
+            area_id: selectedArea,
+            name: newFieldName,
+            user_id: user.id,
+            is_active: true,
+          })
           .select()
           .single();
 
@@ -1531,9 +1573,20 @@ export default function TimeEntryForm({
   const handleAddActivity = async () => {
     if (newActivityName.trim() && selectedField) {
       try {
+        // Get current user ID
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+
         const { data, error } = await supabase
           .from("activities")
-          .insert({ field_id: selectedField, name: newActivityName })
+          .insert({
+            field_id: selectedField,
+            name: newActivityName,
+            user_id: user.id,
+            is_active: true,
+          })
           .select()
           .single();
 

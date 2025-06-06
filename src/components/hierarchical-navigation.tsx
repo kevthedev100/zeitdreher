@@ -29,20 +29,34 @@ export default function HierarchicalNavigation({
   const [loading, setLoading] = useState(true);
   const [openAreas, setOpenAreas] = useState<string[]>([]);
   const [openFields, setOpenFields] = useState<string[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const supabase = createClient();
 
   useEffect(() => {
-    loadAreas();
+    const getUserId = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        loadAreas(user.id);
+      } else {
+        setLoading(false);
+      }
+    };
+
+    getUserId();
   }, []);
 
-  const loadAreas = async () => {
+  const loadAreas = async (uid: string) => {
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from("areas")
         .select("*")
         .eq("is_active", true)
+        .eq("user_id", uid)
         .order("name");
 
       if (error) throw error;
@@ -52,7 +66,7 @@ export default function HierarchicalNavigation({
       if (data && data.length > 0) {
         const fieldsData: { [areaId: string]: any[] } = {};
         for (const area of data) {
-          const fields = await loadFieldsForArea(area.id);
+          const fields = await loadFieldsForArea(area.id, uid);
           fieldsData[area.id] = fields;
         }
         setFields(fieldsData);
@@ -64,13 +78,14 @@ export default function HierarchicalNavigation({
     }
   };
 
-  const loadFieldsForArea = async (areaId: string) => {
+  const loadFieldsForArea = async (areaId: string, uid: string) => {
     try {
       const { data, error } = await supabase
         .from("fields")
         .select("*")
         .eq("area_id", areaId)
         .eq("is_active", true)
+        .eq("user_id", uid)
         .order("name");
 
       if (error) throw error;
@@ -83,11 +98,14 @@ export default function HierarchicalNavigation({
 
   const loadActivitiesForField = async (fieldId: string) => {
     try {
+      if (!userId) return [];
+
       const { data, error } = await supabase
         .from("activities")
         .select("*")
         .eq("field_id", fieldId)
         .eq("is_active", true)
+        .eq("user_id", userId)
         .order("name");
 
       if (error) throw error;

@@ -44,9 +44,13 @@ import RecentTimeEntry from "@/components/recent-time-entry";
 
 interface DashboardTabsProps {
   userRole: "manager" | "employee";
+  isOnboarded?: boolean;
 }
 
-export default function DashboardTabs({ userRole }: DashboardTabsProps) {
+export default function DashboardTabs({
+  userRole,
+  isOnboarded = false,
+}: DashboardTabsProps) {
   const [quickStats, setQuickStats] = useState({
     todayHours: 0,
     weekHours: 0,
@@ -246,20 +250,9 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
       );
     } catch (error) {
       console.error("Error checking data for analysis:", error);
-      // Use mock data as fallback
-      const mockEntries = Array.from({ length: 15 }).map((_, i) => ({
-        date: new Date(Date.now() - i * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split("T")[0],
-        duration: 1 + Math.random() * 3,
-        area: ["Entwicklung", "Design", "Marketing"][i % 3],
-        field: ["Frontend", "Backend", "UI"][i % 3],
-        activity: ["Coding", "Testing", "Meeting"][i % 3],
-        description: `Mock entry ${i + 1}`,
-      }));
-
-      setLastTwoWeeksEntries(mockEntries);
-      setHasEnoughData(false); // Not enough mock data
+      // Set empty data instead of mock data
+      setLastTwoWeeksEntries([]);
+      setHasEnoughData(false);
     }
   };
 
@@ -357,14 +350,11 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
 
       if (error) throw error;
 
-      // Use real data if available, otherwise generate mock data
-      const timeEntryData =
-        entries && entries.length > 0
-          ? entries
-          : generateMockTimeEntries(currentUser?.id || "user1", 10);
+      // Only use real data, no more mock data
+      const timeEntryData = entries || [];
 
       if (!entries || entries.length === 0) {
-        console.log("Using mock time entries data for quick stats");
+        console.log("No time entries found for quick stats");
       }
 
       const now = new Date();
@@ -406,87 +396,17 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
       setRecentActivities(recent);
     } catch (error) {
       console.error("Error loading quick data:", error);
-      // Use mock data as fallback
-      const mockData = generateMockTimeEntries(currentUser?.id || "user1", 10);
-      const now = new Date();
-      const today = now.toISOString().split("T")[0];
-
-      // Calculate stats from mock data
-      const todayHours = mockData
-        .filter((entry) => entry.date === today)
-        .reduce((sum, entry) => sum + entry.duration, 0);
-
+      // Set empty data instead of mock data
       setQuickStats({
-        todayHours,
-        weekHours: 25.5,
-        monthHours: 87.0,
+        todayHours: 0,
+        weekHours: 0,
+        monthHours: 0,
       });
 
-      // Get recent activities from mock data
-      const recent = mockData.slice(0, 3).map((entry) => ({
-        activity: entry.activities?.name || "Unbekannte Aktivität",
-        duration: entry.duration,
-        date: entry.date,
-        area: entry.areas?.name || "Unbekannter Bereich",
-        color: entry.areas?.color || "#6B7280",
-      }));
-
-      setRecentActivities(recent);
+      setRecentActivities([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Generate mock time entries for demonstration
-  const generateMockTimeEntries = (userId: string, count: number) => {
-    const mockAreas = [
-      { id: "area1", name: "Entwicklung", color: "#3B82F6" },
-      { id: "area2", name: "Design", color: "#8B5CF6" },
-      { id: "area3", name: "Marketing", color: "#10B981" },
-      { id: "area4", name: "Management", color: "#F59E0B" },
-    ];
-
-    const mockFields = [
-      { id: "field1", name: "Frontend" },
-      { id: "field2", name: "Backend" },
-      { id: "field3", name: "UI Design" },
-      { id: "field4", name: "Content Creation" },
-    ];
-
-    const mockActivities = [
-      { id: "activity1", name: "React Development" },
-      { id: "activity2", name: "API Integration" },
-      { id: "activity3", name: "Wireframing" },
-      { id: "activity4", name: "Blog Writing" },
-    ];
-
-    const now = new Date();
-
-    return Array.from({ length: count }).map((_, index) => {
-      const dayOffset = index % 7;
-      const date = new Date(now);
-      date.setDate(date.getDate() - dayOffset);
-
-      const areaIndex = index % mockAreas.length;
-      const fieldIndex = index % mockFields.length;
-      const activityIndex = index % mockActivities.length;
-
-      return {
-        id: `mock-${index}`,
-        user_id: userId,
-        area_id: mockAreas[areaIndex].id,
-        field_id: mockFields[fieldIndex].id,
-        activity_id: mockActivities[activityIndex].id,
-        duration: 1 + Math.random() * 4, // 1-5 hours
-        date: date.toISOString().split("T")[0],
-        description: `Mock time entry ${index + 1} for demonstration`,
-        created_at: new Date().toISOString(),
-        areas: mockAreas[areaIndex],
-        fields: mockFields[fieldIndex],
-        activities: mockActivities[activityIndex],
-        users: { full_name: "Demo User", email: "demo@example.com" },
-      };
-    });
   };
 
   const handleTimeEntrySubmit = useCallback(
@@ -666,7 +586,10 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
 
         <div className="flex-1 overflow-auto">
           <TabsContent value="overview" className="p-6">
-            <TimeAnalyticsDashboard userRole={userRole} />
+            <TimeAnalyticsDashboard
+              userRole={userRole}
+              isOnboarded={isOnboarded}
+            />
           </TabsContent>
 
           <TabsContent value="analytics" className="p-6">
@@ -886,7 +809,7 @@ export default function DashboardTabs({ userRole }: DashboardTabsProps) {
           </TabsContent>
 
           <TabsContent value="entries" className="p-6">
-            <TimeEntriesTable userRole={userRole} />
+            <TimeEntriesTable userRole={userRole} isOnboarded={isOnboarded} />
           </TabsContent>
 
           <TabsContent value="ai-chat" className="p-6">

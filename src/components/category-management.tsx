@@ -116,10 +116,20 @@ export default function CategoryManagement() {
 
   const loadAreas = async () => {
     try {
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        console.error("User not authenticated");
+        return;
+      }
+
       const { data, error } = await supabase
         .from("areas")
         .select("*")
         .eq("is_active", true)
+        .eq("user_id", user.id) // Filter by current user
         .order("name");
 
       if (error) throw error;
@@ -133,11 +143,21 @@ export default function CategoryManagement() {
 
   const loadFields = async (areaId: string) => {
     try {
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        console.error("User not authenticated");
+        return;
+      }
+
       const { data, error } = await supabase
         .from("fields")
         .select("*")
         .eq("area_id", areaId)
         .eq("is_active", true)
+        .eq("user_id", user.id) // Filter by current user
         .order("name");
 
       if (error) throw error;
@@ -149,11 +169,21 @@ export default function CategoryManagement() {
 
   const loadActivities = async (fieldId: string) => {
     try {
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        console.error("User not authenticated");
+        return;
+      }
+
       const { data, error } = await supabase
         .from("activities")
         .select("*")
         .eq("field_id", fieldId)
         .eq("is_active", true)
+        .eq("user_id", user.id) // Filter by current user
         .order("name");
 
       if (error) throw error;

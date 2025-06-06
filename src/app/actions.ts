@@ -37,6 +37,26 @@ export const signUpAction = async (formData: FormData) => {
   }
 
   // User data is automatically inserted into public.users table via database trigger
+  // Double-check that the user was created in the public.users table
+  if (user) {
+    const { data: publicUser, error: publicUserError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("user_id", user.id)
+      .single();
+
+    if (publicUserError || !publicUser) {
+      // If the user wasn't created in the public.users table, create it manually
+      await supabase.from("users").upsert({
+        user_id: user.id,
+        full_name: fullName,
+        email: email,
+        token_identifier: Math.random().toString(36).substring(2, 15),
+        role: "employee",
+        onboarded: false,
+      });
+    }
+  }
 
   return encodedRedirect(
     "success",
@@ -205,9 +225,18 @@ export const createArea = async (formData: FormData) => {
   }
 
   const supabase = await createClient();
+
+  // Get current user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return encodedRedirect("error", "/dashboard", "User not authenticated");
+  }
+
   const { error } = await supabase
     .from("areas")
-    .insert({ name, description, color });
+    .insert({ name, description, color, user_id: user.id });
 
   if (error) {
     return encodedRedirect("error", "/dashboard", error.message);
@@ -230,9 +259,18 @@ export const createField = async (formData: FormData) => {
   }
 
   const supabase = await createClient();
+
+  // Get current user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return encodedRedirect("error", "/dashboard", "User not authenticated");
+  }
+
   const { error } = await supabase
     .from("fields")
-    .insert({ area_id: areaId, name, description });
+    .insert({ area_id: areaId, name, description, user_id: user.id });
 
   if (error) {
     return encodedRedirect("error", "/dashboard", error.message);
@@ -255,9 +293,18 @@ export const createActivity = async (formData: FormData) => {
   }
 
   const supabase = await createClient();
+
+  // Get current user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return encodedRedirect("error", "/dashboard", "User not authenticated");
+  }
+
   const { error } = await supabase
     .from("activities")
-    .insert({ field_id: fieldId, name, description });
+    .insert({ field_id: fieldId, name, description, user_id: user.id });
 
   if (error) {
     return encodedRedirect("error", "/dashboard", error.message);
@@ -413,30 +460,14 @@ export const createTimeEntry = async (formData: FormData) => {
   // Check if the IDs are mock IDs (non-UUID format)
   const isMockId = (id: string) => !uuidRegex.test(id);
 
-  // If using mock data, return a mock success response instead of trying to save to the database
+  // Don't allow mock IDs - return an error instead
   if (isMockId(areaId) || isMockId(fieldId) || isMockId(activityId)) {
-    console.log("Using mock IDs, returning mock success response");
-    return {
-      success: true,
-      data: {
-        id: crypto.randomUUID(),
-        user_id: "mock-user-id",
-        area_id: areaId,
-        field_id: fieldId,
-        activity_id: activityId,
-        duration,
-        date,
-        start_time: startTime,
-        end_time: endTime,
-        description,
-        status: "active",
-        created_at: new Date().toISOString(),
-        areas: { name: "Mock Area", color: "#3B82F6" },
-        fields: { name: "Mock Field" },
-        activities: { name: "Mock Activity" },
-      },
-      message: "Time entry created successfully (mock data)",
-    };
+    console.error("Invalid IDs detected in time entry creation");
+    return encodedRedirect(
+      "error",
+      "/dashboard",
+      "Ungültige Kategorie-IDs. Bitte wählen Sie gültige Kategorien aus.",
+    );
   }
 
   const supabase = await createClient();

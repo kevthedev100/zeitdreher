@@ -8,29 +8,90 @@ import DashboardTabs from "@/components/dashboard-tabs";
 import AddEntryButton from "@/components/add-entry-button";
 import { useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
+import OnboardingWizardDialog from "@/components/onboarding-wizard-dialog";
+
+interface UserData {
+  user_id: string;
+  onboarded?: boolean;
+  role?: string;
+}
 
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
     const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      if (!user) {
-        redirect("/sign-in");
-        return;
+        if (!user) {
+          redirect("/sign-in");
+          return;
+        }
+
+        setUser(user);
+
+        // Get user data from the users table
+        const { data, error } = await supabase
+          .from("users")
+          .select("*")
+          .eq("user_id", user.id)
+          .single();
+
+        if (error) {
+          // PGRST116 means no rows returned - this is a new user
+          if (error.code === "PGRST116") {
+            console.log("New user detected, showing onboarding wizard");
+            setShowOnboarding(true);
+            // Create user record if it doesn't exist
+            await supabase.from("users").upsert({
+              user_id: user.id,
+              full_name: user.user_metadata?.full_name || "",
+              email: user.email,
+              onboarded: false,
+              role: "employee",
+            });
+          } else {
+            console.error("Error fetching user data:", error);
+          }
+        } else if (data) {
+          // User exists in database
+          setUserData(data);
+          // Only show onboarding if onboarded is explicitly false
+          setShowOnboarding(data.onboarded === false);
+          console.log("User onboarded status:", data.onboarded);
+        }
+
+        setLoading(false);
+      } catch (error) {
+        console.error("Error in user initialization:", error);
+        setLoading(false);
       }
-
-      setUser(user);
-      setLoading(false);
     };
 
     getUser();
   }, [supabase]);
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    // Refresh user data
+    if (user) {
+      supabase
+        .from("users")
+        .select("*")
+        .eq("user_id", user.id)
+        .single()
+        .then(({ data }) => {
+          if (data) setUserData(data);
+        });
+    }
+  };
 
   if (loading) {
     return (
@@ -44,11 +105,17 @@ export default function Dashboard() {
     return null;
   }
 
-  // Mock user role - in a real app, this would come from the database
-  const userRole = "employee"; // or "manager"
+  // Get user role from database or default to employee
+  const userRole = userData?.role || "employee";
 
   return (
     <SubscriptionCheck>
+      {showOnboarding && user && (
+        <OnboardingWizardDialog
+          userId={user.id}
+          onComplete={handleOnboardingComplete}
+        />
+      )}
       <DashboardNavbar />
       <main className="w-full bg-gray-50 min-h-screen">
         <div className="container mx-auto px-4 py-8">
@@ -75,7 +142,10 @@ export default function Dashboard() {
           </header>
 
           {/* Tabbed Interface */}
-          <DashboardTabs userRole={userRole as "manager" | "employee"} />
+          <DashboardTabs
+            userRole={userRole as "manager" | "employee"}
+            isOnboarded={userData?.onboarded === true}
+          />
         </div>
       </main>
     </SubscriptionCheck>
