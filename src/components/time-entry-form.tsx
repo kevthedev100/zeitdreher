@@ -1610,30 +1610,10 @@ export default function TimeEntryForm({
               <div className="flex gap-3">
                 <Button
                   type="button"
-                  onClick={isTimerRunning ? stopTimer : startTimer}
-                  variant={isTimerRunning ? "destructive" : "default"}
-                  size="lg"
-                  className="flex items-center gap-2"
-                >
-                  {isTimerRunning ? (
-                    <>
-                      <Square className="w-5 h-5" />
-                      Timer stoppen
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-5 h-5" />
-                      Timer starten
-                    </>
-                  )}
-                </Button>
-
-                <Button
-                  type="button"
                   onClick={handleVoiceToggle}
                   variant={isRecording ? "destructive" : "outline"}
                   size="lg"
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 h-12"
                 >
                   {isRecording ? (
                     <>
@@ -1644,6 +1624,26 @@ export default function TimeEntryForm({
                     <>
                       <Mic className="w-5 h-5" />
                       Spracheingabe
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={isTimerRunning ? stopTimer : startTimer}
+                  variant={isTimerRunning ? "destructive" : "default"}
+                  size="lg"
+                  className="flex items-center gap-2 h-12"
+                >
+                  {isTimerRunning ? (
+                    <>
+                      <Square className="w-5 h-5" />
+                      Timer stoppen
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-5 h-5" />
+                      Timer starten
                     </>
                   )}
                 </Button>
@@ -1661,21 +1661,6 @@ export default function TimeEntryForm({
                     Stoppen & Sprechen
                   </Button>
                 )}
-              </div>
-
-              {/* Keyboard Shortcuts Info */}
-              <div className="text-center text-sm text-gray-500">
-                <p>
-                  Tastenkürzel:{" "}
-                  <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">
-                    Strg+Shift+T
-                  </kbd>{" "}
-                  Timer •{" "}
-                  <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">
-                    Strg+Shift+S
-                  </kbd>{" "}
-                  Stoppen & Sprechen
-                </p>
               </div>
             </div>
 
@@ -1898,23 +1883,31 @@ export default function TimeEntryForm({
 
             {/* Time Details */}
             <div className="space-y-4">
-              {/* Duration and Date */}
+              {/* Date and Duration */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="date">Datum</Label>
+                  <div className="relative">
+                    <Input
+                      id="date"
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      required
+                    />
+                    <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="duration">Dauer</Label>
                   <Input
                     id="duration"
                     type="text"
-                    placeholder={
-                      startTime && endTime
-                        ? "Wird automatisch berechnet"
-                        : "H:MM:SS (z.B. 0:12:17)"
-                    }
+                    placeholder="Wird automatisch berechnet"
                     value={duration}
-                    disabled={startTime && endTime}
-                    className={
-                      startTime && endTime ? "bg-gray-100 text-gray-500" : ""
-                    }
+                    disabled={true}
+                    className="bg-gray-100 text-gray-500"
                     onChange={(e) => {
                       // Only allow manual input if start or end time is missing
                       if (!startTime || !endTime) {
@@ -1928,25 +1921,6 @@ export default function TimeEntryForm({
                       Automatisch berechnet aus Start- und Endzeit
                     </p>
                   )}
-                  {!startTime && !endTime && (
-                    <p className="text-xs text-gray-500">
-                      Format: H:MM:SS (z.B. 0:12:17 für 12 Min. 17 Sek.)
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="date">Datum</Label>
-                  <div className="relative">
-                    <Input
-                      id="date"
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      required
-                    />
-                    <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                  </div>
                 </div>
               </div>
 
@@ -2006,7 +1980,7 @@ export default function TimeEntryForm({
 
             {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="description">Beschreibung (optional)</Label>
+              <Label htmlFor="description">Beschreibung</Label>
               <Textarea
                 id="description"
                 placeholder="Kurze Beschreibung der durchgeführten Arbeit..."
