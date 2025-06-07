@@ -80,6 +80,12 @@ export default function TimeEntryForm({
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  
+  // Voice confirmation states
+  const [showActivityConfirmation, setShowActivityConfirmation] = useState(false);
+  const [activityConfirmationData, setActivityConfirmationData] = useState<any>(null);
+  const [showNewActivitySuggestion, setShowNewActivitySuggestion] = useState(false);
+  const [newActivitySuggestionData, setNewActivitySuggestionData] = useState<any>(null);
 
   const supabase = createClient();
 
@@ -489,6 +495,17 @@ export default function TimeEntryForm({
   // Process voice input
   const processVoiceInput = async (audioBlob: Blob) => {
     try {
+      // Get current user ID for filtering
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        console.error("User not authenticated, cannot process voice input");
+        alert("Bitte melden Sie sich an, um die Spracheingabe zu nutzen.");
+        return;
+      }
+      console.log("Processing voice input for user ID:", user.id);
+
       // Show processing status
       const statusDiv = document.createElement("div");
       statusDiv.className =
@@ -504,6 +521,7 @@ export default function TimeEntryForm({
       const formData = new FormData();
       formData.append("audio", audioBlob, "recording.webm");
       formData.append("language", "de");
+      formData.append("user_id", user.id); // Pass user ID to the transcription function
 
       const { data, error } = await supabase.functions.invoke(
         "supabase-functions-transcribe-audio",
@@ -540,7 +558,12 @@ export default function TimeEntryForm({
       console.log("Processing method:", processingMethod);
 
       // Apply parsed data to form with enhanced logic
-      console.log("Processing parsed voice data:", parsed);
+      console.log(
+        "Processing parsed voice data for user",
+        user.id,
+        ":",
+        parsed,
+      );
 
       // IMPORTANT: Don't reset form fields anymore to preserve existing selections
       // Only reset fields if we're going to set them based on the voice input
@@ -598,6 +621,51 @@ export default function TimeEntryForm({
         if (startTime) {
           // If we already have a start time, calculate duration
           calculateDurationFromTimes(startTime, formattedEndTime);
+        }
+      }
+
+      // Extract activity name from transcription if not already parsed
+      if (!parsed.activity && transcription) {
+        // Look for common patterns that might indicate an activity
+        const activityPatterns = [
+          /in der ([\w-]+)/i, // "in der TEST-Entwicklung"
+          /für ([\w-]+)/i, // "für TEST-Entwicklung"
+          /an ([\w-]+)/i, // "an TEST-Entwicklung"
+          /mit ([\w-]+)/i, // "mit TEST-Entwicklung"
+          /bei ([\w-]+)/i, // "bei TEST-Entwicklung"
+          /aktivität ([\w-]+)/i, // "aktivität TEST-Entwicklung"
+          /tätigkeit ([\w-]+)/i, // "tätigkeit TEST-Entwicklung"
+          /([\w-]+) gearbeitet/i, // "TEST-Entwicklung gearbeitet"
+        ];
+
+        for (const pattern of activityPatterns) {
+          const match = transcription.match(pattern);
+          if (match && match[1]) {
+            parsed.activity = match[1].trim();
+            console.log(
+              "Extracted activity from transcription:",
+              parsed.activity,
+            );
+            break;
+          }
+        }
+      }
+
+      // If we have an activity name but no area/field, try to find them in the user's data
+      if (parsed.activity && (!parsed.area || !parsed.field)) {
+        console.log(
+          "Attempting to find area and field for activity in user's data:",
+          parsed.activity,
+        );
+        const { fieldId, areaId, activityId } =
+          await findFieldAndAreaByActivity(parsed.activity);
+
+        if (areaId && fieldId) {
+          console.log(
+            "Found matching area and field in user's data for activity:",
+            parsed.activity,
+          );
+          // We'll let handleHierarchicalSelection handle the actual setting of these values
         }
       }
 
@@ -768,15 +836,29 @@ export default function TimeEntryForm({
   const loadFieldsAndReturn = async (areaId: string) => {
     try {
       console.log("Loading fields for area ID:", areaId);
+
+      // Get current user ID for filtering
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
       const { data, error } = await supabase
         .from("fields")
         .select("*")
         .eq("area_id", areaId)
         .eq("is_active", true)
+        .eq("user_id", user.id) // Filter by current user
         .order("name");
 
       if (error) throw error;
-      console.log("Fields loaded successfully:", data?.length || 0, "fields");
+      console.log(
+        "Fields loaded successfully for user",
+        user.id,
+        ":",
+        data?.length || 0,
+        "fields",
+      );
       setFields(data || []);
       return data || [];
     } catch (error) {
@@ -788,16 +870,26 @@ export default function TimeEntryForm({
   const loadActivitiesAndReturn = async (fieldId: string) => {
     try {
       console.log("Loading activities for field ID:", fieldId);
+
+      // Get current user ID for filtering
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
       const { data, error } = await supabase
         .from("activities")
         .select("*")
         .eq("field_id", fieldId)
         .eq("is_active", true)
+        .eq("user_id", user.id) // Filter by current user
         .order("name");
 
       if (error) throw error;
       console.log(
-        "Activities loaded successfully:",
+        "Activities loaded successfully for user",
+        user.id,
+        ":",
         data?.length || 0,
         "activities",
       );
@@ -809,7 +901,7 @@ export default function TimeEntryForm({
     }
   };
 
-  // Enhanced lookup function to find field and area based on activity name
+  // Enhanced lookup function to find field and area based on activity name with confidence scoring
   const findFieldAndAreaByActivity = async (activityName: string) => {
     console.log("Looking up field and area for activity:", activityName);
     try {
@@ -819,44 +911,68 @@ export default function TimeEntryForm({
       } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      // First, try exact match
+      console.log("Current user ID for filtering:", user.id);
+
+      // First, try exact match with strict user filtering
       const { data: exactMatchData, error: exactMatchError } = await supabase
         .from("activities")
-        .select("id, name, field_id")
+        .select("id, name, field_id, user_id")
         .eq("name", activityName)
         .eq("is_active", true)
         .eq("user_id", user.id)
         .limit(1);
 
-      // If no exact match, try case-insensitive partial match
+      console.log(
+        "Exact match results:",
+        exactMatchData?.length || 0,
+        "items found",
+      );
+
+      // If no exact match, try case-insensitive partial match with strict user filtering
       let { data: activityData, error: activityError } = !exactMatchData?.length
         ? await supabase
             .from("activities")
-            .select("id, name, field_id")
+            .select("id, name, field_id, user_id")
             .ilike("name", `%${activityName}%`)
             .eq("is_active", true)
             .eq("user_id", user.id)
             .limit(1)
         : { data: exactMatchData, error: null };
 
-      // If still no match, try fuzzy matching with all activities
+      console.log(
+        "Partial match results:",
+        activityData?.length || 0,
+        "items found",
+      );
+
+      // If still no match, try fuzzy matching with all user's activities
       if (!activityData?.length) {
         console.log(
-          "No direct match found, trying fuzzy matching with all activities",
+          "No direct match found, trying fuzzy matching with user's activities",
         );
         const { data: allActivities, error: allActivitiesError } =
           await supabase
             .from("activities")
-            .select("id, name, field_id")
+            .select("id, name, field_id, user_id")
             .eq("is_active", true)
             .eq("user_id", user.id);
 
         if (allActivitiesError) throw allActivitiesError;
+        console.log(
+          "Total user activities for fuzzy matching:",
+          allActivities?.length || 0,
+        );
+
         if (allActivities && allActivities.length > 0) {
           // Use our fuzzy matching function to find the best match
           const bestMatch = findBestMatch(activityName, allActivities, "name");
           if (bestMatch) {
-            console.log("Found fuzzy match for activity:", bestMatch.name);
+            console.log(
+              "Found fuzzy match for activity:",
+              bestMatch.name,
+              "with user_id:",
+              bestMatch.user_id,
+            );
             activityData = [bestMatch];
           }
         }
@@ -866,19 +982,30 @@ export default function TimeEntryForm({
         throw activityError || exactMatchError;
       if (!activityData || activityData.length === 0) {
         console.log(
-          "No matching activity found in database for:",
+          "No matching activity found in user's database for:",
           activityName,
         );
         return { fieldId: null, areaId: null, activityId: null };
       }
 
       const activity = activityData[0];
-      console.log("Found activity in database:", activity);
+      console.log(
+        "Found activity in database:",
+        activity,
+        "with user_id:",
+        activity.user_id,
+      );
 
-      // Now find the field using the field_id from the activity
+      // Verify this activity belongs to the current user
+      if (activity.user_id !== user.id) {
+        console.log("Activity doesn't belong to current user, skipping");
+        return { fieldId: null, areaId: null, activityId: null };
+      }
+
+      // Now find the field using the field_id from the activity, ensuring it belongs to the user
       const { data: fieldData, error: fieldError } = await supabase
         .from("fields")
-        .select("id, name, area_id")
+        .select("id, name, area_id, user_id")
         .eq("id", activity.field_id)
         .eq("is_active", true)
         .eq("user_id", user.id)
@@ -886,16 +1013,24 @@ export default function TimeEntryForm({
 
       if (fieldError) throw fieldError;
       if (!fieldData) {
-        console.log("No matching field found for activity:", activityName);
+        console.log(
+          "No matching field found for user's activity:",
+          activityName,
+        );
         return { fieldId: null, areaId: null, activityId: activity.id };
       }
 
-      console.log("Found field in database:", fieldData);
+      console.log(
+        "Found field in database:",
+        fieldData,
+        "with user_id:",
+        fieldData.user_id,
+      );
 
-      // Finally, find the area using the area_id from the field
+      // Finally, find the area using the area_id from the field, ensuring it belongs to the user
       const { data: areaData, error: areaError } = await supabase
         .from("areas")
-        .select("id, name")
+        .select("id, name, user_id")
         .eq("id", fieldData.area_id)
         .eq("is_active", true)
         .eq("user_id", user.id)
@@ -903,27 +1038,274 @@ export default function TimeEntryForm({
 
       if (areaError) throw areaError;
       if (!areaData) {
-        console.log("No matching area found for field:", fieldData.name);
+        console.log("No matching area found for user's field:", fieldData.name);
         return { fieldId: fieldData.id, areaId: null, activityId: activity.id };
       }
 
-      console.log("Found area in database:", areaData);
+      console.log(
+        "Found area in database:",
+        areaData,
+        "with user_id:",
+        areaData.user_id,
+      );
 
-      // Return all IDs for hierarchical selection
+      // Calculate confidence score based on match type
+      let confidence = 0;
+      if (exactMatchData?.length > 0) {
+        confidence = 1.0; // Perfect match
+      } else if (activity.name.toLowerCase() === activityName.toLowerCase()) {
+        confidence = 0.95; // Case-insensitive exact match
+      } else if (activity.name.toLowerCase().includes(activityName.toLowerCase())) {
+        confidence = 0.8; // Contains match
+      } else {
+        // Fuzzy match confidence based on similarity
+        confidence = calculateSimilarity(activityName.toLowerCase(), activity.name.toLowerCase());
+      }
+
+      // Return all IDs for hierarchical selection with confidence
       return {
         fieldId: fieldData.id,
         areaId: areaData.id,
         activityId: activity.id,
+        activityName: activity.name,
+        areaName: areaData.name,
+        fieldName: fieldData.name,
+        confidence: confidence,
       };
     } catch (error) {
       console.error("Error finding field and area by activity:", error);
-      return { fieldId: null, areaId: null, activityId: null };
+      return { fieldId: null, areaId: null, activityId: null, confidence: 0 };
+    }
+  };
+
+  // Function to show activity confirmation dialog
+  const showActivityConfirmationDialog = (activityData: any, originalInput: string, parsedData: any) => {
+    setActivityConfirmationData({
+      ...activityData,
+      originalInput,
+      parsedData
+    });
+    setShowActivityConfirmation(true);
+  };
+
+  // Function to suggest new activity creation
+  const suggestNewActivity = async (activityName: string, parsedData: any) => {
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Find the best matching area and field from user's existing data
+      const { data: userAreas } = await supabase
+        .from("areas")
+        .select("id, name")
+        .eq("is_active", true)
+        .eq("user_id", user.id)
+        .order("name");
+
+      if (!userAreas || userAreas.length === 0) {
+        alert("Sie haben noch keine Bereiche erstellt. Bitte erstellen Sie zuerst Bereiche und Felder in der Kategorienverwaltung.");
+        return;
+      }
+
+      // Try to find the best matching area based on context or use the first one
+      let suggestedArea = userAreas[0];
+      let suggestedField = null;
+
+      // If we have area/field info from parsed data, try to match it
+      if (parsedData.area) {
+        const matchedArea = findBestMatch(parsedData.area, userAreas, "name");
+        if (matchedArea) suggestedArea = matchedArea;
+      }
+
+      // Get fields for the suggested area
+      const { data: areaFields } = await supabase
+        .from("fields")
+        .select("id, name")
+        .eq("area_id", suggestedArea.id)
+        .eq("is_active", true)
+        .eq("user_id", user.id)
+        .order("name");
+
+      if (!areaFields || areaFields.length === 0) {
+        alert(`Der Bereich "${suggestedArea.name}" hat keine Felder. Bitte erstellen Sie zuerst Felder in der Kategorienverwaltung.`);
+        return;
+      }
+
+      // Try to find the best matching field
+      suggestedField = areaFields[0];
+      if (parsedData.field) {
+        const matchedField = findBestMatch(parsedData.field, areaFields, "name");
+        if (matchedField) suggestedField = matchedField;
+      }
+
+      // Show suggestion dialog
+      setNewActivitySuggestionData({
+        activityName: activityName,
+        suggestedArea: suggestedArea,
+        suggestedField: suggestedField,
+        allAreas: userAreas,
+        allFields: areaFields,
+        parsedData: parsedData
+      });
+      setShowNewActivitySuggestion(true);
+
+    } catch (error) {
+      console.error("Error suggesting new activity:", error);
+      alert("Fehler beim Vorschlagen einer neuen Aktivität.");
+    }
+  };
+
+  // Function to create new activity from voice input
+  const createNewActivityFromVoice = async (suggestionData: any) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      const { data, error } = await supabase
+        .from("activities")
+        .insert({
+          field_id: suggestionData.suggestedField.id,
+          name: suggestionData.activityName,
+          user_id: user.id,
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update local activities state
+      setActivities(prev => [...prev, data]);
+
+      // Set the new activity as selected and update hierarchy
+      setSelectedArea(suggestionData.suggestedArea.id);
+      await loadFieldsAndReturn(suggestionData.suggestedArea.id);
+      setSelectedField(suggestionData.suggestedField.id);
+      await loadActivitiesAndReturn(suggestionData.suggestedField.id);
+      setSelectedActivity(data.id);
+
+      // Apply other parsed data
+      const parsedData = suggestionData.parsedData;
+      if (parsedData.duration) {
+        if (typeof parsedData.duration === "number") {
+          const hours = Math.floor(parsedData.duration);
+          const minutes = Math.floor((parsedData.duration - hours) * 60);
+          const seconds = Math.floor(((parsedData.duration - hours) * 60 - minutes) * 60);
+          const formattedDuration = `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+          setDuration(formattedDuration);
+        } else {
+          setDuration(parsedData.duration);
+        }
+      }
+      if (parsedData.description) setDescription(parsedData.description);
+      if (parsedData.date) setDate(parsedData.date);
+      if (parsedData.startTime) setStartTime(formatTimeString(parsedData.startTime));
+      if (parsedData.endTime) setEndTime(formatTimeString(parsedData.endTime));
+
+      // Show success message
+      const successDiv = document.createElement("div");
+      successDiv.className = "fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-md";
+      successDiv.innerHTML = `
+        <div class="font-semibold mb-2">Neue Aktivität erfolgreich erstellt!</div>
+        <div class="text-sm opacity-90">"${data.name}" wurde im Bereich "${suggestionData.suggestedArea.name}" > "${suggestionData.suggestedField.name}" erstellt.</div>
+      `;
+      document.body.appendChild(successDiv);
+
+      setTimeout(() => {
+        successDiv.style.opacity = "0";
+        setTimeout(() => {
+          if (document.body.contains(successDiv)) {
+            document.body.removeChild(successDiv);
+          }
+        }, 300);
+      }, 4000);
+
+    } catch (error) {
+      console.error("Error creating new activity:", error);
+      alert("Fehler beim Erstellen der neuen Aktivität: " + error.message);
     }
   };
 
   // Enhanced hierarchical selection handler with sequential state updates
   const handleHierarchicalSelection = async (parsed: any) => {
     console.log("Starting hierarchical selection with:", parsed);
+
+    // Get current user ID for filtering
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      console.error(
+        "User not authenticated, cannot perform hierarchical selection",
+      );
+      return;
+    }
+    console.log("Performing hierarchical selection for user ID:", user.id);
+
+    // PRIORITY 1: If we have an activity, ALWAYS try to infer area and field first
+    // This is the main enhancement - try to infer hierarchy from activity regardless of whether area/field are provided
+    if (parsed.activity) {
+      console.log(
+        "Attempting to infer area and field from activity:",
+        parsed.activity,
+      );
+      const activityResult = await findFieldAndAreaByActivity(
+        parsed.activity,
+      );
+
+      if (activityResult.areaId && activityResult.fieldId && activityResult.activityId) {
+        console.log("Found activity with confidence:", activityResult.confidence);
+
+        // Check confidence level and ask for confirmation if uncertain
+        if (activityResult.confidence < 0.8) {
+          console.log("Low confidence match, asking for confirmation");
+          showActivityConfirmationDialog(activityResult, parsed.activity, parsed);
+          return; // Stop processing until user confirms
+        }
+
+        console.log("High confidence match, proceeding with hierarchy setup");
+        
+        // Set area first
+        setSelectedArea(activityResult.areaId);
+        console.log("Area set to ID:", activityResult.areaId);
+
+        // Force a synchronous load of fields for this area
+        const fieldsData = await loadFieldsAndReturn(activityResult.areaId);
+        console.log("Loaded fields for inferred area:", fieldsData.length);
+
+        // Wait for a longer time to ensure React has updated the DOM
+        await new Promise<void>((resolve) => setTimeout(resolve, 300));
+
+        // Set field
+        setSelectedField(activityResult.fieldId);
+        console.log("Field set to ID:", activityResult.fieldId);
+
+        // Force a synchronous load of activities for this field
+        const activitiesData = await loadActivitiesAndReturn(activityResult.fieldId);
+        console.log(
+          "Loaded activities for inferred field:",
+          activitiesData.length,
+        );
+
+        // Wait for a longer time to ensure React has updated the DOM
+        await new Promise<void>((resolve) => setTimeout(resolve, 300));
+
+        // Set activity
+        setSelectedActivity(activityResult.activityId);
+        console.log("Activity set to ID:", activityResult.activityId);
+
+        // Successfully set the complete hierarchy
+        return;
+      } else {
+        console.log(
+          "Could not find matching activity in user's database. Suggesting new activity creation.",
+        );
+        // Suggest creating a new activity
+        await suggestNewActivity(parsed.activity, parsed);
+        return; // Stop processing until user decides
+      }
+    }
 
     // If we already have a complete hierarchy selected, only update what's explicitly mentioned
     const hasCompleteHierarchy =
@@ -971,67 +1353,23 @@ export default function TimeEntryForm({
         if (activity) {
           console.log("Updating activity to:", activity.name);
           setSelectedActivity(activity.id);
+          console.log(
+            "Activity set to:",
+            activity.name,
+            "with ID:",
+            activity.id,
+          );
+        } else if (activitiesData.length === 1) {
+          console.log(
+            "Auto-selecting single activity:",
+            activitiesData[0].name,
+          );
+          setSelectedActivity(activitiesData[0].id);
+          console.log("Activity auto-set to:", activitiesData[0].name);
         }
       }
 
       return;
-    }
-
-    // PRIORITY 1: If we have an activity, always try to infer area and field first
-    // This is the main enhancement - try to infer hierarchy from activity regardless of whether area/field are provided
-    if (parsed.activity) {
-      console.log(
-        "Attempting to infer area and field from activity:",
-        parsed.activity,
-      );
-      const { fieldId, areaId, activityId } = await findFieldAndAreaByActivity(
-        parsed.activity,
-      );
-
-      if (areaId && fieldId && activityId) {
-        console.log("Successfully inferred complete hierarchy from activity:", {
-          areaId,
-          fieldId,
-          activityId,
-        });
-
-        // Set area first
-        setSelectedArea(areaId);
-        console.log("Area set to ID:", areaId);
-
-        // Force a synchronous load of fields for this area
-        const fieldsData = await loadFieldsAndReturn(areaId);
-        console.log("Loaded fields for inferred area:", fieldsData.length);
-
-        // Wait for a longer time to ensure React has updated the DOM
-        await new Promise<void>((resolve) => setTimeout(resolve, 300));
-
-        // Set field
-        setSelectedField(fieldId);
-        console.log("Field set to ID:", fieldId);
-
-        // Force a synchronous load of activities for this field
-        const activitiesData = await loadActivitiesAndReturn(fieldId);
-        console.log(
-          "Loaded activities for inferred field:",
-          activitiesData.length,
-        );
-
-        // Wait for a longer time to ensure React has updated the DOM
-        await new Promise<void>((resolve) => setTimeout(resolve, 300));
-
-        // Set activity
-        setSelectedActivity(activityId);
-        console.log("Activity set to ID:", activityId);
-
-        // Successfully set the complete hierarchy
-        return;
-      } else {
-        console.log(
-          "Could not infer complete hierarchy from activity. Falling back to standard selection.",
-        );
-        // Continue with standard selection process below
-      }
     }
 
     // Step 1: Handle area selection
@@ -1086,7 +1424,12 @@ export default function TimeEntryForm({
             if (activity) {
               console.log("Found matching activity:", activity.name);
               setSelectedActivity(activity.id);
-              console.log("Activity set to:", activity.name);
+              console.log(
+                "Activity set to:",
+                activity.name,
+                "with ID:",
+                activity.id,
+              );
             } else if (activitiesData.length === 1) {
               console.log(
                 "Auto-selecting single activity:",
@@ -1253,7 +1596,7 @@ export default function TimeEntryForm({
       const inferredArea = areas.find((a) => a.id === selectedArea);
       if (inferredArea) {
         inferredFields.push(
-          `⚡ Bereich: ${inferredArea.name} (automatisch abgeleitet)`,
+          `⚡ Bereich: ${inferredArea.name} (aus Nutzerdaten abgeleitet)`,
         );
       }
     }
@@ -1269,7 +1612,7 @@ export default function TimeEntryForm({
       const inferredField = fields.find((f) => f.id === selectedField);
       if (inferredField) {
         inferredFields.push(
-          `⚡ Feld: ${inferredField.name} (automatisch abgeleitet)`,
+          `⚡ Feld: ${inferredField.name} (aus Nutzerdaten abgeleitet)`,
         );
       }
     }
@@ -1278,7 +1621,9 @@ export default function TimeEntryForm({
       recognizedFields.push(`Aktivität: ${parsed.activity}`);
       const matchedActivity = activities.find((a) => a.id === selectedActivity);
       if (matchedActivity) {
-        matchedFields.push(`✓ Aktivität: ${matchedActivity.name}`);
+        matchedFields.push(
+          `✓ Aktivität: ${matchedActivity.name} (aus Ihren Daten)`,
+        );
       }
     }
 
@@ -1335,7 +1680,7 @@ export default function TimeEntryForm({
       !parsed.field &&
       inferredFields.length >= 2
         ? `<div class="text-xs mt-2 bg-blue-700 p-2 rounded">
-          <div class="font-semibold">⚡ Hierarchie automatisch aus Aktivität "${parsed.activity}" abgeleitet</div>
+          <div class="font-semibold">⚡ Hierarchie aus Ihren Daten für Aktivität "${parsed.activity}" abgeleitet</div>
         </div>`
         : "";
 
@@ -2165,6 +2510,201 @@ export default function TimeEntryForm({
                 </ul>
               </div>
             )}
+
+            {/* Activity Confirmation Dialog */}
+            <Dialog open={showActivityConfirmation} onOpenChange={setShowActivityConfirmation}>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Aktivität bestätigen</DialogTitle>
+                  <DialogDescription>
+                    Ich bin mir nicht ganz sicher, ob ich die richtige Aktivität erkannt habe.
+                  </DialogDescription>
+                </DialogHeader>
+                {activityConfirmationData && (
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <p className="text-sm text-gray-600 mb-2">
+                        <strong>Sie haben gesagt:</strong> "{activityConfirmationData.originalInput}"
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        <strong>Ich habe gefunden:</strong> "{activityConfirmationData.activityName}" 
+                        im Bereich "{activityConfirmationData.areaName}" > "{activityConfirmationData.fieldName}"
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Übereinstimmung: {Math.round(activityConfirmationData.confidence * 100)}%
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <Button 
+                        onClick={async () => {
+                          // User confirmed - proceed with the selection
+                          setSelectedArea(activityConfirmationData.areaId);
+                          await loadFieldsAndReturn(activityConfirmationData.areaId);
+                          await new Promise<void>((resolve) => setTimeout(resolve, 300));
+                          setSelectedField(activityConfirmationData.fieldId);
+                          await loadActivitiesAndReturn(activityConfirmationData.fieldId);
+                          await new Promise<void>((resolve) => setTimeout(resolve, 300));
+                          setSelectedActivity(activityConfirmationData.activityId);
+                          
+                          // Apply other parsed data
+                          const parsedData = activityConfirmationData.parsedData;
+                          if (parsedData.duration) {
+                            if (typeof parsedData.duration === "number") {
+                              const hours = Math.floor(parsedData.duration);
+                              const minutes = Math.floor((parsedData.duration - hours) * 60);
+                              const seconds = Math.floor(((parsedData.duration - hours) * 60 - minutes) * 60);
+                              const formattedDuration = `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+                              setDuration(formattedDuration);
+                            } else {
+                              setDuration(parsedData.duration);
+                            }
+                          }
+                          if (parsedData.description) setDescription(parsedData.description);
+                          if (parsedData.date) setDate(parsedData.date);
+                          if (parsedData.startTime) setStartTime(formatTimeString(parsedData.startTime));
+                          if (parsedData.endTime) setEndTime(formatTimeString(parsedData.endTime));
+                          
+                          setShowActivityConfirmation(false);
+                          setActivityConfirmationData(null);
+                        }}
+                        className="flex-1"
+                      >
+                        Ja, das ist richtig
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={async () => {
+                          // User rejected - suggest creating new activity
+                          setShowActivityConfirmation(false);
+                          await suggestNewActivity(activityConfirmationData.originalInput, activityConfirmationData.parsedData);
+                          setActivityConfirmationData(null);
+                        }}
+                        className="flex-1"
+                      >
+                        Nein, neue Aktivität erstellen
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
+
+            {/* New Activity Suggestion Dialog */}
+            <Dialog open={showNewActivitySuggestion} onOpenChange={setShowNewActivitySuggestion}>
+              <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>Neue Aktivität erstellen</DialogTitle>
+                  <DialogDescription>
+                    Ich konnte keine passende Aktivität in Ihrer Datenbank finden.
+                  </DialogDescription>
+                </DialogHeader>
+                {newActivitySuggestionData && (
+                  <div className="space-y-4">
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <p className="text-sm text-gray-700 mb-3">
+                        <strong>Soll ich eine neue Aktivität erstellen?</strong>
+                      </p>
+                      <div className="space-y-2 text-sm">
+                        <p><strong>Name:</strong> "{newActivitySuggestionData.activityName}"</p>
+                        <p><strong>Bereich:</strong> {newActivitySuggestionData.suggestedArea.name}</p>
+                        <p><strong>Feld:</strong> {newActivitySuggestionData.suggestedField.name}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Option to change area/field */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Bereich ändern (optional)</Label>
+                        <Select 
+                          value={newActivitySuggestionData.suggestedArea.id}
+                          onValueChange={async (value) => {
+                            const selectedArea = newActivitySuggestionData.allAreas.find(a => a.id === value);
+                            if (selectedArea) {
+                              // Load fields for the new area
+                              const { data: fields } = await supabase
+                                .from("fields")
+                                .select("id, name")
+                                .eq("area_id", value)
+                                .eq("is_active", true)
+                                .eq("user_id", (await supabase.auth.getUser()).data.user?.id)
+                                .order("name");
+                              
+                              setNewActivitySuggestionData(prev => ({
+                                ...prev,
+                                suggestedArea: selectedArea,
+                                suggestedField: fields?.[0] || prev.suggestedField,
+                                allFields: fields || []
+                              }));
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {newActivitySuggestionData.allAreas.map((area) => (
+                              <SelectItem key={area.id} value={area.id}>
+                                {area.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Feld ändern (optional)</Label>
+                        <Select 
+                          value={newActivitySuggestionData.suggestedField.id}
+                          onValueChange={(value) => {
+                            const selectedField = newActivitySuggestionData.allFields.find(f => f.id === value);
+                            if (selectedField) {
+                              setNewActivitySuggestionData(prev => ({
+                                ...prev,
+                                suggestedField: selectedField
+                              }));
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {newActivitySuggestionData.allFields.map((field) => (
+                              <SelectItem key={field.id} value={field.id}>
+                                {field.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-3">
+                      <Button 
+                        onClick={async () => {
+                          await createNewActivityFromVoice(newActivitySuggestionData);
+                          setShowNewActivitySuggestion(false);
+                          setNewActivitySuggestionData(null);
+                        }}
+                        className="flex-1"
+                      >
+                        Ja, Aktivität erstellen
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setShowNewActivitySuggestion(false);
+                          setNewActivitySuggestionData(null);
+                        }}
+                        className="flex-1"
+                      >
+                        Abbrechen
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
 
             {/* Submit Button */}
             <div className="flex gap-3">
