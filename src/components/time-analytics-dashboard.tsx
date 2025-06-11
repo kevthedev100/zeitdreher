@@ -941,47 +941,6 @@ export default function TimeAnalyticsDashboard({
           </Card>
         </div>
 
-        {/* AI Optimization Button */}
-        <Button className="bg-purple-600 hover:bg-purple-700 text-white">
-          <Sparkles className="w-4 h-4 mr-2" />
-          KI-Optimierungplan erstellen
-        </Button>
-
-        {/* AI Optimization Suggestions - Purple Theme */}
-        <Card className="border-purple-200 bg-purple-50">
-          <CardHeader className="bg-purple-100 border-b border-purple-200">
-            <CardTitle className="flex items-center gap-2 text-purple-800">
-              <Sparkles className="w-5 h-5 text-purple-600" />
-              Vorschläge für KI-Optimierung
-            </CardTitle>
-            <CardDescription className="text-purple-700">
-              Automatisch generierte Vorschläge zur Verbesserung Ihrer
-              Arbeitsabläufe
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              <div className="p-4 bg-purple-100 rounded-lg border border-purple-200">
-                <h4 className="font-medium text-purple-800 mb-2">
-                  Entwicklung
-                </h4>
-                <p className="text-purple-700 text-sm">
-                  Erstellen Sie eine Make.com-Automatisierung, um Code-Reviews
-                  automatisch zu planen und Erinnerungen zu senden.
-                </p>
-              </div>
-              <div className="p-4 bg-purple-100 rounded-lg border border-purple-200">
-                <h4 className="font-medium text-purple-800 mb-2">Meetings</h4>
-                <p className="text-purple-700 text-sm">
-                  Nutzen Sie einen ChatGPT-Prompt, um automatisch
-                  Meeting-Zusammenfassungen zu erstellen und Aktionspunkte zu
-                  extrahieren.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Recent Time Entries Table */}
         <Card>
           <CardHeader>
