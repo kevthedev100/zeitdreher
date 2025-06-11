@@ -603,14 +603,14 @@ export default function TimeEntriesTable({
                   <th className="text-left py-3 px-4 font-medium">Dauer</th>
                   <th className="text-left py-3 px-4 font-medium">Datum</th>
                   <th className="text-left py-3 px-4 font-medium">Status</th>
-                  <th className="text-left py-3 px-4 font-medium">
-                    Beschreibung
-                  </th>
                   <th className="text-left py-3 px-4 font-medium">Aktionen</th>
                   <th className="text-left py-3 px-4 font-medium">
                     Anfangszeit
                   </th>
                   <th className="text-left py-3 px-4 font-medium">Endzeit</th>
+                  <th className="text-left py-3 px-4 font-medium">
+                    Beschreibung
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -642,9 +642,6 @@ export default function TimeEntriesTable({
                           <div className="h-6 bg-gray-200 rounded w-16 animate-pulse"></div>
                         </td>
                         <td className="py-4 px-4">
-                          <div className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
-                        </td>
-                        <td className="py-4 px-4">
                           <div className="flex items-center gap-2">
                             <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
                             <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
@@ -655,6 +652,9 @@ export default function TimeEntriesTable({
                         </td>
                         <td className="py-4 px-4">
                           <div className="h-4 bg-gray-200 rounded w-16 animate-pulse"></div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
                         </td>
                       </tr>
                     ))
@@ -724,14 +724,6 @@ export default function TimeEntriesTable({
                             Erfasst
                           </Badge>
                         </td>
-                        <td className="py-4 px-4 max-w-xs">
-                          <p
-                            className="text-sm text-gray-600 truncate"
-                            title={entry.description || "Keine Beschreibung"}
-                          >
-                            {entry.description || "Keine Beschreibung"}
-                          </p>
-                        </td>
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-2">
                             <Button
@@ -773,6 +765,14 @@ export default function TimeEntriesTable({
                                 : "--:--"}
                             </span>
                           </div>
+                        </td>
+                        <td className="py-4 px-4 max-w-xs">
+                          <p
+                            className="text-sm text-gray-600 truncate"
+                            title={entry.description || "Keine Beschreibung"}
+                          >
+                            {entry.description || "Keine Beschreibung"}
+                          </p>
                         </td>
                       </tr>
                     ))}

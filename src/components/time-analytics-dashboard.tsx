@@ -217,42 +217,50 @@ export default function TimeAnalyticsDashboard({
     }
 
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const today = now.toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
 
+    // Calculate start of current week (Monday)
     const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
-    startOfWeek.setHours(0, 0, 0, 0);
+    const dayOfWeek = now.getDay();
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, so we need 6 days back
+    startOfWeek.setDate(now.getDate() - daysToMonday);
+    const startOfWeekStr = startOfWeek.toISOString().split("T")[0];
 
+    // Calculate start of last week
     const startOfLastWeek = new Date(startOfWeek);
     startOfLastWeek.setDate(startOfWeek.getDate() - 7);
+    const startOfLastWeekStr = startOfLastWeek.toISOString().split("T")[0];
+    const endOfLastWeekStr = new Date(
+      startOfWeek.getTime() - 24 * 60 * 60 * 1000,
+    )
+      .toISOString()
+      .split("T")[0];
 
+    // Calculate start of current month
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfMonthStr = startOfMonth.toISOString().split("T")[0];
 
     // Calculate today's hours
     const todayHours = timeEntries
-      .filter((entry) => {
-        const entryDate = new Date(entry.date);
-        return entryDate.toDateString() === today.toDateString();
-      })
+      .filter((entry) => entry.date === today)
+      .reduce((sum, entry) => sum + entry.duration, 0);
+
+    // Calculate this week's hours (from Monday to today)
+    const thisWeekHours = timeEntries
+      .filter((entry) => entry.date >= startOfWeekStr)
+      .reduce((sum, entry) => sum + entry.duration, 0);
+
+    // Calculate last week's hours
+    const lastWeekHours = timeEntries
+      .filter(
+        (entry) =>
+          entry.date >= startOfLastWeekStr && entry.date <= endOfLastWeekStr,
+      )
       .reduce((sum, entry) => sum + entry.duration, 0);
 
     // Calculate this month's hours
     const thisMonthHours = timeEntries
-      .filter((entry) => new Date(entry.date) >= startOfMonth)
-      .reduce((sum, entry) => sum + entry.duration, 0);
-
-    const thisWeekHours = timeEntries
-      .filter((entry) => {
-        const entryDate = new Date(entry.date);
-        return entryDate >= startOfWeek;
-      })
-      .reduce((sum, entry) => sum + entry.duration, 0);
-
-    const lastWeekHours = timeEntries
-      .filter((entry) => {
-        const entryDate = new Date(entry.date);
-        return entryDate >= startOfLastWeek && entryDate < startOfWeek;
-      })
+      .filter((entry) => entry.date >= startOfMonthStr)
       .reduce((sum, entry) => sum + entry.duration, 0);
 
     // Find top activity
@@ -932,6 +940,47 @@ export default function TimeAnalyticsDashboard({
             </CardContent>
           </Card>
         </div>
+
+        {/* AI Optimization Button */}
+        <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+          <Sparkles className="w-4 h-4 mr-2" />
+          KI-Optimierungplan erstellen
+        </Button>
+
+        {/* AI Optimization Suggestions - Purple Theme */}
+        <Card className="border-purple-200 bg-purple-50">
+          <CardHeader className="bg-purple-100 border-b border-purple-200">
+            <CardTitle className="flex items-center gap-2 text-purple-800">
+              <Sparkles className="w-5 h-5 text-purple-600" />
+              Vorschläge für KI-Optimierung
+            </CardTitle>
+            <CardDescription className="text-purple-700">
+              Automatisch generierte Vorschläge zur Verbesserung Ihrer
+              Arbeitsabläufe
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              <div className="p-4 bg-purple-100 rounded-lg border border-purple-200">
+                <h4 className="font-medium text-purple-800 mb-2">
+                  Entwicklung
+                </h4>
+                <p className="text-purple-700 text-sm">
+                  Erstellen Sie eine Make.com-Automatisierung, um Code-Reviews
+                  automatisch zu planen und Erinnerungen zu senden.
+                </p>
+              </div>
+              <div className="p-4 bg-purple-100 rounded-lg border border-purple-200">
+                <h4 className="font-medium text-purple-800 mb-2">Meetings</h4>
+                <p className="text-purple-700 text-sm">
+                  Nutzen Sie einen ChatGPT-Prompt, um automatisch
+                  Meeting-Zusammenfassungen zu erstellen und Aktionspunkte zu
+                  extrahieren.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Recent Time Entries Table */}
         <Card>

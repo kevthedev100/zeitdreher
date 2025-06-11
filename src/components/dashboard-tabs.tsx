@@ -69,6 +69,9 @@ export default function DashboardTabs({
   const [hasEnoughData, setHasEnoughData] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
+  const [areaSuggestions, setAreaSuggestions] = useState<any[]>([]);
+  const [isGeneratingAreaSuggestions, setIsGeneratingAreaSuggestions] =
+    useState(false);
   const [editingEntry, setEditingEntry] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
@@ -243,10 +246,10 @@ export default function DashboardTabs({
         })) || [];
 
       setLastTwoWeeksEntries(formattedEntries);
-      setHasEnoughData(formattedEntries.length >= 25);
+      setHasEnoughData(formattedEntries.length >= 5);
 
       console.log(
-        `Found ${formattedEntries.length} entries in the last 14 days. Enough data: ${formattedEntries.length >= 25}`,
+        `Found ${formattedEntries.length} entries in the last 14 days. Enough data: ${formattedEntries.length >= 5}`,
       );
     } catch (error) {
       console.error("Error checking data for analysis:", error);
@@ -262,7 +265,7 @@ export default function DashboardTabs({
 
       // Call the edge function to generate optimization plan
       const { data, error } = await supabase.functions.invoke(
-        "supabase-functions-generate-optimization-plan",
+        "supabase-functions-generate-area-optimization-suggestions",
         {
           body: {
             entries: lastTwoWeeksEntries,
@@ -275,8 +278,20 @@ export default function DashboardTabs({
       console.log("AI Optimization Analysis Response:", data);
 
       // Update suggestions with the AI response
-      if (data.recommendations && data.recommendations.length > 0) {
-        setAiSuggestions(data.recommendations);
+      if (data.suggestions && data.suggestions.length > 0) {
+        // Convert area suggestions format to match the expected format for aiSuggestions
+        const formattedSuggestions = data.suggestions.map(
+          (suggestion, index) => {
+            const types = ["purple", "blue", "green", "amber"];
+            return {
+              title: suggestion.area,
+              description: suggestion.suggestion,
+              potential: `Einträge: ${suggestion.entriesCount}, Stunden: ${suggestion.totalHours.toFixed(1)}h`,
+              type: types[index % types.length],
+            };
+          },
+        );
+        setAiSuggestions(formattedSuggestions);
       } else {
         // Fallback if no recommendations were returned
         setAiSuggestions([
@@ -324,6 +339,56 @@ export default function DashboardTabs({
       ]);
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const generateAreaOptimizationSuggestions = async () => {
+    try {
+      setIsGeneratingAreaSuggestions(true);
+      setAreaSuggestions([]);
+
+      // Call the new edge function for area-specific suggestions
+      const { data, error } = await supabase.functions.invoke(
+        "supabase-functions-generate-area-optimization-suggestions",
+        {
+          body: {
+            entries: lastTwoWeeksEntries,
+          },
+        },
+      );
+
+      if (error) throw error;
+
+      console.log("Area Optimization Suggestions Response:", data);
+
+      if (data.suggestions && data.suggestions.length > 0) {
+        setAreaSuggestions(data.suggestions);
+      } else {
+        // Fallback if no suggestions were returned
+        setAreaSuggestions([
+          {
+            area: "Allgemein",
+            suggestion:
+              "Keine spezifischen Vorschläge verfügbar. Versuchen Sie, mehr detaillierte Zeiteinträge zu erfassen.",
+            entriesCount: 0,
+            totalHours: 0,
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error("Error generating area optimization suggestions:", error);
+      // Fallback suggestions on error
+      setAreaSuggestions([
+        {
+          area: "Fehler",
+          suggestion:
+            "Es gab einen Fehler beim Generieren der Vorschläge. Bitte versuchen Sie es später erneut.",
+          entriesCount: 0,
+          totalHours: 0,
+        },
+      ]);
+    } finally {
+      setIsGeneratingAreaSuggestions(false);
     }
   };
 
@@ -761,25 +826,134 @@ export default function DashboardTabs({
                   )
                 ) : (
                   <div className="text-center py-8">
-                    <AlertCircle className="w-12 h-12 mx-auto mb-4 text-amber-500 opacity-70" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      Nicht genügend Daten
-                    </h3>
-                    <p className="text-gray-600 mb-4">
-                      Für KI-Optimierungsvorschläge werden mindestens 25
-                      Zeiteinträge aus den letzten zwei Wochen benötigt.
-                    </p>
-                    <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 text-amber-800 text-sm">
-                      <p className="font-medium">Aktueller Status:</p>
-                      <p>
-                        {lastTwoWeeksEntries.length} von 25 benötigten Einträgen
-                        vorhanden
-                      </p>
-                    </div>
+                    {hasEnoughData ? (
+                      <div>
+                        <Button
+                          onClick={generateAreaOptimizationSuggestions}
+                          disabled={isGeneratingAreaSuggestions}
+                          className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-4 rounded-lg font-medium transition-all duration-200 flex items-center gap-3 mx-auto mb-4"
+                        >
+                          {isGeneratingAreaSuggestions ? (
+                            <>
+                              <RefreshCw className="w-5 h-5 animate-spin" />
+                              Generiere Optimierungsvorschläge...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-5 h-5" />
+                              Optimierungsvorschläge generieren
+                            </>
+                          )}
+                        </Button>
+                        <p className="text-sm text-gray-500">
+                          Analysiert Ihre Zeiteinträge bereichsweise und gibt
+                          spezifische Make.com Workflow- und
+                          ChatGPT-Empfehlungen
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <AlertCircle className="w-12 h-12 mx-auto mb-4 text-amber-500 opacity-70" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">
+                          Nicht genügend Daten
+                        </h3>
+                        <p className="text-gray-600 mb-4">
+                          Für KI-Optimierungsvorschläge werden mindestens 5
+                          Zeiteinträge aus den letzten zwei Wochen benötigt.
+                        </p>
+                        <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 text-amber-800 text-sm">
+                          <p className="font-medium">Aktueller Status:</p>
+                          <p>
+                            {lastTwoWeeksEntries.length} von 5 benötigten
+                            Einträgen vorhanden
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            {/* Area-Specific Optimization Suggestions */}
+            {areaSuggestions.length > 0 && (
+              <Card className="border-2 border-blue-100 mt-8">
+                <CardHeader className="bg-blue-50">
+                  <CardTitle className="flex items-center gap-2 text-blue-800">
+                    <Sparkles className="w-5 h-5 text-blue-600" />
+                    Bereichsspezifische Optimierungsvorschläge
+                  </CardTitle>
+                  <CardDescription>
+                    Make.com Workflows und ChatGPT Prompts für Ihre
+                    Arbeitsbereiche
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="space-y-8">
+                    {areaSuggestions.map((areaSuggestion, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-500"></div>
+                            {areaSuggestion.area}
+                          </h3>
+                          <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                            {areaSuggestion.entriesCount} Einträge •{" "}
+                            {areaSuggestion.totalHours.toFixed(1)}h
+                          </div>
+                        </div>
+                        <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
+                          {areaSuggestion.suggestion
+                            .split("\n")
+                            .map((line, lineIndex) => {
+                              if (line.trim() === "")
+                                return <br key={lineIndex} />;
+                              if (line.startsWith("•")) {
+                                return (
+                                  <div
+                                    key={lineIndex}
+                                    className="flex items-start gap-2 my-2"
+                                  >
+                                    <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0"></div>
+                                    <span>{line.substring(1).trim()}</span>
+                                  </div>
+                                );
+                              }
+                              if (line.includes("**") && line.includes("**")) {
+                                const parts = line.split("**");
+                                return (
+                                  <p key={lineIndex} className="my-2">
+                                    {parts.map((part, partIndex) =>
+                                      partIndex % 2 === 1 ? (
+                                        <strong
+                                          key={partIndex}
+                                          className="text-blue-700"
+                                        >
+                                          {part}
+                                        </strong>
+                                      ) : (
+                                        part
+                                      ),
+                                    )}
+                                  </p>
+                                );
+                              }
+                              return (
+                                <p key={lineIndex} className="my-2">
+                                  {line}
+                                </p>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="categories" className="p-6">
