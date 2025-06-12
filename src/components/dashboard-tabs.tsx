@@ -764,10 +764,10 @@ export default function DashboardTabs({
             </div>
 
             {/* AI Optimization Suggestions */}
-            <Card className="border-2 border-purple-100 mt-8">
-              <CardHeader className="bg-purple-50">
-                <CardTitle className="flex items-center gap-2 text-purple-800">
-                  <Bot className="w-5 h-5 text-purple-600" />
+            <Card className="border-2 border-yellow-100 mt-8">
+              <CardHeader className="bg-yellow-50">
+                <CardTitle className="flex items-center gap-2 text-yellow-800">
+                  <Bot className="w-5 h-5 text-yellow-600" />
                   Vorschläge für KI-Optimierung
                 </CardTitle>
                 <CardDescription>
@@ -804,7 +804,7 @@ export default function DashboardTabs({
                       <Button
                         onClick={runAiAnalysis}
                         disabled={isAnalyzing}
-                        className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+                        className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto"
                       >
                         {isAnalyzing ? (
                           <>
@@ -831,7 +831,7 @@ export default function DashboardTabs({
                         <Button
                           onClick={generateAreaOptimizationSuggestions}
                           disabled={isGeneratingAreaSuggestions}
-                          className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-4 rounded-lg font-medium transition-all duration-200 flex items-center gap-3 mx-auto mb-4"
+                          className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white px-8 py-4 rounded-lg font-medium transition-all duration-200 flex items-center gap-3 mx-auto mb-4"
                         >
                           {isGeneratingAreaSuggestions ? (
                             <>
