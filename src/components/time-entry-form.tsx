@@ -2043,7 +2043,7 @@ export default function TimeEntryForm({
 
   if (loading) {
     return (
-      <div className="bg-white p-6">
+      <div className="bg-white p-2 sm:p-6">
         <Card className="max-w-2xl mx-auto">
           <CardContent className="p-6">
             <div className="animate-pulse space-y-4">
@@ -2062,7 +2062,7 @@ export default function TimeEntryForm({
   }
 
   return (
-    <div className="bg-white p-6">
+    <div className="bg-white p-2 sm:p-6">
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -2099,8 +2099,8 @@ export default function TimeEntryForm({
                 </div>
               )}
 
-              {/* Control Buttons */}
-              <div className="flex gap-3">
+              {/* Control Buttons - stack vertically on mobile */}
+              <div className="flex flex-col sm:flex-row gap-3">
                 <Button
                   type="button"
                   onClick={handleVoiceToggle}

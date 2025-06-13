@@ -367,14 +367,14 @@ export default function TimeAnalyticsDashboard({
 
   if (loading) {
     return (
-      <div className="bg-white p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <div className="bg-white p-1 sm:p-4 lg:p-6">
+        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
           {/* Loading skeleton */}
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
             <div className="h-4 bg-gray-200 rounded w-1/2 mb-6"></div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-6 mb-4 sm:mb-6">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="bg-white border rounded-lg p-6">
                   <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
@@ -384,7 +384,7 @@ export default function TimeAnalyticsDashboard({
               ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
               <div className="bg-white border rounded-lg p-6">
                 <div className="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
                 <div className="space-y-3">
@@ -410,10 +410,10 @@ export default function TimeAnalyticsDashboard({
 
   if (error) {
     return (
-      <div className="bg-white p-6">
+      <div className="bg-white p-1 sm:p-4 lg:p-6">
         <div className="max-w-7xl mx-auto">
           <Card className="border-red-200">
-            <CardContent className="p-6">
+            <CardContent className="px-3 py-2">
               <div className="text-center">
                 <div className="text-red-600 mb-2">
                   <Clock className="w-12 h-12 mx-auto mb-4" />
@@ -435,8 +435,8 @@ export default function TimeAnalyticsDashboard({
   }
 
   return (
-    <div className="bg-white p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="bg-white p-1 sm:p-4 lg:p-6">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -470,15 +470,15 @@ export default function TimeAnalyticsDashboard({
         </div>
 
         {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-6 sm:mt-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 py-2">
               <CardTitle className="text-sm font-medium">
                 Heutige Stunden
               </CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 py-2">
               <div className="text-2xl font-bold">
                 {timeData.todayHours.toFixed(1)}h
               </div>
@@ -487,11 +487,11 @@ export default function TimeAnalyticsDashboard({
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 py-2">
               <CardTitle className="text-sm font-medium">Diese Woche</CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 py-2">
               <div className="text-2xl font-bold">
                 {timeData.thisWeek.toFixed(1)}h
               </div>
@@ -504,13 +504,13 @@ export default function TimeAnalyticsDashboard({
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 py-2">
               <CardTitle className="text-sm font-medium">
                 Dieser Monat
               </CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 py-2">
               <div className="text-2xl font-bold">
                 {timeData.thisMonth.toFixed(1)}h
               </div>
@@ -519,13 +519,13 @@ export default function TimeAnalyticsDashboard({
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 py-2">
               <CardTitle className="text-sm font-medium">
                 Top-Aktivität
               </CardTitle>
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 py-2">
               <div className="text-2xl font-bold text-blue-600">
                 {timeData.topActivity}
               </div>
@@ -537,7 +537,7 @@ export default function TimeAnalyticsDashboard({
         </div>
 
         {/* Daily Time Distribution Bar */}
-        <Card>
+        <Card className="bg-transparent sm:bg-white border-0 sm:border shadow-none sm:shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="w-5 h-5" />
@@ -553,8 +553,9 @@ export default function TimeAnalyticsDashboard({
                 <div>
                   <div className="flex justify-between text-xs text-gray-500 mb-2">
                     {Array.from({ length: 20 }).map((_, i) => (
-                      <div key={i} className="text-center">
-                        {(i + 5) % 24}:00
+                      <div key={i} className="text-center text-xs sm:text-sm">
+                        {(i + 5) % 24}
+                        <span className="hidden sm:inline">:00</span>
                       </div>
                     ))}
                   </div>
@@ -828,7 +829,7 @@ export default function TimeAnalyticsDashboard({
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
           {/* Time Distribution Pie Chart */}
           <Card>
             <CardHeader>
@@ -840,7 +841,7 @@ export default function TimeAnalyticsDashboard({
                 Aufschlüsselung der Stunden nach verschiedenen Arbeitsbereichen
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 py-2">
               <div className="space-y-4">
                 {areaBreakdown.length > 0 ? (
                   areaBreakdown.map((area, index) => (
@@ -907,7 +908,7 @@ export default function TimeAnalyticsDashboard({
                 Täglich gearbeitete Stunden diese Woche
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 py-2">
               <div className="space-y-4">
                 {weeklyTrend.length > 0 ? (
                   weeklyTrend.map((day, index) => (
@@ -942,7 +943,7 @@ export default function TimeAnalyticsDashboard({
         </div>
 
         {/* Recent Time Entries Table */}
-        <Card>
+        <Card className="bg-transparent sm:bg-white border-0 sm:border shadow-none sm:shadow-sm">
           <CardHeader>
             <CardTitle>Letzte Zeiteinträge</CardTitle>
             <CardDescription>

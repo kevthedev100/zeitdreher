@@ -422,10 +422,10 @@ export default function TimeEntriesTable({
   };
 
   return (
-    <div className="bg-white p-6">
-      <Card className="max-w-7xl mx-auto">
-        <CardHeader>
-          <div className="flex items-center justify-between">
+    <div className="bg-white p-2 sm:p-4 lg:p-6">
+      <Card className="max-w-7xl mx-auto border-0 shadow-none sm:border sm:shadow-sm">
+        <CardHeader className="px-2 py-3 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="w-5 h-5" />
@@ -455,9 +455,9 @@ export default function TimeEntriesTable({
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-2 sm:px-6">
           {/* Filters and Search */}
-          <div className="space-y-4 mb-6">
+          <div className="space-y-3 mb-4 sm:mb-6">
             {/* Search Bar */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -470,7 +470,7 @@ export default function TimeEntriesTable({
             </div>
 
             {/* Filter Row */}
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <Select
                 value={filterArea}
                 onValueChange={(value) => {
@@ -479,7 +479,7 @@ export default function TimeEntriesTable({
                   setFilterActivity("all");
                 }}
               >
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-full sm:w-48 h-9 text-sm">
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Bereich" />
                 </SelectTrigger>
@@ -507,7 +507,7 @@ export default function TimeEntriesTable({
                 }}
                 disabled={filterArea === "all"}
               >
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-full sm:w-48 h-9 text-sm">
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Feld" />
                 </SelectTrigger>
@@ -526,7 +526,7 @@ export default function TimeEntriesTable({
                 onValueChange={setFilterActivity}
                 disabled={filterField === "all"}
               >
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-full sm:w-48 h-9 text-sm">
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Aktivität" />
                 </SelectTrigger>
@@ -541,7 +541,7 @@ export default function TimeEntriesTable({
               </Select>
 
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-full sm:w-48 h-9 text-sm">
                   <ArrowUpDown className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Sortieren" />
                 </SelectTrigger>
@@ -589,26 +589,40 @@ export default function TimeEntriesTable({
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto -mx-2 sm:mx-0">
+            <table className="w-full text-sm">
               <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4 font-medium">Aktivität</th>
-                  <th className="text-left py-3 px-4 font-medium">Bereich</th>
+                <tr className="border-b bg-gray-50">
+                  <th className="text-left py-2 px-2 sm:py-3 sm:px-4 font-medium text-xs sm:text-sm">
+                    Aktivität
+                  </th>
+                  <th className="text-left py-2 px-2 sm:py-3 sm:px-4 font-medium text-xs sm:text-sm">
+                    Bereich
+                  </th>
                   {userRole === "manager" && (
-                    <th className="text-left py-3 px-4 font-medium">
+                    <th className="text-left py-2 px-2 sm:py-3 sm:px-4 font-medium text-xs sm:text-sm">
                       Mitarbeiter
                     </th>
                   )}
-                  <th className="text-left py-3 px-4 font-medium">Dauer</th>
-                  <th className="text-left py-3 px-4 font-medium">Datum</th>
-                  <th className="text-left py-3 px-4 font-medium">Status</th>
-                  <th className="text-left py-3 px-4 font-medium">Aktionen</th>
-                  <th className="text-left py-3 px-4 font-medium">
+                  <th className="text-left py-2 px-2 sm:py-3 sm:px-4 font-medium text-xs sm:text-sm">
+                    Dauer
+                  </th>
+                  <th className="text-left py-2 px-2 sm:py-3 sm:px-4 font-medium text-xs sm:text-sm">
+                    Datum
+                  </th>
+                  <th className="text-left py-2 px-2 sm:py-3 sm:px-4 font-medium text-xs sm:text-sm">
+                    Status
+                  </th>
+                  <th className="text-left py-2 px-2 sm:py-3 sm:px-4 font-medium text-xs sm:text-sm">
+                    Aktionen
+                  </th>
+                  <th className="text-left py-2 px-2 sm:py-3 sm:px-4 font-medium text-xs sm:text-sm">
                     Anfangszeit
                   </th>
-                  <th className="text-left py-3 px-4 font-medium">Endzeit</th>
-                  <th className="text-left py-3 px-4 font-medium">
+                  <th className="text-left py-2 px-2 sm:py-3 sm:px-4 font-medium text-xs sm:text-sm">
+                    Endzeit
+                  </th>
+                  <th className="text-left py-2 px-2 sm:py-3 sm:px-4 font-medium text-xs sm:text-sm">
                     Beschreibung
                   </th>
                 </tr>
@@ -618,42 +632,42 @@ export default function TimeEntriesTable({
                   ? // Loading skeleton
                     Array.from({ length: 5 }).map((_, index) => (
                       <tr key={index} className="border-b">
-                        <td className="py-4 px-4">
+                        <td className="py-2 px-2 sm:py-4 sm:px-4">
                           <div className="animate-pulse">
                             <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
                             <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                           </div>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-2 px-2 sm:py-4 sm:px-4">
                           <div className="h-6 bg-gray-200 rounded w-20 animate-pulse"></div>
                         </td>
                         {userRole === "manager" && (
-                          <td className="py-4 px-4">
+                          <td className="py-2 px-2 sm:py-4 sm:px-4">
                             <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
                           </td>
                         )}
-                        <td className="py-4 px-4">
+                        <td className="py-2 px-2 sm:py-4 sm:px-4">
                           <div className="h-4 bg-gray-200 rounded w-16 animate-pulse"></div>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-2 px-2 sm:py-4 sm:px-4">
                           <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-2 px-2 sm:py-4 sm:px-4">
                           <div className="h-6 bg-gray-200 rounded w-16 animate-pulse"></div>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-2 px-2 sm:py-4 sm:px-4">
                           <div className="flex items-center gap-2">
                             <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
                             <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
                           </div>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-2 px-2 sm:py-4 sm:px-4">
                           <div className="h-4 bg-gray-200 rounded w-16 animate-pulse"></div>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-2 px-2 sm:py-4 sm:px-4">
                           <div className="h-4 bg-gray-200 rounded w-16 animate-pulse"></div>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-2 px-2 sm:py-4 sm:px-4">
                           <div className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
                         </td>
                       </tr>
@@ -663,7 +677,7 @@ export default function TimeEntriesTable({
                         key={entry.id}
                         className="border-b hover:bg-gray-50 transition-colors"
                       >
-                        <td className="py-4 px-4">
+                        <td className="py-2 px-2 sm:py-4 sm:px-4">
                           <div>
                             <div className="font-medium">
                               {entry.activities?.name || "Unbekannte Aktivität"}
@@ -673,7 +687,7 @@ export default function TimeEntriesTable({
                             </div>
                           </div>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-2 px-2 sm:py-4 sm:px-4">
                           <Badge
                             variant="secondary"
                             className={getAreaColorFromHex(
@@ -693,7 +707,7 @@ export default function TimeEntriesTable({
                           </Badge>
                         </td>
                         {userRole === "manager" && (
-                          <td className="py-4 px-4">
+                          <td className="py-2 px-2 sm:py-4 sm:px-4">
                             <div className="font-medium">
                               {entry.users?.full_name || "Unbekannter Benutzer"}
                             </div>
@@ -702,7 +716,7 @@ export default function TimeEntriesTable({
                             </div>
                           </td>
                         )}
-                        <td className="py-4 px-4">
+                        <td className="py-2 px-2 sm:py-4 sm:px-4">
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4 text-gray-400" />
                             <span className="font-semibold">
@@ -710,13 +724,13 @@ export default function TimeEntriesTable({
                             </span>
                           </div>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-2 px-2 sm:py-4 sm:px-4">
                           <div className="flex items-center gap-1">
                             <Calendar className="w-4 h-4 text-gray-400" />
                             <span>{formatDate(entry.date)}</span>
                           </div>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-2 px-2 sm:py-4 sm:px-4">
                           <Badge
                             variant="secondary"
                             className="bg-green-100 text-green-800"
@@ -724,29 +738,29 @@ export default function TimeEntriesTable({
                             Erfasst
                           </Badge>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-2 px-2 sm:py-4 sm:px-4">
                           <div className="flex items-center gap-2">
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleEditEntry(entry.id)}
-                              className="h-8 w-8 p-0"
+                              className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                               title="Bearbeiten"
                             >
-                              <Edit className="w-4 h-4" />
+                              <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleDeleteEntry(entry.id)}
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                               title="Löschen"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                             </Button>
                           </div>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-2 px-2 sm:py-4 sm:px-4">
                           <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-md">
                             <Clock className="w-3 h-3 text-blue-600" />
                             <span className="text-sm font-mono text-blue-700">
@@ -756,7 +770,7 @@ export default function TimeEntriesTable({
                             </span>
                           </div>
                         </td>
-                        <td className="py-4 px-4">
+                        <td className="py-2 px-2 sm:py-4 sm:px-4">
                           <div className="flex items-center gap-1 bg-red-50 px-2 py-1 rounded-md">
                             <Clock className="w-3 h-3 text-red-600" />
                             <span className="text-sm font-mono text-red-700">

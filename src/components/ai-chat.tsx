@@ -255,22 +255,22 @@ export default function AIChat({ userRole = "employee" }) {
   };
 
   return (
-    <div className="bg-white p-6">
-      <Card className="max-w-4xl mx-auto">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+    <div className="bg-white p-1 sm:p-4 lg:p-6">
+      <Card className="max-w-4xl mx-auto border-0 shadow-none lg:border lg:shadow-sm">
+        <CardHeader className="px-2 py-3 sm:p-6">
+          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
             <Bot className="w-5 h-5" />
             Zeitdreher AI-Chat
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             Erhalte intelligente Einblicke und Ratschläge zu deinen
             Zeiteinträgen
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col h-[600px]">
+        <CardContent className="px-2 sm:px-6">
+          <div className="flex flex-col h-[calc(100vh-220px)] sm:h-[600px]">
             {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto mb-4 p-4 border rounded-lg">
+            <div className="flex-1 overflow-y-auto mb-3 p-2 sm:p-4 border rounded-lg bg-gray-50">
               {messages.map((message, index) =>
                 message.role !== "system" ? (
                   <div
@@ -278,7 +278,7 @@ export default function AIChat({ userRole = "employee" }) {
                     className={`mb-4 ${message.role === "user" ? "text-right" : ""}`}
                   >
                     <div
-                      className={`inline-block max-w-[80%] rounded-lg p-3 ${message.role === "user" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}`}
+                      className={`inline-block max-w-[90%] sm:max-w-[80%] rounded-lg p-2 sm:p-3 ${message.role === "user" ? "bg-blue-100 text-blue-800" : "bg-white text-gray-800 border"}`}
                     >
                       <p className="whitespace-pre-wrap">
                         {message.content

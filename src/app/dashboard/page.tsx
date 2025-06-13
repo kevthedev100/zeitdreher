@@ -116,11 +116,14 @@ export default function Dashboard() {
           onComplete={handleOnboardingComplete}
         />
       )}
-      <DashboardNavbar />
+      {/* Only show DashboardNavbar on desktop, rely on mobile menu in DashboardTabs for mobile */}
+      <div className="hidden lg:block">
+        <DashboardNavbar />
+      </div>
       <main className="w-full bg-gray-50 min-h-screen">
         <div className="container mx-auto px-4 py-8">
-          {/* Header Section */}
-          <header className="mb-8">
+          {/* Header Section - Only visible on desktop */}
+          <header className="mb-8 hidden lg:block">
             <div className="flex justify-between items-start">
               <div>
                 <h1 className="text-4xl font-bold text-gray-900 mb-2">
