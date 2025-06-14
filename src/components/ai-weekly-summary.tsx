@@ -58,7 +58,10 @@ export default function AIWeeklySummary({
       // Get current week's start and end dates
       const now = new Date();
       const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
+      // Fix: Handle Sunday (0) correctly - if Sunday, go back 6 days to Monday
+      const dayOfWeek = now.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      startOfWeek.setDate(now.getDate() - daysToMonday); // Monday
       startOfWeek.setHours(0, 0, 0, 0);
 
       const endOfWeek = new Date(startOfWeek);
@@ -69,11 +72,16 @@ export default function AIWeeklySummary({
       const startDate = startOfWeek.toISOString().split("T")[0];
       const endDate = endOfWeek.toISOString().split("T")[0];
 
+      console.log("Loading weekly entries from", startDate, "to", endDate);
+
       // Get current user
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log("No user found for weekly summary");
+        return;
+      }
 
       // Query time entries for this week
       const { data, error } = await supabase
@@ -91,7 +99,12 @@ export default function AIWeeklySummary({
         .lte("date", endDate)
         .order("date", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Database error loading weekly entries:", error);
+        throw error;
+      }
+
+      console.log("Raw weekly entries data:", data);
 
       // Format entries for display with descriptions
       const formattedEntries =
@@ -104,15 +117,20 @@ export default function AIWeeklySummary({
           description: entry.description || "Keine Beschreibung",
         })) || [];
 
+      console.log("Formatted weekly entries:", formattedEntries);
       setWeeklyEntries(formattedEntries);
     } catch (err) {
       console.error("Error loading weekly entries:", err);
       setError("Fehler beim Laden der wöchentlichen Einträge.");
+      setWeeklyEntries([]); // Set empty array on error
     }
   };
 
   const generateSummary = async () => {
+    console.log("Generating summary with entries:", weeklyEntries.length);
+
     if (weeklyEntries.length === 0) {
+      console.log("No weekly entries found, setting empty message");
       setSummary("<p>Keine Zeiteinträge für diese Woche verfügbar.</p>");
       return;
     }

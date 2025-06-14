@@ -224,6 +224,7 @@ export default function TimeAnalyticsDashboard({
     const dayOfWeek = now.getDay();
     const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, so we need 6 days back
     startOfWeek.setDate(now.getDate() - daysToMonday);
+    startOfWeek.setHours(0, 0, 0, 0); // Set to start of day
     const startOfWeekStr = startOfWeek.toISOString().split("T")[0];
 
     // Calculate start of last week
@@ -247,7 +248,10 @@ export default function TimeAnalyticsDashboard({
 
     // Calculate this week's hours (from Monday to today)
     const thisWeekHours = timeEntries
-      .filter((entry) => entry.date >= startOfWeekStr)
+      .filter((entry) => {
+        const entryDate = new Date(entry.date);
+        return entryDate >= startOfWeek;
+      })
       .reduce((sum, entry) => sum + entry.duration, 0);
 
     // Calculate last week's hours
@@ -260,7 +264,10 @@ export default function TimeAnalyticsDashboard({
 
     // Calculate this month's hours
     const thisMonthHours = timeEntries
-      .filter((entry) => entry.date >= startOfMonthStr)
+      .filter((entry) => {
+        const entryDate = new Date(entry.date);
+        return entryDate >= startOfMonth;
+      })
       .reduce((sum, entry) => sum + entry.duration, 0);
 
     // Find top activity
@@ -323,7 +330,11 @@ export default function TimeAnalyticsDashboard({
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     const now = new Date();
     const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
+    // Fix: Handle Sunday (0) correctly
+    const dayOfWeek = now.getDay();
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    startOfWeek.setDate(now.getDate() - daysToMonday); // Monday
+    startOfWeek.setHours(0, 0, 0, 0);
 
     return days.map((day, index) => {
       const dayDate = new Date(startOfWeek);
