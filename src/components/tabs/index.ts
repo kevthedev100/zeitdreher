@@ -1,0 +1,7 @@
+export { default as OverviewTab } from "./overview-tab";
+export { default as AnalyticsTab } from "./analytics-tab";
+export { default as NewEntryTab } from "./new-entry-tab";
+export { default as EntriesTab } from "./entries-tab";
+export { default as AIChatTab } from "./ai-chat-tab";
+export { default as CategoriesTab } from "./categories-tab";
+export { default as ProfileTab } from "./profile-tab";

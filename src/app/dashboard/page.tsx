@@ -4,7 +4,7 @@ import DashboardNavbar from "@/components/dashboard-navbar";
 import { createClient } from "../../../supabase/client";
 import { redirect } from "next/navigation";
 import { SubscriptionCheck } from "@/components/subscription-check";
-import DashboardTabs from "@/components/dashboard-tabs";
+import DashboardTabs from "@/components/dashboard-tabs-refactored";
 import AddEntryButton from "@/components/add-entry-button";
 import { useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
