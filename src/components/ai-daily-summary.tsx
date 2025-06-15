@@ -126,7 +126,7 @@ export default function AIDailySummary({
         dailySummary = fullResponse.trim();
       }
 
-      // Clean up any remaining markdown and labels
+      // Clean up any remaining markdown and labels, ensure proper HTML structure
       dailySummary = dailySummary
         .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
         .replace(/\*(.*?)\*/g, "<em>$1</em>")
@@ -134,8 +134,20 @@ export default function AIDailySummary({
           /^(tageszusammenfassung:|zusammenfassung:|tagesbericht:)\s*/gi,
           "",
         )
-        .replace(/^#{1,6}\s*/, "")
+        .replace(/^#{1,6}\s*/gm, "")
+        .replace(/<br\s*\/?>/gi, "") // Remove all <br> tags
+        .replace(/\n\s*\n+/g, "") // Remove multiple newlines
+        .replace(/\n/g, "") // Remove single newlines
+        .replace(/(<\/p>)\s*(<h4>)/g, "$1$2") // Remove spaces between </p> and <h4>
+        .replace(/(<\/ul>)\s*(<h4>)/g, "$1$2") // Remove spaces between </ul> and <h4>
+        .replace(/(<\/h4>)\s*(<p>)/g, "$1$2") // Remove spaces between </h4> and <p>
+        .replace(/(<\/h4>)\s*(<ul>)/g, "$1$2") // Remove spaces between </h4> and <ul>
         .trim();
+
+      // Ensure proper paragraph structure if not already present
+      if (dailySummary && !dailySummary.startsWith("<")) {
+        dailySummary = `<p>${dailySummary}</p>`;
+      }
 
       // If no meaningful content, provide a simple message
       if (dailySummary.length < 20 || dailySummary.includes("Keine Einträge")) {
@@ -149,9 +161,15 @@ export default function AIDailySummary({
           );
           const uniqueActivities = [...new Set(activities)];
 
-          dailySummary = `<p>Heute wurden insgesamt <strong>${totalHours.toFixed(1)} Stunden</strong> für ${uniqueActivities.length} verschiedene Aktivitäten aufgewendet. Die Hauptaktivitäten umfassten <strong>${uniqueActivities.slice(0, 3).join(", ")}</strong>.</p>`;
+          dailySummary = `<h4>Tagesübersicht</h4><p>Heute wurden insgesamt <strong>${totalHours.toFixed(1)} Stunden</strong> für ${uniqueActivities.length} verschiedene Aktivitäten aufgewendet.</p><h4>Hauptaktivitäten</h4><ul>${uniqueActivities
+            .slice(0, 3)
+            .map((activity) => `<li><em>${activity}</em></li>`)
+            .join(
+              "",
+            )}</ul><p><strong>Status:</strong> <em>Produktiver Arbeitstag</em> mit fokussierter Zeiteinteilung.</p>`;
         } else {
-          dailySummary = "<p>Heute wurden noch keine Zeiteinträge erfasst.</p>";
+          dailySummary =
+            "<h4>Tagesübersicht</h4><p>Heute wurden noch keine Zeiteinträge erfasst.</p><p><em>Tipp:</em> Beginnen Sie mit der Erfassung Ihrer Arbeitszeit für bessere Produktivitätsanalysen.</p>";
         }
       }
 
@@ -162,7 +180,7 @@ export default function AIDailySummary({
 
       // Simple fallback without API call
       setSummary(
-        "<p>Die KI-Zusammenfassung konnte nicht generiert werden. Bitte versuchen Sie es später erneut.</p>",
+        "<h4>Fehler</h4><p>Die KI-Zusammenfassung konnte nicht generiert werden.</p><p><em>Bitte versuchen Sie es später erneut.</em></p>",
       );
     } finally {
       setIsGenerating(false);
@@ -218,7 +236,7 @@ export default function AIDailySummary({
       ) : summary ? (
         <div className="p-4 bg-purple-50 rounded-lg">
           <div
-            className="text-purple-900 font-normal prose prose-sm max-w-none"
+            className="text-purple-900 font-normal prose prose-sm max-w-none [&>h4]:text-purple-800 [&>h4]:font-semibold [&>h4]:mb-2 [&>h4]:mt-3 [&>h4]:first:mt-0 [&>p]:mb-2 [&>ul]:mb-2 [&>li]:mb-0 [&>strong]:font-semibold [&>em]:italic [&>em]:text-purple-700"
             dangerouslySetInnerHTML={{ __html: summary }}
           />
         </div>

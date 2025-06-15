@@ -116,8 +116,8 @@ Deno.serve(async (req) => {
         })
         .join("\n");
 
-      // Prepare prompt content in German
-      const promptContent = `Analysiere die folgenden Zeiteinträge für den Bereich "${area}" und erstelle Workflow-Optimierungsvorschläge:\n${entriesText}\n\nSchlage konkrete Möglichkeiten vor, wie diese Aufgaben durch Make.com Workflows oder ChatGPT Prompts vereinfacht oder automatisiert werden könnten. Gib umsetzbare Optimierungsvorschläge in deutscher Sprache. Verwende eine klare Struktur mit Absätzen und hebe wichtige Punkte hervor.`;
+      // Prepare prompt content in German with HTML formatting instructions
+      const promptContent = `Analysiere die folgenden Zeiteinträge für den Bereich "${area}" und erstelle strukturierte Workflow-Optimierungsvorschläge:\n\n${entriesText}\n\nWICHTIGE FORMATIERUNGSREGELN:\n- Verwende KEINE <br /> Tags\n- Verwende KEINE doppelten Leerzeilen\n- Jeder <p> Tag sollte direkt aufeinander folgen\n- <h4> Tags sollten direkt nach </p> oder </ul> folgen\n- Listen sollten kompakt sein ohne zusätzliche Abstände\n\nErstelle eine professionell formatierte Antwort mit folgender kompakter HTML-Struktur:\n\n<h4>Optimierungspotenzial</h4><p>Kurze Einschätzung der Automatisierungsmöglichkeiten</p><h4>Make.com Workflows</h4><ul><li><strong>Workflow 1:</strong> Konkrete Beschreibung</li><li><strong>Workflow 2:</strong> Konkrete Beschreibung</li></ul><h4>ChatGPT Prompts</h4><ul><li><em>Prompt-Kategorie:</em> Spezifische Anwendung</li><li><em>Prompt-Kategorie:</em> Spezifische Anwendung</li></ul><p><strong>Geschätzte Zeitersparnis:</strong> X Stunden pro Woche durch <em>Automatisierung der Kernprozesse</em></p>\n\nVerwende ausschließlich HTML-Tags, keine Markdown-Formatierung. Halte die Struktur kompakt wie ChatGPT.`;
 
       try {
         console.log(`Calling OpenAI API for area: ${area}`);
@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
             {
               role: "system",
               content:
-                "Du bist ein Assistent, der Workflow-Optimierungsvorschläge basierend auf Zeiteinträgen erstellt. Antworte immer auf Deutsch mit einer klaren Struktur. Verwende keine Markdown-Formatierungen wie ### oder ** in deiner Antwort. Hebe wichtige Punkte und Überschriften durch klare Absätze und Struktur hervor.",
+                "Du bist ein Workflow-Optimierungsexperte, der strukturierte Vorschläge basierend auf Zeiteinträgen erstellt. Antworte immer auf Deutsch mit professioneller HTML-Formatierung. Verwende NIEMALS Markdown-Formatierungen wie ### oder **. Nutze ausschließlich HTML-Tags für die Strukturierung: <h4> für Überschriften, <strong> für wichtige Begriffe, <em> für Fokuspunkte, <ul>/<li> für Aufzählungen, <p> für Absätze.",
             },
             {
               role: "user",
@@ -186,15 +186,22 @@ Deno.serve(async (req) => {
         let suggestionText =
           data.choices?.[0]?.message?.content || "Keine Vorschläge verfügbar.";
 
-        // Remove any markdown formatting characters that might remain
+        // Clean up any remaining markdown formatting and ensure proper HTML structure
         suggestionText = suggestionText
           .replace(/###/g, "")
-          .replace(/\*\*/g, "")
-          .replace(/\*/g, "")
-          .replace(/```/g, "");
+          .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+          .replace(/\*(.*?)\*/g, "<em>$1</em>")
+          .replace(/```/g, "")
+          .replace(/^#{1,6}\s*/gm, "")
+          .trim();
 
-        // Ensure proper paragraph formatting
-        suggestionText = suggestionText.trim();
+        // Ensure proper HTML structure if not already present
+        if (
+          !suggestionText.includes("<h4>") &&
+          !suggestionText.includes("<p>")
+        ) {
+          suggestionText = `<p>${suggestionText.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>`;
+        }
 
         suggestions.push({
           area,
@@ -212,7 +219,7 @@ Deno.serve(async (req) => {
         // Add fallback suggestion for this area
         suggestions.push({
           area,
-          suggestion: `Für den Bereich "${area}" könnten folgende Optimierungen hilfreich sein:\n\n• Make.com Workflow: Automatisierung wiederkehrender Aufgaben durch Verbindung verschiedener Tools\n• ChatGPT Prompts: Erstellung von Vorlagen für häufige Dokumentations- oder Kommunikationsaufgaben\n• Zeiterfassung: Automatische Kategorisierung ähnlicher Aktivitäten`,
+          suggestion: `<h4>Optimierungspotenzial für ${area}</h4><p>Basierend auf den verfügbaren Daten könnten folgende Optimierungen hilfreich sein:</p><h4>Make.com Workflows</h4><ul><li><strong>Automatisierung:</strong> Wiederkehrende Aufgaben durch Verbindung verschiedener Tools</li><li><strong>Integration:</strong> Nahtlose Datenübertragung zwischen Systemen</li></ul><h4>ChatGPT Prompts</h4><ul><li><em>Dokumentation:</em> Vorlagen für häufige Berichtsformate</li><li><em>Kommunikation:</em> Standardisierte Antworten und Texte</li></ul><p><strong>Empfehlung:</strong> <em>Detailliertere Zeiteinträge erfassen</em> für spezifischere Optimierungsvorschläge</p>`,
           entriesCount: areaEntries.length,
           totalHours: areaEntries.reduce(
             (sum, entry) => sum + (entry.duration || 0),

@@ -406,9 +406,12 @@ export default function AnalyticsTab({
                     >
                       {suggestion.title}
                     </h3>
-                    <p className="text-gray-700 mb-3">
-                      {suggestion.description}
-                    </p>
+                    <div
+                      className="text-gray-700 mb-3 [&>p]:mb-2 [&>ul]:mb-2 [&>li]:mb-1 [&>strong]:font-semibold [&>em]:italic"
+                      dangerouslySetInnerHTML={{
+                        __html: suggestion.description,
+                      }}
+                    />
                     <div
                       className={`text-sm font-medium ${suggestion.type === "purple" ? "text-purple-600" : suggestion.type === "blue" ? "text-blue-600" : suggestion.type === "green" ? "text-green-600" : "text-amber-600"}`}
                     >
@@ -521,48 +524,12 @@ export default function AnalyticsTab({
                       {areaSuggestion.totalHours.toFixed(1)}h
                     </div>
                   </div>
-                  <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-                    {areaSuggestion.suggestion
-                      .split("\n")
-                      .map((line, lineIndex) => {
-                        if (line.trim() === "") return <br key={lineIndex} />;
-                        if (line.startsWith("•")) {
-                          return (
-                            <div
-                              key={lineIndex}
-                              className="flex items-start gap-2 my-2"
-                            >
-                              <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0"></div>
-                              <span>{line.substring(1).trim()}</span>
-                            </div>
-                          );
-                        }
-                        if (line.includes("**") && line.includes("**")) {
-                          const parts = line.split("**");
-                          return (
-                            <p key={lineIndex} className="my-2">
-                              {parts.map((part, partIndex) =>
-                                partIndex % 2 === 1 ? (
-                                  <strong
-                                    key={partIndex}
-                                    className="text-blue-700"
-                                  >
-                                    {part}
-                                  </strong>
-                                ) : (
-                                  part
-                                ),
-                              )}
-                            </p>
-                          );
-                        }
-                        return (
-                          <p key={lineIndex} className="my-2">
-                            {line}
-                          </p>
-                        );
-                      })}
-                  </div>
+                  <div
+                    className="prose prose-sm max-w-none text-gray-700 leading-relaxed [&>h4]:text-blue-800 [&>h4]:font-semibold [&>h4]:mb-3 [&>h4]:mt-4 [&>h4]:first:mt-0 [&>p]:mb-3 [&>ul]:mb-3 [&>ul]:pl-4 [&>li]:mb-2 [&>li]:list-disc [&>strong]:font-semibold [&>strong]:text-blue-700 [&>em]:italic [&>em]:text-blue-600 [&>br]:block [&>br]:content-[''] [&>br]:h-4"
+                    dangerouslySetInnerHTML={{
+                      __html: areaSuggestion.suggestion,
+                    }}
+                  />
                 </div>
               ))}
             </div>

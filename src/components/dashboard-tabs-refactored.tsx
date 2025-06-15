@@ -196,8 +196,16 @@ export default function DashboardTabs({
       setSelectedAreaId(areaId);
       setSelectedFieldId(fieldId);
       setSelectedActivityId(activityId);
-      // Navigate to new entry tab
-      router.push("/dashboard/new-entry");
+
+      // Navigate to new entry tab with URL parameters
+      const params = new URLSearchParams({
+        area: areaId,
+        field: fieldId,
+        activity: activityId,
+      });
+
+      console.log("Navigating to new-entry with params:", params.toString());
+      router.push(`/dashboard/new-entry?${params.toString()}`);
     },
     [router],
   );

@@ -131,7 +131,9 @@ export default function AIWeeklySummary({
 
     if (weeklyEntries.length === 0) {
       console.log("No weekly entries found, setting empty message");
-      setSummary("<p>Keine Zeiteinträge für diese Woche verfügbar.</p>");
+      setSummary(
+        "<h4>Wochenübersicht</h4><p>Keine Zeiteinträge für diese Woche verfügbar.</p><p><em>Tipp:</em> Erfassen Sie regelmäßig Ihre Arbeitszeit für aussagekräftige Wochenberichte.</p>",
+      );
       return;
     }
 
@@ -195,7 +197,7 @@ export default function AIWeeklySummary({
         weeklySummary = fullResponse.trim();
       }
 
-      // Clean up any remaining markdown and labels
+      // Clean up any remaining markdown and labels, ensure proper HTML structure
       weeklySummary = weeklySummary
         .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
         .replace(/\*(.*?)\*/g, "<em>$1</em>")
@@ -203,8 +205,20 @@ export default function AIWeeklySummary({
           /^(wochenzusammenfassung:|zusammenfassung:|wochenbericht:)\s*/gi,
           "",
         )
-        .replace(/^#{1,6}\s*/, "")
+        .replace(/^#{1,6}\s*/gm, "")
+        .replace(/<br\s*\/?>/gi, "") // Remove all <br> tags
+        .replace(/\n\s*\n+/g, "") // Remove multiple newlines
+        .replace(/\n/g, "") // Remove single newlines
+        .replace(/(<\/p>)\s*(<h4>)/g, "$1$2") // Remove spaces between </p> and <h4>
+        .replace(/(<\/ul>)\s*(<h4>)/g, "$1$2") // Remove spaces between </ul> and <h4>
+        .replace(/(<\/h4>)\s*(<p>)/g, "$1$2") // Remove spaces between </h4> and <p>
+        .replace(/(<\/h4>)\s*(<ul>)/g, "$1$2") // Remove spaces between </h4> and <ul>
         .trim();
+
+      // Ensure proper paragraph structure if not already present
+      if (weeklySummary && !weeklySummary.startsWith("<")) {
+        weeklySummary = `<p>${weeklySummary}</p>`;
+      }
 
       // If no meaningful content, provide a simple message
       if (
@@ -217,7 +231,12 @@ export default function AIWeeklySummary({
         );
         const areas = [...new Set(weeklyEntries.map((entry) => entry.area))];
 
-        weeklySummary = `<p>Diese Woche wurden insgesamt <strong>${totalHours.toFixed(1)} Stunden</strong> in ${areas.length} verschiedenen Bereichen erfasst. Die Arbeit verteilte sich hauptsächlich auf <strong>${areas.slice(0, 3).join(", ")}</strong>.</p>`;
+        weeklySummary = `<h4>Wochenübersicht</h4><p>Diese Woche wurden insgesamt <strong>${totalHours.toFixed(1)} Stunden</strong> in ${areas.length} verschiedenen Bereichen erfasst.</p><h4>Hauptbereiche</h4><ul>${areas
+          .slice(0, 3)
+          .map((area) => `<li><em>${area}</em></li>`)
+          .join(
+            "",
+          )}</ul><p><strong>Wochenbilanz:</strong> <em>Ausgewogene Arbeitsverteilung</em> über verschiedene Projekte und Bereiche.</p>`;
       }
 
       setSummary(weeklySummary);
@@ -227,7 +246,7 @@ export default function AIWeeklySummary({
 
       // Simple fallback without API call
       setSummary(
-        "<p>Die KI-Wochenzusammenfassung konnte nicht generiert werden. Bitte versuchen Sie es später erneut.</p>",
+        "<h4>Fehler</h4><p>Die KI-Wochenzusammenfassung konnte nicht generiert werden.</p><p><em>Bitte versuchen Sie es später erneut.</em></p>",
       );
     } finally {
       setIsGenerating(false);
@@ -299,7 +318,7 @@ export default function AIWeeklySummary({
       ) : summary ? (
         <div className="p-4 bg-blue-50 rounded-lg">
           <div
-            className="text-blue-900 font-normal prose prose-sm max-w-none"
+            className="text-blue-900 font-normal prose prose-sm max-w-none [&>h4]:text-blue-800 [&>h4]:font-semibold [&>h4]:mb-2 [&>h4]:mt-3 [&>h4]:first:mt-0 [&>p]:mb-2 [&>ul]:mb-2 [&>li]:mb-0 [&>strong]:font-semibold [&>em]:italic [&>em]:text-blue-700"
             dangerouslySetInnerHTML={{ __html: summary }}
           />
         </div>

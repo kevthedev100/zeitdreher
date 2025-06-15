@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "../../../../supabase/client";
 import { redirect } from "next/navigation";
 import { SubscriptionCheck } from "@/components/subscription-check";
@@ -8,7 +9,19 @@ import NewEntryTab from "@/components/tabs/new-entry-tab";
 
 export default function DashboardNewEntryPage() {
   const supabase = createClient();
+  const searchParams = useSearchParams();
   const [userRole, setUserRole] = useState<"manager" | "employee">("employee");
+
+  // Get URL parameters for pre-selection
+  const selectedAreaId = searchParams.get("area") || "";
+  const selectedFieldId = searchParams.get("field") || "";
+  const selectedActivityId = searchParams.get("activity") || "";
+
+  console.log("[NEW-ENTRY-PAGE] URL Parameters:", {
+    selectedAreaId,
+    selectedFieldId,
+    selectedActivityId,
+  });
 
   useEffect(() => {
     const getUser = async () => {
@@ -49,7 +62,12 @@ export default function DashboardNewEntryPage() {
 
   return (
     <SubscriptionCheck>
-      <NewEntryTab onTimeEntrySubmit={handleTimeEntrySubmit} />
+      <NewEntryTab
+        selectedAreaId={selectedAreaId}
+        selectedFieldId={selectedFieldId}
+        selectedActivityId={selectedActivityId}
+        onTimeEntrySubmit={handleTimeEntrySubmit}
+      />
     </SubscriptionCheck>
   );
 }

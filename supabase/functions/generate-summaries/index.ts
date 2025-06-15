@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
       : [
           {
             role: "user",
-            content: `Du bist ein professioneller Projektmanager, der prägnante Tages- und Wochenberichte in deutscher Sprache erstellt. Halte die Berichte kurz und übersichtlich. Verwende HTML-Formatierung mit <p>-Tags und füge zwischen Absätzen Leerzeilen ein. Beginne NIEMALS mit \`\`\`html oder anderen Code-Blöcken. Verwende <strong> für wichtige Begriffe und Zahlen. Trenne Tages- und Wochenbericht mit '---SUMMARY_SEPARATOR---'.\n\nErstelle zwei kurze Arbeitsberichte basierend auf diesen Zeiterfassungsdaten:\n\nTAGESBERICHT (analysiere nur diese Daten):\n${dailyEntries || "Keine Einträge für heute"}\n\n---SUMMARY_SEPARATOR---\n\nWOCHENBERICHT (analysiere nur diese Daten):\n${weeklyEntries || "Keine wöchentlichen Einträge"}\n\nSchreibe beide Berichte als kurze, prägnante Texte in <p>-Tags mit:\n- Fokus auf die wichtigsten Aktivitäten und Ergebnisse\n- Quantifizierte Angaben wie Stundenzahlen hervorheben\n- Maximal 2-3 kurze Absätze pro Bericht\n- Leerzeilen zwischen Absätzen für bessere Lesbarkeit\n\nVERMEIDE:\n- Lange, ausschweifende Texte\n- Wiederholungen\n- Code-Blöcke wie \`\`\`html am Anfang\n\nHalte die Berichte kurz, prägnant und gut lesbar.`,
+            content: `Du bist ein professioneller Projektmanager, der strukturierte Tages- und Wochenberichte in deutscher Sprache erstellt. Verwende ausschließlich HTML-Formatierung für eine professionelle Darstellung. Beginne NIEMALS mit \`\`\`html oder anderen Code-Blöcken.\n\nWICHTIGE FORMATIERUNGSREGELN:\n- Verwende KEINE <br /> Tags\n- Verwende KEINE doppelten Leerzeilen\n- Jeder <p> Tag sollte direkt aufeinander folgen\n- <h4> Tags sollten direkt nach </p> oder </ul> folgen\n- Listen sollten kompakt sein ohne zusätzliche Abstände\n\nFormatierungsrichtlinien:\n- <h4> für Überschriften und Kategorien\n- <strong> für wichtige Zahlen, Stunden und Schlüsselbegriffe\n- <em> für Fokuspunkte und Prioritäten\n- <p> für Absätze mit klarer Struktur (KEINE <br /> innerhalb)\n- <ul> und <li> für kompakte Aufzählungen\n- Trenne Tages- und Wochenbericht mit '---SUMMARY_SEPARATOR---'\n\nErstelle zwei strukturierte Arbeitsberichte basierend auf diesen Zeiterfassungsdaten:\n\nTAGESBERICHT (analysiere nur diese Daten):\n${dailyEntries || "Keine Einträge für heute"}\n\n---SUMMARY_SEPARATOR---\n\nWOCHENBERICHT (analysiere nur diese Daten):\n${weeklyEntries || "Keine wöchentlichen Einträge"}\n\nStruktur für jeden Bericht (KOMPAKT ohne Leerzeilen):\n1. <h4>Übersicht</h4><p>Gesamtstunden in <strong>X.X Stunden</strong></p>\n2. <h4>Hauptaktivitäten</h4><ul><li>Aktivität 1</li><li>Aktivität 2</li></ul>\n3. <p>Zusammenfassung mit <em>Fokuspunkten</em> und <strong>wichtigen Zahlen</strong></p>\n\nHalte jeden Bericht prägnant und kompakt strukturiert wie ChatGPT.`,
           },
         ];
 
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
         Authorization: `Bearer ${openaiApiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages,
         temperature: 0.7,
         max_tokens: isOptimizationAnalysis ? 800 : 600,

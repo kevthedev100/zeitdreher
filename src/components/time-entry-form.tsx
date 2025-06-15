@@ -197,92 +197,108 @@ export default function TimeEntryForm({
 
   // Handle initial selections from props with sequential loading
   useEffect(() => {
-    console.log("TimeEntryForm props changed:", {
+    console.log("[TIME-ENTRY-FORM] Props changed:", {
       initialArea,
       initialField,
       initialActivity,
+      areasLoaded: areas.length > 0,
+      currentSelections: {
+        selectedArea,
+        selectedField,
+        selectedActivity,
+      },
     });
 
     const setInitialSelections = async () => {
-      // Check if any of the initial values are different from current selections
-      const areaChanged = initialArea && initialArea !== selectedArea;
-      const fieldChanged = initialField && initialField !== selectedField;
-      const activityChanged =
-        initialActivity && initialActivity !== selectedActivity;
+      // Only proceed if we have areas loaded and at least one initial value
+      if (!areas.length || (!initialArea && !initialField && !initialActivity)) {
+        console.log("[TIME-ENTRY-FORM] No areas loaded or no initial values provided");
+        return;
+      }
 
-      if (
-        (areaChanged || fieldChanged || activityChanged) &&
-        areas.length > 0
-      ) {
-        console.log("Setting initial selections:", {
-          areaChanged,
-          fieldChanged,
-          activityChanged,
-        });
+      // Check if we need to set initial selections
+      const needsAreaSelection = initialArea && initialArea !== selectedArea;
+      const needsFieldSelection = initialField && initialField !== selectedField;
+      const needsActivitySelection = initialActivity && initialActivity !== selectedActivity;
 
-        // Always start by setting the area if provided
+      console.log("[TIME-ENTRY-FORM] Selection needs:", {
+        needsAreaSelection,
+        needsFieldSelection,
+        needsActivitySelection,
+      });
+
+      // If we need to set any selection, start from the beginning of the hierarchy
+      if (needsAreaSelection || needsFieldSelection || needsActivitySelection) {
+        console.log("[TIME-ENTRY-FORM] Starting hierarchical selection process");
+
+        // Step 1: Set area if provided
         if (initialArea) {
-          console.log("Setting initial area:", initialArea);
+          console.log("[TIME-ENTRY-FORM] Setting area:", initialArea);
           setSelectedArea(initialArea);
 
-          // Wait a bit for the area to be set, then load and set field
-          setTimeout(async () => {
-            if (initialField) {
-              const fieldsData = await loadFieldsAndReturn(initialArea);
-              console.log("Loaded fields for initial area:", fieldsData);
+          // Wait a bit for React to update
+          await new Promise(resolve => setTimeout(resolve, 100));
 
-              // Set the initial field if it exists
-              const fieldExists = fieldsData.some(
-                (field) => field.id === initialField,
-              );
-              if (fieldExists) {
-                console.log("Setting initial field:", initialField);
-                setSelectedField(initialField);
+          // Step 2: Load fields for the area
+          console.log("[TIME-ENTRY-FORM] Loading fields for area:", initialArea);
+          const fieldsData = await loadFieldsAndReturn(initialArea);
+          console.log("[TIME-ENTRY-FORM] Loaded fields:", fieldsData.length);
 
-                // Wait a bit for the field to be set, then load and set activity
-                setTimeout(async () => {
-                  if (initialActivity) {
-                    const activitiesData =
-                      await loadActivitiesAndReturn(initialField);
-                    console.log(
-                      "Loaded activities for initial field:",
-                      activitiesData,
-                    );
+          // Step 3: Set field if provided and exists
+          if (initialField && fieldsData.length > 0) {
+            const fieldExists = fieldsData.some(field => field.id === initialField);
+            if (fieldExists) {
+              console.log("[TIME-ENTRY-FORM] Setting field:", initialField);
+              setSelectedField(initialField);
 
-                    // Set the initial activity if it exists
-                    const activityExists = activitiesData.some(
-                      (activity) => activity.id === initialActivity,
-                    );
-                    if (activityExists) {
-                      console.log("Setting initial activity:", initialActivity);
-                      setSelectedActivity(initialActivity);
-                    }
-                  }
-                }, 100);
+              // Wait a bit for React to update
+              await new Promise(resolve => setTimeout(resolve, 100));
+
+              // Step 4: Load activities for the field
+              console.log("[TIME-ENTRY-FORM] Loading activities for field:", initialField);
+              const activitiesData = await loadActivitiesAndReturn(initialField);
+              console.log("[TIME-ENTRY-FORM] Loaded activities:", activitiesData.length);
+
+              // Step 5: Set activity if provided and exists
+              if (initialActivity && activitiesData.length > 0) {
+                const activityExists = activitiesData.some(activity => activity.id === initialActivity);
+                if (activityExists) {
+                  console.log("[TIME-ENTRY-FORM] Setting activity:", initialActivity);
+                  setSelectedActivity(initialActivity);
+                } else {
+                  console.log("[TIME-ENTRY-FORM] Activity not found in loaded activities:", initialActivity);
+                }
               }
+            } else {
+              console.log("[TIME-ENTRY-FORM] Field not found in loaded fields:", initialField);
             }
-          }, 100);
+          }
         }
+
+        console.log("[TIME-ENTRY-FORM] Hierarchical selection process completed");
       }
     };
 
-    if ((initialArea || initialField || initialActivity) && areas.length > 0) {
+    // Only run if we have areas loaded and initial values
+    if (areas.length > 0 && (initialArea || initialField || initialActivity)) {
       setInitialSelections();
     }
   }, [
     initialArea,
     initialField,
     initialActivity,
-    selectedArea,
-    selectedField,
-    selectedActivity,
-    areas,
+    areas.length, // Use length instead of the whole array to avoid unnecessary re-runs
   ]);
 
   useEffect(() => {
     if (selectedArea) {
-      loadFields(selectedArea);
+      console.log("[TIME-ENTRY-FORM] Area changed, loading fields for:", selectedArea);
+      const loadFieldsData = async () => {
+        await loadFields(selectedArea);
+      };
+      loadFieldsData();
     } else {
+      console.log("[TIME-ENTRY-FORM] No area selected, clearing fields and activities");
       setFields([]);
       setSelectedField("");
       setActivities([]);
@@ -292,8 +308,13 @@ export default function TimeEntryForm({
 
   useEffect(() => {
     if (selectedField) {
-      loadActivities(selectedField);
+      console.log("[TIME-ENTRY-FORM] Field changed, loading activities for:", selectedField);
+      const loadActivitiesData = async () => {
+        await loadActivities(selectedField);
+      };
+      loadActivitiesData();
     } else {
+      console.log("[TIME-ENTRY-FORM] No field selected, clearing activities");
       setActivities([]);
       setSelectedActivity("");
     }
