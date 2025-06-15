@@ -424,17 +424,21 @@ export default function DashboardTabs({
     try {
       setLoading(true);
 
+      // Load time entries with related data - using same query structure as analytics dashboard
       let query = supabase
         .from("time_entries")
         .select(
           `
           *,
+          areas(name, color),
+          fields(name),
           activities(name),
-          areas(name, color)
+          users(full_name, email)
         `,
         )
         .order("date", { ascending: false });
 
+      // Filter by user role - same logic as analytics dashboard
       if (userRole === "employee" && currentUser) {
         query = query.eq("user_id", currentUser.id);
       }
@@ -443,38 +447,144 @@ export default function DashboardTabs({
 
       if (error) throw error;
 
-      // Only use real data, no more mock data
+      // Only use real data, no mock data
       const timeEntryData = entries || [];
 
-      if (!entries || entries.length === 0) {
-        console.log("No time entries found for quick stats");
+      console.log("=== Dashboard Tabs Quick Stats Debug ===");
+      console.log("Total entries loaded:", timeEntryData.length);
+      console.log(
+        "Sample entries:",
+        timeEntryData
+          .slice(0, 5)
+          .map((e) => ({
+            date: e.date,
+            duration: e.duration,
+            activity: e.activities?.name,
+          })),
+      );
+
+      if (timeEntryData.length === 0) {
+        console.log("No time entries found, returning zeros");
+        setQuickStats({
+          todayHours: 0,
+          weekHours: 0,
+          monthHours: 0,
+        });
+        setRecentActivities([]);
+        return;
       }
 
+      // Use local timezone for all date calculations - EXACT same logic as analytics dashboard
       const now = new Date();
-      const today = now.toISOString().split("T")[0];
 
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay() + 1);
-      startOfWeek.setHours(0, 0, 0, 0);
+      // Get today's date in local timezone (YYYY-MM-DD format)
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        .toISOString()
+        .split("T")[0];
+      console.log("Today's date (local):", today);
 
+      // Calculate start of current week (Monday) in local timezone
+      const startOfWeek = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+      );
+      const dayOfWeek = now.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, so we need 6 days back
+      startOfWeek.setDate(startOfWeek.getDate() - daysToMonday);
+      const startOfWeekStr = startOfWeek.toISOString().split("T")[0];
+      console.log("Start of week (Monday, local):", startOfWeekStr);
+
+      // Calculate start of current month in local timezone
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfMonthStr = startOfMonth.toISOString().split("T")[0];
+      console.log("Start of month (local):", startOfMonthStr);
 
-      const todayHours =
-        timeEntryData
-          .filter((entry) => entry.date === today)
-          .reduce((sum, entry) => sum + entry.duration, 0) || 0;
+      // Helper function to normalize date strings for comparison - EXACT same as analytics dashboard
+      const normalizeDate = (dateStr: string) => {
+        // Ensure we're working with YYYY-MM-DD format
+        const date = new Date(dateStr + "T00:00:00.000Z");
+        return date.toISOString().split("T")[0];
+      };
 
-      const weekHours =
-        timeEntryData
-          .filter((entry) => new Date(entry.date) >= startOfWeek)
-          .reduce((sum, entry) => sum + entry.duration, 0) || 0;
+      // Calculate today's hours
+      const todayEntries = timeEntryData.filter((entry) => {
+        const entryDate = normalizeDate(entry.date);
+        const match = entryDate === today;
+        console.log(
+          `Comparing entry date ${entryDate} with today ${today}: ${match}`,
+        );
+        return match;
+      });
+      const todayHours = todayEntries.reduce(
+        (sum, entry) => sum + entry.duration,
+        0,
+      );
+      console.log(
+        "Today's entries:",
+        todayEntries.length,
+        "Total hours:",
+        todayHours,
+        "Entries:",
+        todayEntries.map((e) => ({ date: e.date, duration: e.duration })),
+      );
 
-      const monthHours =
-        timeEntryData
-          .filter((entry) => new Date(entry.date) >= startOfMonth)
-          .reduce((sum, entry) => sum + entry.duration, 0) || 0;
+      // Calculate this week's hours (from Monday to today)
+      const thisWeekEntries = timeEntryData.filter((entry) => {
+        const entryDate = normalizeDate(entry.date);
+        const match = entryDate >= startOfWeekStr;
+        console.log(
+          `Comparing entry date ${entryDate} >= start of week ${startOfWeekStr}: ${match}`,
+        );
+        return match;
+      });
+      const weekHours = thisWeekEntries.reduce(
+        (sum, entry) => sum + entry.duration,
+        0,
+      );
+      console.log(
+        "This week's entries:",
+        thisWeekEntries.length,
+        "Total hours:",
+        weekHours,
+        "Entries:",
+        thisWeekEntries.map((e) => ({ date: e.date, duration: e.duration })),
+      );
 
-      setQuickStats({ todayHours, weekHours, monthHours });
+      // Calculate this month's hours
+      const thisMonthEntries = timeEntryData.filter((entry) => {
+        const entryDate = normalizeDate(entry.date);
+        const match = entryDate >= startOfMonthStr;
+        console.log(
+          `Comparing entry date ${entryDate} >= start of month ${startOfMonthStr}: ${match}`,
+        );
+        return match;
+      });
+      const monthHours = thisMonthEntries.reduce(
+        (sum, entry) => sum + entry.duration,
+        0,
+      );
+      console.log(
+        "This month's entries:",
+        thisMonthEntries.length,
+        "Total hours:",
+        monthHours,
+        "Entries:",
+        thisMonthEntries.map((e) => ({ date: e.date, duration: e.duration })),
+      );
+
+      console.log("Final calculated stats:", {
+        todayHours,
+        weekHours,
+        monthHours,
+      });
+      console.log("=== End Dashboard Tabs Quick Stats Debug ===");
+
+      setQuickStats({
+        todayHours,
+        weekHours,
+        monthHours,
+      });
 
       // Get recent activities (last 3)
       const recent =

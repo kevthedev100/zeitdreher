@@ -205,7 +205,19 @@ export default function TimeAnalyticsDashboard({
 
   // Calculate analytics from real data
   const calculateTimeData = () => {
+    console.log("=== Analytics Dashboard calculateTimeData Debug ===");
+    console.log("Total time entries:", timeEntries.length);
+    console.log(
+      "Time entries:",
+      timeEntries.map((e) => ({
+        date: e.date,
+        duration: e.duration,
+        activity: e.activities?.name,
+      })),
+    );
+
     if (timeEntries.length === 0) {
+      console.log("No time entries found, returning zeros");
       return {
         todayHours: 0,
         thisWeek: 0,
@@ -216,59 +228,139 @@ export default function TimeAnalyticsDashboard({
       };
     }
 
+    // Use local timezone for all date calculations
     const now = new Date();
-    const today = now.toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
 
-    // Calculate start of current week (Monday)
-    const startOfWeek = new Date(now);
+    // Get today's date in local timezone (YYYY-MM-DD format)
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      .toISOString()
+      .split("T")[0];
+    console.log("Today's date (local):", today);
+
+    // Calculate start of current week (Monday) in local timezone
+    const startOfWeek = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
     const dayOfWeek = now.getDay();
     const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, so we need 6 days back
-    startOfWeek.setDate(now.getDate() - daysToMonday);
-    startOfWeek.setHours(0, 0, 0, 0); // Set to start of day
+    startOfWeek.setDate(startOfWeek.getDate() - daysToMonday);
     const startOfWeekStr = startOfWeek.toISOString().split("T")[0];
+    console.log("Start of week (Monday, local):", startOfWeekStr);
 
     // Calculate start of last week
     const startOfLastWeek = new Date(startOfWeek);
     startOfLastWeek.setDate(startOfWeek.getDate() - 7);
     const startOfLastWeekStr = startOfLastWeek.toISOString().split("T")[0];
-    const endOfLastWeekStr = new Date(
-      startOfWeek.getTime() - 24 * 60 * 60 * 1000,
-    )
-      .toISOString()
-      .split("T")[0];
+    const endOfLastWeek = new Date(startOfWeek);
+    endOfLastWeek.setDate(startOfWeek.getDate() - 1);
+    const endOfLastWeekStr = endOfLastWeek.toISOString().split("T")[0];
+    console.log(
+      "Last week range (local):",
+      startOfLastWeekStr,
+      "to",
+      endOfLastWeekStr,
+    );
 
-    // Calculate start of current month
+    // Calculate start of current month in local timezone
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfMonthStr = startOfMonth.toISOString().split("T")[0];
+    console.log("Start of month (local):", startOfMonthStr);
+
+    // Helper function to normalize date strings for comparison
+    const normalizeDate = (dateStr: string) => {
+      // Ensure we're working with YYYY-MM-DD format
+      const date = new Date(dateStr + "T00:00:00.000Z");
+      return date.toISOString().split("T")[0];
+    };
 
     // Calculate today's hours
-    const todayHours = timeEntries
-      .filter((entry) => entry.date === today)
-      .reduce((sum, entry) => sum + entry.duration, 0);
+    const todayEntries = timeEntries.filter((entry) => {
+      const entryDate = normalizeDate(entry.date);
+      const match = entryDate === today;
+      console.log(
+        `Comparing entry date ${entryDate} with today ${today}: ${match}`,
+      );
+      return match;
+    });
+    const todayHours = todayEntries.reduce(
+      (sum, entry) => sum + entry.duration,
+      0,
+    );
+    console.log(
+      "Today's entries:",
+      todayEntries.length,
+      "Total hours:",
+      todayHours,
+      "Entries:",
+      todayEntries.map((e) => ({ date: e.date, duration: e.duration })),
+    );
 
     // Calculate this week's hours (from Monday to today)
-    const thisWeekHours = timeEntries
-      .filter((entry) => {
-        const entryDate = new Date(entry.date);
-        return entryDate >= startOfWeek;
-      })
-      .reduce((sum, entry) => sum + entry.duration, 0);
+    const thisWeekEntries = timeEntries.filter((entry) => {
+      const entryDate = normalizeDate(entry.date);
+      const match = entryDate >= startOfWeekStr;
+      console.log(
+        `Comparing entry date ${entryDate} >= start of week ${startOfWeekStr}: ${match}`,
+      );
+      return match;
+    });
+    const thisWeekHours = thisWeekEntries.reduce(
+      (sum, entry) => sum + entry.duration,
+      0,
+    );
+    console.log(
+      "This week's entries:",
+      thisWeekEntries.length,
+      "Total hours:",
+      thisWeekHours,
+      "Entries:",
+      thisWeekEntries.map((e) => ({ date: e.date, duration: e.duration })),
+    );
 
     // Calculate last week's hours
-    const lastWeekHours = timeEntries
-      .filter(
-        (entry) =>
-          entry.date >= startOfLastWeekStr && entry.date <= endOfLastWeekStr,
-      )
-      .reduce((sum, entry) => sum + entry.duration, 0);
+    const lastWeekEntries = timeEntries.filter((entry) => {
+      const entryDate = normalizeDate(entry.date);
+      const match =
+        entryDate >= startOfLastWeekStr && entryDate <= endOfLastWeekStr;
+      console.log(
+        `Comparing entry date ${entryDate} in range ${startOfLastWeekStr} to ${endOfLastWeekStr}: ${match}`,
+      );
+      return match;
+    });
+    const lastWeekHours = lastWeekEntries.reduce(
+      (sum, entry) => sum + entry.duration,
+      0,
+    );
+    console.log(
+      "Last week's entries:",
+      lastWeekEntries.length,
+      "Total hours:",
+      lastWeekHours,
+    );
 
     // Calculate this month's hours
-    const thisMonthHours = timeEntries
-      .filter((entry) => {
-        const entryDate = new Date(entry.date);
-        return entryDate >= startOfMonth;
-      })
-      .reduce((sum, entry) => sum + entry.duration, 0);
+    const thisMonthEntries = timeEntries.filter((entry) => {
+      const entryDate = normalizeDate(entry.date);
+      const match = entryDate >= startOfMonthStr;
+      console.log(
+        `Comparing entry date ${entryDate} >= start of month ${startOfMonthStr}: ${match}`,
+      );
+      return match;
+    });
+    const thisMonthHours = thisMonthEntries.reduce(
+      (sum, entry) => sum + entry.duration,
+      0,
+    );
+    console.log(
+      "This month's entries:",
+      thisMonthEntries.length,
+      "Total hours:",
+      thisMonthHours,
+      "Entries:",
+      thisMonthEntries.map((e) => ({ date: e.date, duration: e.duration })),
+    );
 
     // Find top activity
     const activityHours: { [key: string]: number } = {};
@@ -285,7 +377,10 @@ export default function TimeAnalyticsDashboard({
           )
         : "Keine Daten";
 
-    return {
+    console.log("Activity breakdown:", activityHours);
+    console.log("Top activity:", topActivity);
+
+    const result = {
       todayHours,
       thisWeek: thisWeekHours,
       lastWeek: lastWeekHours,
@@ -296,6 +391,11 @@ export default function TimeAnalyticsDashboard({
           ? Math.min(100, Math.round((thisMonthHours / 160) * 100))
           : 0, // Assuming 160h/month target
     };
+
+    console.log("Final calculated result:", result);
+    console.log("=== End Analytics Dashboard Debug ===");
+
+    return result;
   };
 
   const calculateAreaBreakdown = () => {
