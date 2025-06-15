@@ -1,11 +1,9 @@
 "use client";
 
-import DashboardNavbar from "@/components/dashboard-navbar";
 import { createClient } from "../../../supabase/client";
 import { redirect } from "next/navigation";
 import { SubscriptionCheck } from "@/components/subscription-check";
 import DashboardTabs from "@/components/dashboard-tabs-refactored";
-import AddEntryButton from "@/components/add-entry-button";
 import { useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
 import OnboardingWizardDialog from "@/components/onboarding-wizard-dialog";
@@ -16,7 +14,11 @@ interface UserData {
   role?: string;
 }
 
-export default function Dashboard() {
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,13 +95,6 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => {
-    // Redirect to overview tab by default
-    if (!loading && user) {
-      redirect("/dashboard/overview");
-    }
-  }, [loading, user]);
-
   if (loading) {
     return (
       <div className="w-full bg-gray-50 min-h-screen flex items-center justify-center">
@@ -112,6 +107,9 @@ export default function Dashboard() {
     return null;
   }
 
+  // Get user role from database or default to employee
+  const userRole = userData?.role || "employee";
+
   return (
     <SubscriptionCheck>
       {showOnboarding && user && (
@@ -120,9 +118,12 @@ export default function Dashboard() {
           onComplete={handleOnboardingComplete}
         />
       )}
-      <div className="w-full bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Redirecting to dashboard...</div>
-      </div>
+      <DashboardTabs
+        userRole={userRole as "manager" | "employee"}
+        isOnboarded={userData?.onboarded === true}
+      >
+        {children}
+      </DashboardTabs>
     </SubscriptionCheck>
   );
 }
