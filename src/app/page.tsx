@@ -31,7 +31,7 @@ export default async function Home() {
       <Hero />
 
       {/* Feature Sections with Alternating Layout */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-[#F8FAFE]">
         <div className="container mx-auto px-4">
           {/* Voice Recording Feature */}
           <div className="flex flex-col lg:flex-row items-center gap-16 mb-32">
@@ -728,7 +728,7 @@ export default async function Home() {
       </section>
 
       {/* How It Works Section */}
-      <section className="py-24 bg-gray-50">
+      <section className="py-24 bg-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">
@@ -740,59 +740,66 @@ export default async function Home() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            <div className="bg-white p-8 rounded-xl shadow-sm">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-6">
-                <Mic className="w-6 h-6 text-blue-600" />
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto items-start">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-400/30 to-blue-600/30 rounded-xl transform rotate-2 translate-x-2 translate-y-2"></div>
+              <div className="relative bg-white p-8 rounded-xl shadow-md">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-6">
+                  <Mic className="w-6 h-6 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-semibold mb-4">
+                  Sprach- oder manuelle Eingabe
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Erfassen Sie Zeiteinträge durch natürliches Sprechen und lassen sie ihre zeiteinträge automatisch zuordnen
+                </p>
+                <ul className="text-sm text-gray-500 space-y-1">
+                  <li>• OpenAI Whisper Transkription</li>
+                  <li>• Bereich → Feld → Aktivität Struktur</li>
+                  <li>• Dauer, Datum und Beschreibungen</li>
+                </ul>
               </div>
-              <h3 className="text-xl font-semibold mb-4">
-                Sprach- oder manuelle Eingabe
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Erfassen Sie Zeiteinträge durch natürliches Sprechen oder mit
-                unserem intuitiven Formular mit kaskadierten Dropdown-Menüs.
-              </p>
-              <ul className="text-sm text-gray-500 space-y-1">
-                <li>• OpenAI Whisper Transkription</li>
-                <li>• Bereich → Feld → Aktivität Struktur</li>
-                <li>• Dauer, Datum und Beschreibungen</li>
-              </ul>
             </div>
 
-            <div className="bg-white p-8 rounded-xl shadow-sm">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-6">
-                <BarChart3 className="w-6 h-6 text-green-600" />
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-green-400/30 to-green-600/30 rounded-xl transform -rotate-1 translate-x-1 translate-y-1"></div>
+              <div className="relative bg-white p-8 rounded-xl shadow-md">
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-6">
+                  <BarChart3 className="w-6 h-6 text-green-600" />
+                </div>
+                <h3 className="text-xl font-semibold mb-4">
+                  KI-gestützte Produktivitätsanalyse
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Intelligente KI-Analysen erkennen Arbeitsmuster und liefern konkrete Optimierungsvorschläge.
+                </p>
+                <ul className="text-sm text-gray-500 space-y-1">
+                  <li>• KI-Zusammenfassungen</li>
+                  <li>• Workflow-Optimierung</li>
+                  <li>• Personalisierte Empfehlungen</li>
+                </ul>
               </div>
-              <h3 className="text-xl font-semibold mb-4">
-                Interaktive Analytik
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Visualisieren Sie die Zeitverteilung mit schönen Diagrammen und
-                umfassenden Berichten.
-              </p>
-              <ul className="text-sm text-gray-500 space-y-1">
-                <li>• Kreisdiagramme für Zeitaufschlüsselung</li>
-                <li>• Balkendiagramme für Trends</li>
-                <li>• Filter- und Sortieroptionen</li>
-              </ul>
             </div>
 
-            <div className="bg-white p-8 rounded-xl shadow-sm">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-6">
-                <Users className="w-6 h-6 text-purple-600" />
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-400/30 to-purple-600/30 rounded-xl transform rotate-1 translate-x-1 translate-y-2"></div>
+              <div className="relative bg-white p-8 rounded-xl shadow-md">
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-6">
+                  <Users className="w-6 h-6 text-purple-600" />
+                </div>
+                <h3 className="text-xl font-semibold mb-4">
+                  Rollenbasierte Zugriffskontrolle
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Sichere Zugriffskontrolle stellt sicher, dass die richtigen
+                  Personen die richtigen Daten sehen.
+                </p>
+                <ul className="text-sm text-gray-500 space-y-1">
+                  <li>• Manager: Unternehmensweite Ansicht</li>
+                  <li>• Mitarbeiter: Nur persönliche Einträge</li>
+                  <li>• Farbkodierte Übersichtstabellen</li>
+                </ul>
               </div>
-              <h3 className="text-xl font-semibold mb-4">
-                Rollenbasierte Zugriffskontrolle
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Sichere Zugriffskontrolle stellt sicher, dass die richtigen
-                Personen die richtigen Daten sehen.
-              </p>
-              <ul className="text-sm text-gray-500 space-y-1">
-                <li>• Manager: Unternehmensweite Ansicht</li>
-                <li>• Mitarbeiter: Nur persönliche Einträge</li>
-                <li>• Farbkodierte Übersichtstabellen</li>
-              </ul>
             </div>
           </div>
         </div>
