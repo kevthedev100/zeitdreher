@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowUpRight, Check, Clock } from "lucide-react";
+import { ArrowUpRight, Check, Clock, Star } from "lucide-react";
 import { useState, useEffect } from "react";
 
 // Dynamic Clock Component
@@ -90,41 +90,6 @@ function DynamicClock() {
 export default function Hero() {
   return (
     <div className="bg-gradient-to-br from-gray-900 via-gray-900 to-black relative overflow-hidden">
-      <style jsx global>{`
-        @keyframes gradientShift {
-          0% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-          100% {
-            background-position: 0% 50%;
-          }
-        }
-        .gradient-text {
-          background: linear-gradient(
-            -45deg,
-            #60a5fa,
-            #a855f7,
-            #ec4899,
-            #3b82f6,
-            #8b5cf6
-          );
-          background-size: 400% 400%;
-          animation: gradientShift 6s ease-in-out infinite;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          /* Fallback color before gradient loads */
-          color: #60a5fa;
-        }
-
-        /* Ensure gradient text is visible on load */
-        .gradient-text-loaded {
-          -webkit-text-fill-color: transparent;
-        }
-      `}</style>
       {/* Dynamic Clock in background */}
       <div className="absolute inset-0 flex items-center justify-center opacity-20">
         <div className="w-[600px] sm:w-[900px] h-[600px] sm:h-[900px] rotate-12 flex items-center justify-center">
@@ -132,11 +97,18 @@ export default function Hero() {
         </div>
       </div>
 
-      <div className="relative pt-16 pb-24 sm:pt-24 sm:pb-32 md:pt-32 md:pb-40">
+      <div className="relative pt-12 pb-24 sm:pt-16 sm:pb-32 md:pt-20 md:pb-40">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-4xl mx-auto">
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-6 py-3 rounded-full border border-white/20 mb-6">
+              <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+              <span className="text-sm font-medium text-blue-100">
+                Nr. 1 KI-Zeiterfassungssoftware
+              </span>
+            </div>
+
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 tracking-tight leading-tight">
-              <span className="gradient-text gradient-text-loaded">
+              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 KI-Zeittracking und Analyse
               </span>{" "}
               <span className="text-white">

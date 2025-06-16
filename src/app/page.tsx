@@ -47,12 +47,12 @@ export default async function Home() {
                       <div className="w-3/4 h-2 bg-blue-500 rounded-full animate-pulse"></div>
                     </div>
                     <p className="text-gray-600 italic">
-                      "Heute 3 Stunden an Projekt Alpha gearbeitet..."
+                      "Heute von 8 bis 11 mit Kunden telefoniert und dabei 53 Kontakte erreicht und 5 Termine gelegt. Hatte Schwierigkeiten mit der Erreichbarkeit."
                     </p>
                     <div className="mt-4 p-2 bg-blue-50 rounded-lg">
                       <div className="flex items-center gap-2 text-sm text-blue-700">
                         <Clock className="w-4 h-4" />
-                        <span>Automatisch kategorisiert: Entwicklung > Frontend > Implementierung</span>
+                        <span>Automatisch kategorisiert: Vertrieb > Kaltakquise > Telefonzeit</span>
                       </div>
                     </div>
                   </div>
@@ -100,44 +100,61 @@ export default async function Home() {
                     <div className="bg-blue-50 p-4 rounded-lg">
                       <BarChart3 className="w-8 h-8 text-blue-600 mb-2" />
                       <div className="text-sm text-gray-600">Projektzeit</div>
-                      <div className="text-xl font-bold text-blue-600">24h</div>
+                      <div className="text-xl font-bold text-blue-600">26h</div>
                     </div>
                     <div className="bg-green-50 p-4 rounded-lg">
                       <Clock className="w-8 h-8 text-green-600 mb-2" />
                       <div className="text-sm text-gray-600">Diese Woche</div>
                       <div className="text-xl font-bold text-green-600">
-                        42h
+                        19h
                       </div>
                     </div>
                   </div>
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span>Entwicklung</span>
-                        <span>60%</span>
+                        <span>Vertrieb</span>
+                        <span>25%</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
-                          className="bg-blue-500 h-2 rounded-full"
-                          style={{ width: "60%" }}
+                          className="bg-red-500 h-2 rounded-full"
+                          style={{ width: "25%" }}
                         ></div>
                       </div>
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span>Design</span>
-                        <span>25%</span>
+                        <span>Angebotserstellung</span>
+                        <span>30%</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
-                          className="bg-purple-500 h-2 rounded-full"
-                          style={{ width: "25%" }}
+                          className="bg-yellow-500 h-2 rounded-full"
+                          style={{ width: "35%" }}
                         ></div>
                       </div>
                     </div>
+                     <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Fullfilment</span>
+                        <span>40%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-500 h-2 rounded-full"
+                          style={{ width: "45%" }}
+                        ></div>
+                      </div>
+                    </div>
+                
+                    <div className="p-2 bg-yellow-50 rounded-lg text-sm text-yellow-700">
+                      <div className="font-medium">KI-Optimierungsvorschlag:</div>
+                      <div>Vorschlag: Verwende einen Make.com Workflow für die erstellung von Angeboten. Hier zum Beispiel.</div>
+                    </div>
                     <div className="p-2 bg-green-50 rounded-lg text-sm text-green-700">
                       <div className="font-medium">KI-Erkenntnis:</div>
-                      <div>Produktivitätssteigerung von 15% im Vergleich zur Vorwoche</div>
+                      <div>Produktivitätssteigerung von 15% im Vergleich zur Vorwoche durch den Einsatz von Chatgpt prompts für E-Mails</div>
                     </div>
                   </div>
                 </div>
@@ -153,7 +170,7 @@ export default async function Home() {
               <p className="text-xl text-gray-600 mb-6">
                 Verstehen Sie, wie Ihre Zeit investiert wird und wo
                 Verbesserungspotenzial liegt. KI-gestützte Auswertungen
-                identifizieren Produktivitätsmuster, erkennen Kontextwechsel und
+                identifizieren Produktivitätsmuster, erkennen Potentiale und
                 geben konkrete Vorschläge zur Optimierung Ihrer Arbeitsabläufe.
               </p>
               <ul className="space-y-3 text-gray-600">
@@ -163,7 +180,7 @@ export default async function Home() {
                 </li>
                 <li className="flex items-center gap-3">
                   <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                  <span>Erkennung von Kontextwechseln und Fokuszeiten</span>
+                  <span>Erkennung von Arbeitsabläufen</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
@@ -241,7 +258,7 @@ export default async function Home() {
                 <Users className="w-8 h-8" />
               </div>
               <h2 className="text-4xl font-bold mb-6">
-                Rollenbasierte Zugriffskontrolle
+                Für Einzelnutzer oder Teams mit rollenbasierter Zugriffskontrolle
               </h2>
               <p className="text-xl text-gray-600 mb-6">
                 Sichere und intelligente Zugriffskontrolle sorgt dafür, dass
@@ -573,23 +590,23 @@ export default async function Home() {
                           <div className="space-y-3">
                             <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg">
                               <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                              <span className="font-medium">Entwicklung</span>
+                              <span className="font-medium">Vertrieb</span>
                               <span className="ml-auto text-sm text-gray-500">
-                                Frontend, Backend, Testing
+                                Kaltakquise, Angebotserstellung
                               </span>
                             </div>
                             <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
                               <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                              <span className="font-medium">Design</span>
+                              <span className="font-medium">Fullfilment</span>
                               <span className="ml-auto text-sm text-gray-500">
-                                UI, UX, Prototyping
+                                Projektzeit, Produktion, Sonstiges
                               </span>
                             </div>
                             <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
                               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                               <span className="font-medium">Management</span>
                               <span className="ml-auto text-sm text-gray-500">
-                                Meetings, Planung
+                                Meetings, Planung, E-Mails
                               </span>
                             </div>
                           </div>
@@ -669,7 +686,7 @@ export default async function Home() {
                           <div className="bg-gray-50 rounded-lg p-3 text-center">
                             <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
                               <Mic className="w-4 h-4" />
-                              <span>"Heute 3 Stunden React Development"</span>
+                              <span>"Heute von 8 bis 12 am Projekt XY gearbeitet"</span>
                             </div>
                           </div>
                         </div>
