@@ -116,30 +116,39 @@ export default function Hero() {
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
+          /* Fallback color before gradient loads */
+          color: #60a5fa;
+        }
+
+        /* Ensure gradient text is visible on load */
+        .gradient-text-loaded {
+          -webkit-text-fill-color: transparent;
         }
       `}</style>
       {/* Dynamic Clock in background */}
       <div className="absolute inset-0 flex items-center justify-center opacity-20">
-        <div className="w-[900px] h-[900px] rotate-12 flex items-center justify-center">
+        <div className="w-[600px] sm:w-[900px] h-[600px] sm:h-[900px] rotate-12 flex items-center justify-center">
           <DynamicClock />
         </div>
       </div>
 
-      <div className="relative pt-24 pb-32 sm:pt-32 sm:pb-40">
+      <div className="relative pt-16 pb-24 sm:pt-24 sm:pb-32 md:pt-32 md:pb-40">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-4xl mx-auto">
-            <h1 className="text-5xl sm:text-6xl font-bold mb-6 tracking-tight">
-              <span className="gradient-text">KI-Zeittracking und Analyse</span>{" "}
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 tracking-tight leading-tight">
+              <span className="gradient-text gradient-text-loaded">
+                KI-Zeittracking und Analyse
+              </span>{" "}
               <span className="text-white">
                 für echte Produktivitätsgewinne – jeden Tag
               </span>
             </h1>
 
-            <h2 className="text-2xl sm:text-3xl font-medium mb-12 text-white">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-medium mb-8 sm:mb-12 text-white">
               Reflektieren. Analysieren. Optimieren.
             </h2>
 
-            <p className="text-xl text-gray-300 mb-12 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-lg sm:text-xl text-gray-300 mb-8 sm:mb-12 max-w-2xl mx-auto leading-relaxed px-4 sm:px-0">
               Erfasse deine Zeit und Aufgaben mühelos per Sprache und gewinne
               wertvolle KI-gestützte Erkenntnisse zur Produktivitätsoptimierung.
               Verstehe deine Arbeitsmuster, identifiziere
@@ -147,35 +156,41 @@ export default function Hero() {
               um.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center px-4 sm:px-0">
               <Link
                 href="/dashboard"
-                className="inline-flex items-center px-8 py-4 text-white bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 text-lg font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                className="inline-flex items-center px-6 sm:px-8 py-3 sm:py-4 text-white bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 text-base sm:text-lg font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-1 w-full sm:w-auto justify-center"
               >
                 Zeit erfassen starten
-                <ArrowUpRight className="ml-2 w-5 h-5" />
+                <ArrowUpRight className="ml-2 w-4 sm:w-5 h-4 sm:h-5" />
               </Link>
 
               <Link
                 href="#pricing"
-                className="inline-flex items-center px-8 py-4 text-white bg-transparent border border-white/30 rounded-lg hover:bg-white/10 transition-all duration-300 text-lg font-medium shadow-sm"
+                className="inline-flex items-center px-6 sm:px-8 py-3 sm:py-4 text-white bg-transparent border border-white/30 rounded-lg hover:bg-white/10 transition-all duration-300 text-base sm:text-lg font-medium shadow-sm w-full sm:w-auto justify-center"
               >
                 Preise ansehen
               </Link>
             </div>
 
-            <div className="mt-16 flex flex-col sm:flex-row items-center justify-center gap-8 text-sm text-gray-300">
+            <div className="mt-12 sm:mt-16 flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-8 text-sm text-gray-300 px-4 sm:px-0">
               <div className="flex items-center gap-2">
-                <Check className="w-5 h-5 text-green-400" />
-                <span>Sprachgestützte Zeiterfassung</span>
+                <Check className="w-4 sm:w-5 h-4 sm:h-5 text-green-400 flex-shrink-0" />
+                <span className="text-center sm:text-left">
+                  Sprachgestützte Zeiterfassung
+                </span>
               </div>
               <div className="flex items-center gap-2">
-                <Check className="w-5 h-5 text-green-400" />
-                <span>KI-gestützte Produktivitätsanalyse</span>
+                <Check className="w-4 sm:w-5 h-4 sm:h-5 text-green-400 flex-shrink-0" />
+                <span className="text-center sm:text-left">
+                  KI-gestützte Produktivitätsanalyse
+                </span>
               </div>
               <div className="flex items-center gap-2">
-                <Check className="w-5 h-5 text-green-400" />
-                <span>Personalisierte Optimierungsvorschläge</span>
+                <Check className="w-4 sm:w-5 h-4 sm:h-5 text-green-400 flex-shrink-0" />
+                <span className="text-center sm:text-left">
+                  Personalisierte Optimierungsvorschläge
+                </span>
               </div>
             </div>
           </div>

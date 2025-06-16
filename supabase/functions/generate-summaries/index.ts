@@ -34,14 +34,24 @@ Deno.serve(async (req) => {
     const messages = isOptimizationAnalysis
       ? [
           {
+            role: "system",
+            content:
+              "Du bist ein intelligenter KI-Assistent, der Zeiterfassungsdaten analysiert und strukturierte Optimierungsvorschläge erstellt. Antworte auf Deutsch in professionellem Ton. Verwende ausschließlich HTML-Formatierung: <h4> für Überschriften, <ul><li> für Bullet Points, <strong> für wichtige Begriffe, <em> für Schwerpunkte, <p> für Absätze. NIEMALS Markdown verwenden! Erstelle klare, strukturierte Berichte mit Bullet Points und Subheadings.",
+          },
+          {
             role: "user",
-            content: `Du bist ein intelligenter Assistent, der Zeiterfassungsdaten analysiert und Optimierungsvorschläge gibt. Antworte auf Deutsch und in einem professionellen Ton. Verwende ausschließlich HTML-Formatierung für Hervorhebungen: <strong> für wichtige Begriffe, <ul> und <li> für Aufzählungen. Verwende NIEMALS Markdown-Sternchen (**) oder andere Markdown-Formatierung. Beginne NIEMALS mit \`\`\`html oder anderen Code-Blöcken. Analysiere die folgenden Zeiteinträge der letzten zwei Wochen und gib 3-4 konkrete, kurze KI-Optimierungsvorschläge:\n\n${weeklyEntries}\n\nFür jeden Vorschlag gib einen Titel, eine prägnante Beschreibung (max. 2 Sätze) und eine quantifizierte potenzielle Zeitersparnis oder Produktivitätssteigerung in Stunden oder Prozent an. Beispiel: "Potenzielle Zeitersparnis: 2-3 Stunden pro Woche" oder "Produktivitätssteigerung: 15-20%". Halte die Antwort kurz und prägnant.`,
+            content: `Analysiere die folgenden Zeiteinträge der letzten zwei Wochen und erstelle einen strukturierten Optimierungsbericht:\n\n${weeklyEntries}\n\nErstelle einen Bericht mit folgender Struktur:\n\n<h4>🎯 Optimierungspotenzial</h4>\n<p>Kurze Einschätzung der wichtigsten Verbesserungsmöglichkeiten</p>\n\n<h4>⚡ Konkrete Optimierungsvorschläge</h4>\n<ul>\n<li><strong>Automatisierung:</strong> Spezifische Vorschläge mit Zeitersparnis</li>\n<li><strong>Workflow-Optimierung:</strong> Prozessverbesserungen mit Effizienzsteigerung</li>\n<li><strong>Fokus-Verbesserung:</strong> Konzentrations- und Produktivitätstipps</li>\n</ul>\n\n<h4>📊 Erwartete Ergebnisse</h4>\n<p>Quantifizierte Zeitersparnis und Produktivitätssteigerung mit <strong>konkreten Zahlen</strong></p>\n\nHalte jeden Punkt prägnant (max. 2 Sätze) und gib konkrete Zahlen an.",
           },
         ]
       : [
           {
+            role: "system",
+            content:
+              "Du bist ein erfahrener Produktivitäts-Analyst, der strukturierte Zeitanalysen erstellt. Verwende ausschließlich HTML-Formatierung: <h4> für Überschriften, <ul><li> für Bullet Points, <strong> für wichtige Zahlen, <em> für Trends und Schwerpunkte, <p> für Absätze. NIEMALS Markdown verwenden! Erstelle klare, gut strukturierte Berichte mit Bullet Points und Subheadings. WICHTIG: Liste NIEMALS einzelne Zeiteinträge auf - analysiere Muster und fasse zusammen!",
+          },
+          {
             role: "user",
-            content: `Du bist ein professioneller Projektmanager, der strukturierte Tages- und Wochenberichte in deutscher Sprache erstellt. Verwende ausschließlich HTML-Formatierung für eine professionelle Darstellung. Beginne NIEMALS mit \`\`\`html oder anderen Code-Blöcken.\n\nWICHTIGE FORMATIERUNGSREGELN:\n- Verwende KEINE <br /> Tags\n- Verwende KEINE doppelten Leerzeilen\n- Jeder <p> Tag sollte direkt aufeinander folgen\n- <h4> Tags sollten direkt nach </p> oder </ul> folgen\n- Listen sollten kompakt sein ohne zusätzliche Abstände\n\nFormatierungsrichtlinien:\n- <h4> für Überschriften und Kategorien\n- <strong> für wichtige Zahlen, Stunden und Schlüsselbegriffe\n- <em> für Fokuspunkte und Prioritäten\n- <p> für Absätze mit klarer Struktur (KEINE <br /> innerhalb)\n- <ul> und <li> für kompakte Aufzählungen\n- Trenne Tages- und Wochenbericht mit '---SUMMARY_SEPARATOR---'\n\nErstelle zwei strukturierte Arbeitsberichte basierend auf diesen Zeiterfassungsdaten:\n\nTAGESBERICHT (analysiere nur diese Daten):\n${dailyEntries || "Keine Einträge für heute"}\n\n---SUMMARY_SEPARATOR---\n\nWOCHENBERICHT (analysiere nur diese Daten):\n${weeklyEntries || "Keine wöchentlichen Einträge"}\n\nStruktur für jeden Bericht (KOMPAKT ohne Leerzeilen):\n1. <h4>Übersicht</h4><p>Gesamtstunden in <strong>X.X Stunden</strong></p>\n2. <h4>Hauptaktivitäten</h4><ul><li>Aktivität 1</li><li>Aktivität 2</li></ul>\n3. <p>Zusammenfassung mit <em>Fokuspunkten</em> und <strong>wichtigen Zahlen</strong></p>\n\nHalte jeden Bericht prägnant und kompakt strukturiert wie ChatGPT.`,
+            content: `Analysiere diese Zeitdaten und erstelle zwei strukturierte Berichte mit Bullet Points und Subheadings. WICHTIG: Liste KEINE einzelnen Zeiteinträge auf!\n\nTAGESDATE:\n${dailyEntries || "Keine Einträge für heute"}\n\n---SUMMARY_SEPARATOR---\n\nWOCHENDATE:\n${weeklyEntries || "Keine wöchentlichen Einträge"}\n\nFür jeden Bericht verwende diese Struktur:\n\n<h4>📈 Produktivitätsübersicht</h4>\n<p>Kurze Analyse der Haupttätigkeiten und Gesamtstunden mit wichtigsten Erkenntnissen</p>\n\n<h4>🎯 Aktivitätsschwerpunkte</h4>\n<ul>\n<li><strong>Hauptbereich 1:</strong> Stundenzahl und Anteil</li>\n<li><strong>Hauptbereich 2:</strong> Stundenzahl und Anteil</li>\n<li><strong>Weitere Bereiche:</strong> Zusammenfassung</li>\n</ul>\n\n<h4>⚡ Effizienz-Highlights</h4>\n<ul>\n<li><em>Produktivitätsmuster:</em> Erkannte Trends und Zeiten</li>\n<li><em>Arbeitsverteilung:</em> Balance zwischen verschiedenen Aufgaben</li>\n<li><em>Besondere Erkenntnisse:</em> Auffälligkeiten oder Optimierungspotenzial</li>\n</ul>\n\n<h4>📊 Zahlen & Trends</h4>\n<p>Bewertung mit <strong>konkreten Zahlen</strong> und <em>identifizierten Trends</em></p>\n\nTrenne die beiden Berichte mit '---SUMMARY_SEPARATOR---'. Fasse zusammen, liste nicht auf!",
           },
         ];
 
@@ -62,7 +72,7 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${openaiApiKey}`,
+        "Authorization": `Bearer ${openaiApiKey}`,
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",

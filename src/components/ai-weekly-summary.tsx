@@ -30,9 +30,7 @@ export default function AIWeeklySummary({
 
   // Generate summary when weekly entries change
   useEffect(() => {
-    if (weeklyEntries.length > 0) {
-      generateSummary();
-    }
+    generateSummary();
   }, [weeklyEntries]);
 
   // Listen for time entry updates
@@ -132,7 +130,7 @@ export default function AIWeeklySummary({
     if (weeklyEntries.length === 0) {
       console.log("No weekly entries found, setting empty message");
       setSummary(
-        "<h4>Wochenübersicht</h4><p>Keine Zeiteinträge für diese Woche verfügbar.</p><p><em>Tipp:</em> Erfassen Sie regelmäßig Ihre Arbeitszeit für aussagekräftige Wochenberichte.</p>",
+        "<h4>Wochenübersicht</h4><p>Diese Woche wurden noch keine Zeiteinträge erfasst.</p><p><em>Tipp:</em> Beginnen Sie mit der Erfassung Ihrer Arbeitszeit für bessere Produktivitätsanalysen.</p>",
       );
       return;
     }
