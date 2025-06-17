@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { createClient } from "../../../../supabase/client";
-import { redirect } from "next/navigation";
 import { SubscriptionCheck } from "@/components/subscription-check";
 import NewEntryTab from "@/components/tabs/new-entry-tab";
+import DashboardWrapper from "../dashboard-wrapper";
 
 export default function DashboardNewEntryPage() {
+  const { user } = useUser();
   const supabase = createClient();
   const searchParams = useSearchParams();
   const [userRole, setUserRole] = useState<"manager" | "employee">("employee");
@@ -24,17 +26,10 @@ export default function DashboardNewEntryPage() {
   });
 
   useEffect(() => {
-    const getUser = async () => {
+    if (!user) return;
+
+    const loadUserData = async () => {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          redirect("/sign-in");
-          return;
-        }
-
         // Get user data from the users table
         const { data } = await supabase
           .from("users")
@@ -47,12 +42,11 @@ export default function DashboardNewEntryPage() {
         }
       } catch (error) {
         console.error("Error in user initialization:", error);
-        redirect("/sign-in");
       }
     };
 
-    getUser();
-  }, [supabase]);
+    loadUserData();
+  }, [user, supabase]);
 
   const handleTimeEntrySubmit = (data: any) => {
     console.log("Time entry submitted:", data);
@@ -61,13 +55,15 @@ export default function DashboardNewEntryPage() {
   };
 
   return (
-    <SubscriptionCheck>
-      <NewEntryTab
-        selectedAreaId={selectedAreaId}
-        selectedFieldId={selectedFieldId}
-        selectedActivityId={selectedActivityId}
-        onTimeEntrySubmit={handleTimeEntrySubmit}
-      />
-    </SubscriptionCheck>
+    <DashboardWrapper>
+      <SubscriptionCheck>
+        <NewEntryTab
+          selectedAreaId={selectedAreaId}
+          selectedFieldId={selectedFieldId}
+          selectedActivityId={selectedActivityId}
+          onTimeEntrySubmit={handleTimeEntrySubmit}
+        />
+      </SubscriptionCheck>
+    </DashboardWrapper>
   );
 }

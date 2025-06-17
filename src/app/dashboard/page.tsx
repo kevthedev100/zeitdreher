@@ -1,128 +1,27 @@
 "use client";
 
-import DashboardNavbar from "@/components/dashboard-navbar";
-import { createClient } from "../../../supabase/client";
 import { redirect } from "next/navigation";
-import { SubscriptionCheck } from "@/components/subscription-check";
-import DashboardTabs from "@/components/dashboard-tabs-refactored";
-import AddEntryButton from "@/components/add-entry-button";
-import { useEffect, useState } from "react";
-import { User } from "@supabase/supabase-js";
-import OnboardingWizardDialog from "@/components/onboarding-wizard-dialog";
-
-interface UserData {
-  user_id: string;
-  onboarded?: boolean;
-  role?: string;
-}
+import { useEffect } from "react";
+import { useUser } from "@clerk/nextjs";
 
 export default function Dashboard() {
-  const [user, setUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const supabase = createClient();
+  const { isLoaded, isSignedIn } = useUser();
 
   useEffect(() => {
-    const getUser = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          redirect("/sign-in");
-          return;
-        }
-
-        setUser(user);
-
-        // Get user data from the users table
-        const { data, error } = await supabase
-          .from("users")
-          .select("*")
-          .eq("user_id", user.id)
-          .single();
-
-        if (error) {
-          // PGRST116 means no rows returned - this is a new user
-          if (error.code === "PGRST116") {
-            console.log("New user detected, showing onboarding wizard");
-            setShowOnboarding(true);
-            // Create user record if it doesn't exist
-            await supabase.from("users").upsert({
-              user_id: user.id,
-              full_name: user.user_metadata?.full_name || "",
-              email: user.email,
-              onboarded: false,
-              role: "employee",
-            });
-          } else {
-            console.error("Error fetching user data:", error);
-          }
-        } else if (data) {
-          // User exists in database
-          setUserData(data);
-          // Only show onboarding if onboarded is explicitly false
-          setShowOnboarding(data.onboarded === false);
-          console.log("User onboarded status:", data.onboarded);
-        }
-
-        setLoading(false);
-      } catch (error) {
-        console.error("Error in user initialization:", error);
-        setLoading(false);
+    // Redirect to overview tab by default once user is loaded
+    if (isLoaded) {
+      if (!isSignedIn) {
+        redirect("/sign-in");
+      } else {
+        redirect("/dashboard/overview");
       }
-    };
-
-    getUser();
-  }, [supabase]);
-
-  const handleOnboardingComplete = () => {
-    setShowOnboarding(false);
-    // Refresh user data
-    if (user) {
-      supabase
-        .from("users")
-        .select("*")
-        .eq("user_id", user.id)
-        .single()
-        .then(({ data }) => {
-          if (data) setUserData(data);
-        });
     }
-  };
+  }, [isLoaded, isSignedIn]);
 
-  useEffect(() => {
-    // Redirect to overview tab by default
-    if (!loading && user) {
-      redirect("/dashboard/overview");
-    }
-  }, [loading, user]);
-
-  if (loading) {
-    return (
-      <div className="w-full bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
-
+  // Loading state
   return (
-    <SubscriptionCheck>
-      {showOnboarding && user && (
-        <OnboardingWizardDialog
-          userId={user.id}
-          onComplete={handleOnboardingComplete}
-        />
-      )}
-      <div className="w-full bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Redirecting to dashboard...</div>
-      </div>
-    </SubscriptionCheck>
+    <div className="w-full bg-gray-50 min-h-screen flex items-center justify-center">
+      <div className="text-gray-600">Redirecting to dashboard...</div>
+    </div>
   );
 }

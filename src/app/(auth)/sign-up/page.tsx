@@ -1,98 +1,116 @@
-import { FormMessage, Message } from "@/components/form-message";
-import { SubmitButton } from "@/components/submit-button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import Link from "next/link";
-import { SmtpMessage } from "../smtp-message";
-import { signUpAction } from "@/app/actions";
-import Navbar from "@/components/navbar";
+"use client";
 
-export default async function Signup(props: {
-  searchParams: Promise<Message>;
-}) {
-  const searchParams = await props.searchParams;
-  if ("message" in searchParams) {
+import { SignUp, useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Clock } from "lucide-react";
+import { SmtpMessage } from "../smtp-message";
+
+export default function SignUpPage() {
+  const router = useRouter();
+  const { isSignedIn, isLoaded } = useUser();
+  const [mounted, setMounted] = useState(false);
+
+  // Handle client-side mounting
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Redirect if already signed in
+  useEffect(() => {
+    if (mounted && isLoaded && isSignedIn) {
+      console.log("User already signed in, redirecting to dashboard");
+      router.push("/dashboard/overview");
+    }
+  }, [mounted, isLoaded, isSignedIn, router]);
+
+  // Show loading while checking user status or if already signed in
+  if (!mounted || !isLoaded || isSignedIn) {
     return (
-      <div className="flex h-screen w-full flex-1 items-center justify-center p-4 sm:max-w-md">
-        <FormMessage message={searchParams} />
-      </div>
+      <>
+        <nav className="w-full border-b border-gray-200 bg-white py-2">
+          <div className="container mx-auto px-4 flex justify-between items-center">
+            <Link
+              href="/"
+              className="text-xl font-bold text-black flex items-center gap-2"
+            >
+              <Clock className="w-6 h-6" />
+              Zeitdreher
+            </Link>
+          </div>
+        </nav>
+        <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8">
+          <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-sm">
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          </div>
+        </div>
+      </>
     );
   }
 
   return (
     <>
-      <Navbar />
+      <nav className="w-full border-b border-gray-200 bg-white py-2">
+        <div className="container mx-auto px-4 flex justify-between items-center">
+          <Link
+            href="/"
+            className="text-xl font-bold text-black flex items-center gap-2"
+          >
+            <Clock className="w-6 h-6" />
+            Zeitdreher
+          </Link>
+          <div className="flex gap-4 items-center">
+            <Link
+              href="/sign-in"
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+            >
+              Anmelden
+            </Link>
+          </div>
+        </div>
+      </nav>
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8">
         <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-sm">
-          <form className="flex flex-col space-y-6">
-            <div className="space-y-2 text-center">
-              <h1 className="text-3xl font-semibold tracking-tight">Sign up</h1>
-              <p className="text-sm text-muted-foreground">
-                Already have an account?{" "}
-                <Link
-                  className="text-primary font-medium hover:underline transition-all"
-                  href="/sign-in"
-                >
-                  Sign in
-                </Link>
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="full_name" className="text-sm font-medium">
-                  Full Name
-                </Label>
-                <Input
-                  id="full_name"
-                  name="full_name"
-                  type="text"
-                  placeholder="John Doe"
-                  required
-                  className="w-full"
-                />
+          <SignUp
+            appearance={{
+              elements: {
+                rootBox: "w-full",
+                card: "w-full shadow-none p-0 border-0",
+                header: "text-center",
+                headerTitle: "text-3xl font-semibold tracking-tight",
+                headerSubtitle: "text-sm text-muted-foreground",
+                formButtonPrimary:
+                  "bg-primary hover:bg-primary/90 text-primary-foreground",
+                formFieldInput:
+                  "rounded-md border border-input bg-background px-3 py-2",
+                footerAction:
+                  "text-primary font-medium hover:underline transition-all",
+                socialButtonsBlockButton:
+                  "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+                dividerLine: "bg-border",
+                dividerText: "text-muted-foreground",
+                formFieldLabel: "text-sm font-medium text-foreground",
+                identityPreviewText: "text-sm text-muted-foreground",
+                identityPreviewEditButton: "text-primary hover:underline",
+              },
+            }}
+            fallback={
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  required
-                  className="w-full"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">
-                  Password
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  name="password"
-                  placeholder="Your password"
-                  minLength={6}
-                  required
-                  className="w-full"
-                />
-              </div>
-            </div>
-
-            <SubmitButton
-              formAction={signUpAction}
-              pendingText="Signing up..."
-              className="w-full"
-            >
-              Sign up
-            </SubmitButton>
-
-            <FormMessage message={searchParams} />
-          </form>
+            }
+            routing="path"
+            path="/sign-up"
+            signInUrl="/sign-in"
+            afterSignUpUrl="/dashboard/overview"
+            redirectUrl="/dashboard/overview"
+            forceRedirectUrl="/dashboard/overview"
+            emailVerificationUrl="/verify-email"
+            verifyEmailPath="/verify-email"
+          />
         </div>
         <SmtpMessage />
       </div>

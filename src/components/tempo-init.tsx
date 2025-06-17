@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-export function TempoInit() {
+function TempoInit() {
   useEffect(() => {
     const init = async () => {
       if (process.env.NEXT_PUBLIC_TEMPO) {
@@ -20,3 +20,5 @@ export function TempoInit() {
 
   return null;
 }
+
+export default TempoInit;

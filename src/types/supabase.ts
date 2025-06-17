@@ -294,9 +294,11 @@ export type Database = {
           credits: string | null
           department: string | null
           email: string | null
+          email_verified: boolean | null
           full_name: string | null
           id: string
           image: string | null
+          is_active: boolean | null
           name: string | null
           onboarded: boolean | null
           phone: string | null
@@ -313,9 +315,11 @@ export type Database = {
           credits?: string | null
           department?: string | null
           email?: string | null
+          email_verified?: boolean | null
           full_name?: string | null
           id: string
           image?: string | null
+          is_active?: boolean | null
           name?: string | null
           onboarded?: boolean | null
           phone?: string | null
@@ -332,9 +336,11 @@ export type Database = {
           credits?: string | null
           department?: string | null
           email?: string | null
+          email_verified?: boolean | null
           full_name?: string | null
           id?: string
           image?: string | null
+          is_active?: boolean | null
           name?: string | null
           onboarded?: boolean | null
           phone?: string | null
@@ -382,6 +388,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_user_profile: {
+        Args: {
+          p_user_id: string
+          p_full_name: string
+          p_email: string
+          p_token_identifier: string
+          p_role?: string
+          p_onboarded?: boolean
+        }
+        Returns: undefined
+      }
       get_or_create_user_profile: {
         Args: { user_uuid: string }
         Returns: {

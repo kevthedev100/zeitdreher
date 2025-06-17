@@ -1,49 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "../../../../supabase/client";
-import { redirect } from "next/navigation";
-import { SubscriptionCheck } from "@/components/subscription-check";
+import { useState } from "react";
 import AIChatTab from "@/components/tabs/ai-chat-tab";
+import DashboardWrapper from "../dashboard-wrapper";
 
 export default function DashboardAIChatPage() {
-  const supabase = createClient();
-  const [userRole, setUserRole] = useState<"manager" | "employee">("employee");
-
-  useEffect(() => {
-    const getUser = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          redirect("/sign-in");
-          return;
-        }
-
-        // Get user data from the users table
-        const { data } = await supabase
-          .from("users")
-          .select("*")
-          .eq("user_id", user.id)
-          .single();
-
-        if (data) {
-          setUserRole(data.role as "manager" | "employee");
-        }
-      } catch (error) {
-        console.error("Error in user initialization:", error);
-        redirect("/sign-in");
-      }
-    };
-
-    getUser();
-  }, [supabase]);
+  const [userRole] = useState<"manager" | "employee">("employee");
 
   return (
-    <SubscriptionCheck>
+    <DashboardWrapper>
       <AIChatTab userRole={userRole} />
-    </SubscriptionCheck>
+    </DashboardWrapper>
   );
 }

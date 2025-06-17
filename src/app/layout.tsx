@@ -1,8 +1,11 @@
-import { TempoInit } from "@/components/tempo-init";
-import type { Metadata } from "next";
+import * as React from "react";
 import { Inter } from "next/font/google";
-import Script from "next/script";
+import type { Metadata } from "next";
 import "./globals.css";
+import Script from "next/script";
+import ErrorBoundary from "@/components/error-boundary";
+import { TempoInit } from "./tempo-init";
+import { ClerkProviderWrapper } from "@/components/providers/clerk-provider-wrapper";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,15 +25,36 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <Script src="https://api.tempolabs.ai/proxy-asset?url=https://storage.googleapis.com/tempo-public-assets/error-handling.js" />
+    <html lang="de">
+      <head>
+        <Script
+          src="https://api.tempo.new/proxy-asset?url=https://storage.googleapis.com/tempo-public-assets/error-handling.js"
+          strategy="beforeInteractive"
+        />
+        {/* Debug script to expose environment variables */}
+        <Script id="debug-env" strategy="beforeInteractive">
+          {`
+            window.ENV_DEBUG = {
+              NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "${process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? "Set" : "Not set"}",
+              NEXT_PUBLIC_BYPASS_CLERK_AUTH: "${process.env.NEXT_PUBLIC_BYPASS_CLERK_AUTH || "Not set"}",
+              NEXT_PUBLIC_SUPABASE_URL: "${process.env.NEXT_PUBLIC_SUPABASE_URL ? "Set" : "Not set"}",
+              timestamp: new Date().toISOString()
+            };
+            console.log("[RootLayout] Environment debug:", window.ENV_DEBUG);
+          `}
+        </Script>
+      </head>
       <body className={inter.className}>
-        {children}
-        <TempoInit />
+        <ClerkProviderWrapper>
+          <ErrorBoundary>
+            {children}
+            <TempoInit />
+          </ErrorBoundary>
+        </ClerkProviderWrapper>
       </body>
     </html>
   );

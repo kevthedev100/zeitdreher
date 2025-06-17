@@ -1,28 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useUser } from "@clerk/nextjs";
 import { createClient } from "../../../../supabase/client";
-import { redirect } from "next/navigation";
 import { SubscriptionCheck } from "@/components/subscription-check";
 import EntriesTab from "@/components/tabs/entries-tab";
+import DashboardWrapper from "../dashboard-wrapper";
 
 export default function DashboardEntriesPage() {
+  const { user } = useUser();
   const supabase = createClient();
   const [userRole, setUserRole] = useState<"manager" | "employee">("employee");
   const [isOnboarded, setIsOnboarded] = useState(false);
 
   useEffect(() => {
-    const getUser = async () => {
+    if (!user) return;
+
+    const loadUserData = async () => {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          redirect("/sign-in");
-          return;
-        }
-
         // Get user data from the users table
         const { data } = await supabase
           .from("users")
@@ -36,16 +31,17 @@ export default function DashboardEntriesPage() {
         }
       } catch (error) {
         console.error("Error in user initialization:", error);
-        redirect("/sign-in");
       }
     };
 
-    getUser();
-  }, [supabase]);
+    loadUserData();
+  }, [user, supabase]);
 
   return (
-    <SubscriptionCheck>
-      <EntriesTab userRole={userRole} isOnboarded={isOnboarded} />
-    </SubscriptionCheck>
+    <DashboardWrapper>
+      <SubscriptionCheck>
+        <EntriesTab userRole={userRole} isOnboarded={isOnboarded} />
+      </SubscriptionCheck>
+    </DashboardWrapper>
   );
 }

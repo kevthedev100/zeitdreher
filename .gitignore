@@ -43,8 +43,10 @@ next-env.d.ts
 # Tempo
 
 node_modules/
-**/tempobook/dynamic/
-**/tempobook/storyboards/
+/src/app/tempobook/dynamic
+/src/app/tempobook/storyboards
+**/tempobook/dynamic/**
+**/tempobook/storyboards/**
 
 # I want to ignore the git folder
 .git

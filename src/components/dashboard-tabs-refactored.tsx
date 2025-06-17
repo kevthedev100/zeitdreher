@@ -31,17 +31,18 @@ import {
   Menu,
   X,
   Home,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCallback, useState, useEffect } from "react";
-import { createClient } from "../../supabase/client";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import DashboardNavbar from "@/components/dashboard-navbar";
 import AddEntryButton from "@/components/add-entry-button";
+import { createClient } from "../../supabase/client";
 
 interface DashboardTabsProps {
-  userRole: "manager" | "employee";
+  userRole: "manager" | "employee" | "admin";
   isOnboarded?: boolean;
   children?: React.ReactNode;
 }
@@ -64,6 +65,9 @@ export default function DashboardTabs({
   const pathname = usePathname();
   const supabase = createClient();
 
+  // State for tracking client-side mounting
+  const [mounted, setMounted] = useState(false);
+
   // Determine active tab from pathname
   const getActiveTabFromPathname = () => {
     const path = pathname.split("/").pop();
@@ -73,8 +77,15 @@ export default function DashboardTabs({
 
   const activeTab = getActiveTabFromPathname();
 
+  // Handle client-side mounting
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Check if the device is mobile or tablet based on screen width
   useEffect(() => {
+    if (!mounted) return;
+
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth < 1024); // Consider devices with width < 1024px as mobile/tablet
     };
@@ -87,108 +98,7 @@ export default function DashboardTabs({
 
     // Cleanup
     return () => window.removeEventListener("resize", checkScreenSize);
-  }, []);
-
-  useEffect(() => {
-    // Listen for the openNewEntry event from AddEntryButton
-    const handleOpenNewEntry = () => {
-      router.push("/dashboard/new-entry");
-    };
-
-    // Listen for the openTimeEntryEditDialog event from time analytics dashboard
-    const handleOpenEditDialog = async (event: CustomEvent) => {
-      console.log(
-        "[DASHBOARD-TABS] Received openTimeEntryEditDialog event:",
-        event.detail,
-      );
-      const { entryId } = event.detail;
-
-      if (!entryId) {
-        console.error("[DASHBOARD-TABS] No entryId provided in event detail");
-        return;
-      }
-
-      try {
-        console.log(
-          "[DASHBOARD-TABS] Loading time entry for editing:",
-          entryId,
-        );
-        // Load the time entry data from database
-        const { data: entry, error } = await supabase
-          .from("time_entries")
-          .select(
-            `
-            *,
-            areas(id, name, color),
-            fields(id, name),
-            activities(id, name),
-            users(full_name, email)
-          `,
-          )
-          .eq("id", entryId)
-          .single();
-
-        if (error) {
-          console.error(
-            "[DASHBOARD-TABS] Database error loading entry:",
-            error,
-          );
-          throw error;
-        }
-
-        if (entry) {
-          console.log(
-            "[DASHBOARD-TABS] Loaded entry for editing from dashboard:",
-            entry,
-          );
-          setEditingEntry(entry);
-          setIsEditDialogOpen(true);
-          console.log(
-            "[DASHBOARD-TABS] Edit dialog should now be open, isEditDialogOpen:",
-            true,
-          );
-        } else {
-          console.error("[DASHBOARD-TABS] No entry found with ID:", entryId);
-          alert("Zeiteintrag nicht gefunden.");
-        }
-      } catch (error) {
-        console.error(
-          "[DASHBOARD-TABS] Error loading time entry for editing:",
-          error,
-        );
-        alert(
-          "Fehler beim Laden des Zeiteintrags zum Bearbeiten: " + error.message,
-        );
-      }
-    };
-
-    console.log("[DASHBOARD-TABS] Setting up event listeners");
-
-    window.addEventListener("openNewEntry", handleOpenNewEntry);
-    window.addEventListener(
-      "openTimeEntryEditDialog",
-      handleOpenEditDialog as EventListener,
-    );
-
-    // Also listen on document as fallback
-    document.addEventListener(
-      "openTimeEntryEditDialog",
-      handleOpenEditDialog as EventListener,
-    );
-
-    return () => {
-      console.log("[DASHBOARD-TABS] Cleaning up event listeners");
-      window.removeEventListener("openNewEntry", handleOpenNewEntry);
-      window.removeEventListener(
-        "openTimeEntryEditDialog",
-        handleOpenEditDialog as EventListener,
-      );
-      document.removeEventListener(
-        "openTimeEntryEditDialog",
-        handleOpenEditDialog as EventListener,
-      );
-    };
-  }, [router, supabase]);
+  }, [mounted]);
 
   const handleActivitySelect = useCallback(
     (areaId: string, fieldId: string, activityId: string) => {
@@ -205,7 +115,7 @@ export default function DashboardTabs({
       });
 
       console.log("Navigating to new-entry with params:", params.toString());
-      router.push(`/dashboard/new-entry?${params.toString()}`);
+      router.replace(`/dashboard/new-entry?${params.toString()}`);
     },
     [router],
   );
@@ -229,6 +139,15 @@ export default function DashboardTabs({
     // Use replace instead of push to avoid stacking history entries
     router.replace(`/dashboard/${tab}`);
   };
+
+  // Don't render until mounted on client
+  if (!mounted) {
+    return (
+      <div className="w-full bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -440,6 +359,24 @@ export default function DashboardTabs({
                             Profil
                           </Button>
                         </Link>
+
+                        {userRole === "admin" && (
+                          <Link
+                            href="/dashboard/admin"
+                            passHref
+                            className="w-full"
+                          >
+                            <Button
+                              variant={
+                                activeTab === "admin" ? "secondary" : "ghost"
+                              }
+                              className="w-full justify-start gap-2 text-left mt-2"
+                            >
+                              <Shield className="w-4 h-4" />
+                              Admin
+                            </Button>
+                          </Link>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -542,6 +479,18 @@ export default function DashboardTabs({
                     Profil
                   </Button>
                 </Link>
+
+                {userRole === "admin" && (
+                  <Link href="/dashboard/admin" passHref className="w-full">
+                    <Button
+                      variant={activeTab === "admin" ? "secondary" : "ghost"}
+                      className="w-full justify-start gap-2 text-left mt-2"
+                    >
+                      <Shield className="w-4 h-4" />
+                      Admin
+                    </Button>
+                  </Link>
+                )}
               </nav>
 
               {/* Content area */}

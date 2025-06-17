@@ -1,37 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
-import { createClient } from "../../../../supabase/client";
-import { redirect } from "next/navigation";
 import { SubscriptionCheck } from "@/components/subscription-check";
 import ProfileTab from "@/components/tabs/profile-tab";
+import DashboardWrapper from "../dashboard-wrapper";
 
 export default function DashboardProfilePage() {
-  const supabase = createClient();
-
-  useEffect(() => {
-    const getUser = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          redirect("/sign-in");
-          return;
-        }
-      } catch (error) {
-        console.error("Error in user initialization:", error);
-        redirect("/sign-in");
-      }
-    };
-
-    getUser();
-  }, [supabase]);
-
   return (
-    <SubscriptionCheck>
-      <ProfileTab />
-    </SubscriptionCheck>
+    <DashboardWrapper>
+      <SubscriptionCheck>
+        <ProfileTab />
+      </SubscriptionCheck>
+    </DashboardWrapper>
   );
 }

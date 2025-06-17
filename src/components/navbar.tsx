@@ -1,29 +1,45 @@
+"use client";
+
 import Link from "next/link";
-import { createClient } from "../../supabase/server";
+import { useUser } from "@clerk/nextjs";
 import { Button } from "./ui/button";
-import { User, UserCircle, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import UserProfile from "./user-profile";
 
-export default async function Navbar() {
-  const supabase = await createClient();
+export default function Navbar() {
+  const { isLoaded, isSignedIn, user } = useUser();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  if (!isLoaded) {
+    return (
+      <nav className="w-full border-b border-gray-200 bg-white py-2">
+        <div className="container mx-auto px-4 flex justify-between items-center">
+          <Link
+            href="/"
+            className="text-xl font-bold text-black flex items-center gap-2"
+          >
+            <Clock className="w-6 h-6" />
+            Zeitdreher
+          </Link>
+          <div className="flex gap-4 items-center">
+            <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+          </div>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className="w-full border-b border-gray-200 bg-white py-2">
       <div className="container mx-auto px-4 flex justify-between items-center">
         <Link
           href="/"
-          prefetch
           className="text-xl font-bold text-black flex items-center gap-2"
         >
           <Clock className="w-6 h-6" />
           Zeitdreher
         </Link>
         <div className="flex gap-4 items-center">
-          {user ? (
+          {isSignedIn ? (
             <>
               <Link
                 href="/dashboard"

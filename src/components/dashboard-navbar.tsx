@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { createClient } from "../../supabase/client";
+import { useClerk } from "@clerk/nextjs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +13,7 @@ import { UserCircle, Home, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function DashboardNavbar() {
-  const supabase = createClient();
+  const { signOut } = useClerk();
   const router = useRouter();
 
   return (
@@ -38,9 +38,8 @@ export default function DashboardNavbar() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  router.push("/");
+                onClick={() => {
+                  signOut(() => router.push("/"));
                 }}
               >
                 Abmelden

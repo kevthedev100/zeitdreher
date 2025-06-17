@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useUser } from "@clerk/nextjs";
 import { createClient } from "../../../../supabase/client";
-import { redirect } from "next/navigation";
 import { SubscriptionCheck } from "@/components/subscription-check";
 import AnalyticsTab from "@/components/tabs/analytics-tab";
+import DashboardWrapper from "../dashboard-wrapper";
 
 export default function DashboardAnalyticsPage() {
+  const { user } = useUser();
   const supabase = createClient();
   const [quickStats, setQuickStats] = useState({
     todayHours: 0,
@@ -18,17 +20,10 @@ export default function DashboardAnalyticsPage() {
   const [userRole, setUserRole] = useState<"manager" | "employee">("employee");
 
   useEffect(() => {
-    const getUser = async () => {
+    if (!user) return;
+
+    const loadData = async () => {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          redirect("/sign-in");
-          return;
-        }
-
         // Get user data from the users table
         const { data } = await supabase
           .from("users")
@@ -43,12 +38,11 @@ export default function DashboardAnalyticsPage() {
         await loadQuickData(user.id, data?.role || "employee");
       } catch (error) {
         console.error("Error in user initialization:", error);
-        redirect("/sign-in");
       }
     };
 
-    getUser();
-  }, [supabase]);
+    loadData();
+  }, [user, supabase]);
 
   const loadQuickData = async (userId: string, role: string) => {
     try {
@@ -175,13 +169,15 @@ export default function DashboardAnalyticsPage() {
   };
 
   return (
-    <SubscriptionCheck>
-      <AnalyticsTab
-        userRole={userRole}
-        quickStats={quickStats}
-        recentActivities={recentActivities}
-        loading={loading}
-      />
-    </SubscriptionCheck>
+    <DashboardWrapper>
+      <SubscriptionCheck>
+        <AnalyticsTab
+          userRole={userRole}
+          quickStats={quickStats}
+          recentActivities={recentActivities}
+          loading={loading}
+        />
+      </SubscriptionCheck>
+    </DashboardWrapper>
   );
 }

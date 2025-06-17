@@ -3,12 +3,16 @@
 import { encodedRedirect } from "@/utils/utils";
 import { redirect } from "next/navigation";
 import { createClient } from "../../supabase/server";
+import { randomUUID } from "crypto";
+import { headers } from "next/headers";
 
 export const signUpAction = async (formData: FormData) => {
   const email = formData.get("email")?.toString();
   const password = formData.get("password")?.toString();
   const fullName = formData.get("full_name")?.toString() || "";
   const supabase = await createClient();
+
+  console.log("Starting sign-up process for:", { email, fullName });
 
   if (!email || !password) {
     return encodedRedirect(
@@ -18,44 +22,130 @@ export const signUpAction = async (formData: FormData) => {
     );
   }
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        full_name: fullName,
-        email: email,
+  try {
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+          email: email,
+        },
       },
-    },
-  });
+    });
 
-  if (error) {
-    return encodedRedirect("error", "/sign-up", error.message);
-  }
-
-  // User data is automatically inserted into public.users table via database trigger
-  // Double-check that the user was created in the public.users table
-  if (user) {
-    const { data: publicUser, error: publicUserError } = await supabase
-      .from("users")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
-
-    if (publicUserError || !publicUser) {
-      // If the user wasn't created in the public.users table, create it manually
-      await supabase.from("users").upsert({
-        user_id: user.id,
-        full_name: fullName,
-        email: email,
-        token_identifier: Math.random().toString(36).substring(2, 15),
-        role: "employee",
-        onboarded: false,
-      });
+    if (error) {
+      console.error("Auth signup error:", error);
+      return encodedRedirect("error", "/sign-up", error.message);
     }
+
+    console.log("User created in auth.users:", user?.id);
+
+    // User data is automatically inserted into public.users table via database trigger
+    // Double-check that the user was created in the public.users table
+    if (user) {
+      try {
+        // First try direct insert with service role client
+        const { error: directInsertError } = await supabase
+          .from("users")
+          .insert({
+            id: randomUUID(), // Generate UUID for internal primary key
+            user_id: user.id, // Supabase auth user ID as text
+            email: email,
+            full_name: fullName,
+            name: fullName, // Also set the name field
+            role: "employee", // Default role is employee
+            onboarded: false,
+            token_identifier: Math.random().toString(36).substring(2, 15),
+            is_active: true,
+            email_verified: false,
+          });
+
+        if (directInsertError) {
+          console.log(
+            "Direct insert failed, trying to check if user exists:",
+            directInsertError,
+          );
+
+          // Check if user already exists
+          const { data: publicUser, error: publicUserError } = await supabase
+            .from("users")
+            .select("*")
+            .eq("user_id", user.id)
+            .single();
+
+          if (publicUserError || !publicUser) {
+            // If the user wasn't created in the public.users table, try RPC call
+            console.log(
+              "User not found in public.users table, trying RPC:",
+              user.id,
+            );
+
+            // Use RPC call to bypass RLS policies
+            const { error: rpcError } = await supabase.rpc(
+              "create_user_profile",
+              {
+                p_user_id: user.id,
+                p_full_name: fullName,
+                p_name: fullName, // Also set the name field
+                p_email: email,
+                p_token_identifier: Math.random().toString(36).substring(2, 15),
+                p_role: "employee", // Default role is employee
+                p_onboarded: false,
+              },
+            );
+
+            if (rpcError) {
+              console.error("Error creating user profile via RPC:", rpcError);
+              // Continue anyway, as the user might still be created by the auth webhook
+            }
+          } else {
+            // Ensure onboarded is set to false for new users
+            if (publicUser.onboarded !== false) {
+              console.log(
+                "Updating onboarded status to false for new user:",
+                user.id,
+              );
+              await supabase
+                .from("users")
+                .update({ onboarded: false })
+                .eq("user_id", user.id);
+            }
+          }
+        } else {
+          console.log("Successfully inserted user into public.users table");
+        }
+
+        // Sign in the user immediately after sign up
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) {
+          console.error("Error signing in after signup:", signInError);
+          return encodedRedirect(
+            "error",
+            "/sign-in",
+            "Please sign in with your new account",
+          );
+        }
+
+        return redirect("/dashboard/overview");
+      } catch (err) {
+        console.error("Error in user creation process:", err);
+      }
+    }
+  } catch (err) {
+    console.error("Unexpected error during signup:", err);
+    return encodedRedirect(
+      "error",
+      "/sign-up",
+      "An unexpected error occurred. Please try again.",
+    );
   }
 
   return encodedRedirect(
@@ -70,7 +160,7 @@ export const signInAction = async (formData: FormData) => {
   const password = formData.get("password") as string;
   const supabase = await createClient();
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
@@ -79,7 +169,33 @@ export const signInAction = async (formData: FormData) => {
     return encodedRedirect("error", "/sign-in", error.message);
   }
 
-  return redirect("/dashboard");
+  // Check if user exists in public.users table
+  if (data.user) {
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("user_id", data.user.id)
+      .single();
+
+    if (userError || !userData) {
+      // Create user in public.users table if it doesn't exist
+      console.log(
+        "Creating missing user in public.users table on sign-in:",
+        data.user.id,
+      );
+      await supabase.rpc("create_user_profile", {
+        p_user_id: data.user.id,
+        p_full_name: data.user.user_metadata?.full_name || "",
+        p_name: data.user.user_metadata?.full_name || "", // Also set the name field
+        p_email: data.user.email || "",
+        p_token_identifier: Math.random().toString(36).substring(2, 15),
+        p_role: "employee", // Default role is employee
+        p_onboarded: false,
+      });
+    }
+  }
+
+  return redirect("/dashboard/overview");
 };
 
 export const forgotPasswordAction = async (formData: FormData) => {
@@ -424,125 +540,139 @@ export const deleteActivity = async (activityId: string) => {
 };
 
 export const createTimeEntry = async (formData: FormData) => {
-  const areaId = formData.get("area_id")?.toString();
-  const fieldId = formData.get("field_id")?.toString();
-  const activityId = formData.get("activity_id")?.toString();
-  const duration = parseFloat(formData.get("duration")?.toString() || "0");
-  const date = formData.get("date")?.toString();
-  const startTime = formData.get("start_time")?.toString();
-  const endTime = formData.get("end_time")?.toString();
-  const description = formData.get("description")?.toString();
+  try {
+    // Validate headers
+    const headersList = await headers();
+    const origin = headersList.get("origin");
+    const referer = headersList.get("referer");
 
-  console.log("Creating time entry with data:", {
-    areaId,
-    fieldId,
-    activityId,
-    duration,
-    date,
-    startTime,
-    endTime,
-    description,
-  });
-
-  if (!areaId || !fieldId || !activityId || !duration || !date) {
-    console.error("Missing required fields for time entry creation");
-    return encodedRedirect(
-      "error",
-      "/dashboard",
-      "All required fields must be filled",
+    console.log(
+      "Server action called with origin:",
+      origin,
+      "referer:",
+      referer,
     );
-  }
 
-  // Validate UUID format for IDs
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const areaId = formData.get("area_id")?.toString();
+    const fieldId = formData.get("field_id")?.toString();
+    const activityId = formData.get("activity_id")?.toString();
+    const duration = parseFloat(formData.get("duration")?.toString() || "0");
+    const date = formData.get("date")?.toString();
+    const startTime = formData.get("start_time")?.toString();
+    const endTime = formData.get("end_time")?.toString();
+    const description = formData.get("description")?.toString();
 
-  // Check if the IDs are mock IDs (non-UUID format)
-  const isMockId = (id: string) => !uuidRegex.test(id);
-
-  // Don't allow mock IDs - return an error instead
-  if (isMockId(areaId) || isMockId(fieldId) || isMockId(activityId)) {
-    console.error("Invalid IDs detected in time entry creation");
-    return encodedRedirect(
-      "error",
-      "/dashboard",
-      "Ungültige Kategorie-IDs. Bitte wählen Sie gültige Kategorien aus.",
-    );
-  }
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    console.error("User authentication error:", userError);
-    return encodedRedirect(
-      "error",
-      "/sign-in",
-      "Please sign in to create time entries",
-    );
-  }
-
-  console.log("Creating time entry for user:", user.id);
-
-  // Instead of manually inserting users, we'll rely on the handle_new_user trigger
-  // that automatically creates entries in public.users when auth.users are created
-  // If the user doesn't exist in public.users, we should redirect them to re-authenticate
-  const { data: userData, error: userDataError } = await supabase
-    .from("users")
-    .select("user_id")
-    .eq("user_id", user.id)
-    .single();
-
-  if (userDataError || !userData) {
-    console.log("User not found in public.users table");
-    return encodedRedirect(
-      "error",
-      "/sign-in",
-      "Session error. Please sign out and sign in again.",
-    );
-  }
-
-  const { data, error } = await supabase
-    .from("time_entries")
-    .insert({
-      user_id: user.id,
-      area_id: areaId,
-      field_id: fieldId,
-      activity_id: activityId,
+    console.log("Creating time entry with data:", {
+      areaId,
+      fieldId,
+      activityId,
       duration,
       date,
-      start_time: startTime,
-      end_time: endTime,
+      startTime,
+      endTime,
       description,
-      status: "active",
-    })
-    .select(
-      `
-      *,
-      areas(name, color),
-      fields(name),
-      activities(name)
-    `,
-    )
-    .single();
+    });
 
-  if (error) {
-    console.error("Database error creating time entry:", error);
-    return encodedRedirect(
-      "error",
-      "/dashboard",
-      `Database error: ${error.message}`,
-    );
+    if (!areaId || !fieldId || !activityId || !duration || !date) {
+      console.error("Missing required fields for time entry creation");
+      return {
+        success: false,
+        error: "All required fields must be filled",
+      };
+    }
+
+    // Validate UUID format for IDs
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    // Check if the IDs are mock IDs (non-UUID format)
+    const isMockId = (id: string) => !uuidRegex.test(id);
+
+    // Don't allow mock IDs - return an error instead
+    if (isMockId(areaId) || isMockId(fieldId) || isMockId(activityId)) {
+      console.error("Invalid IDs detected in time entry creation");
+      return {
+        success: false,
+        error:
+          "Ungültige Kategorie-IDs. Bitte wählen Sie gültige Kategorien aus.",
+      };
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      console.error("User authentication error:", userError);
+      return {
+        success: false,
+        error: "Please sign in to create time entries",
+      };
+    }
+
+    console.log("Creating time entry for user:", user.id);
+
+    // Check if user exists in public.users table
+    const { data: userData, error: userDataError } = await supabase
+      .from("users")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (userDataError || !userData) {
+      console.log("User not found in public.users table");
+      return {
+        success: false,
+        error: "Session error. Please sign out and sign in again.",
+      };
+    }
+
+    const { data, error } = await supabase
+      .from("time_entries")
+      .insert({
+        user_id: user.id,
+        area_id: areaId,
+        field_id: fieldId,
+        activity_id: activityId,
+        duration,
+        date,
+        start_time: startTime,
+        end_time: endTime,
+        description,
+        status: "active",
+      })
+      .select(
+        `
+        *,
+        areas(name, color),
+        fields(name),
+        activities(name)
+      `,
+      )
+      .single();
+
+    if (error) {
+      console.error("Database error creating time entry:", error);
+      return {
+        success: false,
+        error: `Database error: ${error.message}`,
+      };
+    }
+
+    console.log("Time entry created successfully:", data);
+
+    return {
+      success: true,
+      data,
+      message: "Time entry created successfully",
+    };
+  } catch (error) {
+    console.error("Unexpected error in createTimeEntry:", error);
+    return {
+      success: false,
+      error: "An unexpected error occurred",
+    };
   }
-
-  console.log("Time entry created successfully:", data);
-
-  return {
-    success: true,
-    data,
-    message: "Time entry created successfully",
-  };
 };
