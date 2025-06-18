@@ -20,7 +20,7 @@ export default async function Navbar() {
           className="text-xl font-bold text-black flex items-center gap-2"
         >
           <Clock className="w-6 h-6" />
-          Zeitdreher
+          TimeFocusAI
         </Link>
         <div className="flex gap-4 items-center">
           {user ? (

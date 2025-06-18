@@ -305,10 +305,10 @@ export default async function Home() {
               </span>
             </div>
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              Das sagen Nutzer von Zeitdreher
+              Das sagen Nutzer von TimeFocusAI
             </h2>
             <p className="text-gray-300 max-w-3xl mx-auto text-lg">
-              Erfahren Sie, wie unsere Kunden ihre Produktivität mit Zeitdreher revolutioniert haben
+              Erfahren Sie, wie unsere Kunden ihre Produktivität mit TimeFocusAI revolutioniert haben
             </p>
           </div>
           
@@ -333,7 +333,7 @@ export default async function Home() {
                   </div>
                 </div>
                 <blockquote className="text-gray-300 italic">
-                  "Zeitdreher hat unsere Zeiterfassung revolutioniert. Die Spracheingabe spart uns täglich 30 Minuten pro Mitarbeiter."
+                  "TimeFocusAI hat unsere Zeiterfassung revolutioniert. Die Spracheingabe spart uns täglich 30 Minuten pro Mitarbeiter."
                 </blockquote>
                 <div className="flex items-center gap-1">
                   {[...Array(5)].map((_, i) => (
@@ -450,7 +450,7 @@ export default async function Home() {
               Von der Anmeldung zur produktiven Nutzung
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              Zeitdreher ist in wenigen Minuten einsatzbereit. Folgen Sie
+              TimeFocusAI ist in wenigen Minuten einsatzbereit. Folgen Sie
               unserem bewährten Prozess für eine reibungslose Einführung.
             </p>
           </div>
@@ -705,7 +705,7 @@ export default async function Home() {
                 Bereit für den Start?
               </h3>
               <p className="text-gray-600 mb-6">
-                Schließen Sie sich über 500 Teams an, die bereits mit Zeitdreher
+                Schließen Sie sich über 500 Teams an, die bereits mit TimeFocusAI
                 ihre Produktivität steigern.
               </p>
               <a
@@ -732,7 +732,7 @@ export default async function Home() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">
-              So funktioniert Zeitdreher
+              So funktioniert TimeFocusAI
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
               Einfache, intuitive Zeiterfassung, die sich an Ihren Arbeitsablauf
@@ -947,7 +947,7 @@ export default async function Home() {
                   </li>
                 </ul>
                 <a
-                  href="mailto:kontakt@zeitdreher.de"
+                  href="mailto:kontakt@timefocusai.de"
                   className="w-full inline-flex items-center justify-center px-6 py-3 text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors font-medium"
                 >
                   Kontakt aufnehmen

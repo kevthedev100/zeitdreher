@@ -317,6 +317,13 @@ export default function DashboardTabs({
                   {/* Menu Content */}
                   <div className="flex-1 overflow-y-auto p-2">
                     <div className="space-y-2">
+                      {/* DEIN SPACE Section */}
+                      <div className="pt-4 mb-2">
+                        <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide px-3 mb-3">
+                          DEIN SPACE
+                        </h3>
+                      </div>
+
                       <Button
                         variant="ghost"
                         className="w-full justify-start gap-3 h-12"
@@ -428,6 +435,13 @@ export default function DashboardTabs({
                         </Link>
                         {userRole === "admin" && (
                           <>
+                            {/* MITGLIEDER Section */}
+                            <div className="border-t pt-4 mb-2">
+                              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide px-3 mb-3">
+                                MITGLIEDER
+                              </h3>
+                            </div>
+
                             <Link
                               href="/dashboard/team"
                               passHref
@@ -462,6 +476,13 @@ export default function DashboardTabs({
                             </Link>
                           </>
                         )}
+                        {/* EINSTELLUNGEN Section */}
+                        <div className="border-t pt-4 mb-2">
+                          <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide px-3 mb-3">
+                            EINSTELLUNGEN
+                          </h3>
+                        </div>
+
                         <Link
                           href="/dashboard/profile"
                           passHref
@@ -488,6 +509,15 @@ export default function DashboardTabs({
             <div className="flex bg-gray-50 pt-0">
               {/* Desktop Sidebar */}
               <nav className="hidden lg:flex flex-col h-fit w-64 p-2 bg-white shadow-sm border-r">
+                {/* DEIN SPACE Section */}
+                <div className="w-full pt-4 mb-2">
+                  <div className="flex items-center justify-between px-3">
+                    <h3 className="text-sm font-medium text-gray-500">
+                      DEIN SPACE
+                    </h3>
+                  </div>
+                </div>
+
                 <Link href="/dashboard/overview" passHref className="w-full">
                   <Button
                     variant={activeTab === "overview" ? "secondary" : "ghost"}
@@ -572,6 +602,15 @@ export default function DashboardTabs({
 
                 {userRole === "admin" && (
                   <>
+                    {/* MITGLIEDER Section */}
+                    <div className="w-full border-t pt-4 mb-2">
+                      <div className="flex items-center justify-between px-3">
+                        <h3 className="text-sm font-medium text-gray-500">
+                          MITGLIEDER
+                        </h3>
+                      </div>
+                    </div>
+
                     <Link href="/dashboard/team" passHref className="w-full">
                       <Button
                         variant={activeTab === "team" ? "secondary" : "ghost"}
@@ -600,6 +639,15 @@ export default function DashboardTabs({
                     </Link>
                   </>
                 )}
+                {/* EINSTELLUNGEN Section */}
+                <div className="w-full border-t pt-4 mb-2">
+                  <div className="flex items-center justify-between px-3">
+                    <h3 className="text-sm font-medium text-gray-500">
+                      EINSTELLUNGEN
+                    </h3>
+                  </div>
+                </div>
+
                 <Link href="/dashboard/profile" passHref className="w-full">
                   <Button
                     variant={activeTab === "profile" ? "secondary" : "ghost"}

@@ -7,7 +7,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Zeitdreher - KI-Zeittracking und Analyse",
+  title: "TimeFocusAI - KI-Zeittracking und Analyse",
   description:
     "Erfasse deine Zeit mühelos per Sprache und gewinne wertvolle KI-gestützte Erkenntnisse zur Produktivitätsoptimierung",
   icons: {
