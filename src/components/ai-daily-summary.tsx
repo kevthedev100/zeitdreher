@@ -67,14 +67,15 @@ export default function AIDailySummary({
       }
 
       // Get today's entries with full data including descriptions
+      // Using explicit foreign key references to ensure correct joins
       const { data: todayEntries, error: todayError } = await supabase
         .from("time_entries")
         .select(
           `
           *,
-          areas(name, color),
-          fields(name),
-          activities(name)
+          areas:area_id(name, color),
+          fields:field_id(name),
+          activities:activity_id(name)
         `,
         )
         .eq("user_id", user.id)

@@ -8,8 +8,11 @@ import EntriesTab from "@/components/tabs/entries-tab";
 
 export default function DashboardEntriesPage() {
   const supabase = createClient();
-  const [userRole, setUserRole] = useState<"manager" | "employee">("employee");
+  const [userRole, setUserRole] = useState<"admin" | "manager" | "employee">(
+    "employee",
+  );
   const [isOnboarded, setIsOnboarded] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const getUser = async () => {
@@ -23,6 +26,8 @@ export default function DashboardEntriesPage() {
           return;
         }
 
+        setUserId(user.id);
+
         // Get user data from the users table
         const { data } = await supabase
           .from("users")
@@ -31,7 +36,7 @@ export default function DashboardEntriesPage() {
           .single();
 
         if (data) {
-          setUserRole(data.role as "manager" | "employee");
+          setUserRole(data.role as "admin" | "manager" | "employee");
           setIsOnboarded(data.onboarded === true);
         }
       } catch (error) {
@@ -45,7 +50,11 @@ export default function DashboardEntriesPage() {
 
   return (
     <SubscriptionCheck>
-      <EntriesTab userRole={userRole} isOnboarded={isOnboarded} />
+      <EntriesTab
+        userRole={userRole}
+        isOnboarded={isOnboarded}
+        userId={userId}
+      />
     </SubscriptionCheck>
   );
 }

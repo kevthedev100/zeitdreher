@@ -193,24 +193,33 @@ export default function CategoryManagement() {
     }
   };
 
-  const handleCreateArea = async (formData: FormData) => {
-    await createArea(formData);
+  const handleCreateArea = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const result = await createArea(formData);
     setIsAddingArea(false);
     loadAreas();
+    return false;
   };
 
-  const handleCreateField = async (formData: FormData) => {
+  const handleCreateField = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
     formData.append("area_id", selectedArea);
-    await createField(formData);
+    const result = await createField(formData);
     setIsAddingField(false);
     loadFields(selectedArea);
+    return false;
   };
 
-  const handleCreateActivity = async (formData: FormData) => {
+  const handleCreateActivity = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
     formData.append("field_id", selectedField);
-    await createActivity(formData);
+    const result = await createActivity(formData);
     setIsAddingActivity(false);
     loadActivities(selectedField);
+    return false;
   };
 
   const handleDeleteArea = async (areaId: string) => {
@@ -360,7 +369,7 @@ export default function CategoryManagement() {
                         Zeiterfassung.
                       </DialogDescription>
                     </DialogHeader>
-                    <form action={handleCreateArea} className="space-y-4">
+                    <form onSubmit={handleCreateArea} className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="name">Name</Label>
                         <Input
@@ -502,7 +511,7 @@ export default function CategoryManagement() {
                         Bereich.
                       </DialogDescription>
                     </DialogHeader>
-                    <form action={handleCreateField} className="space-y-4">
+                    <form onSubmit={handleCreateField} className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="field-name">Name</Label>
                         <Input
@@ -642,7 +651,7 @@ export default function CategoryManagement() {
                         Feld.
                       </DialogDescription>
                     </DialogHeader>
-                    <form action={handleCreateActivity} className="space-y-4">
+                    <form onSubmit={handleCreateActivity} className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="activity-name">Name</Label>
                         <Input

@@ -31,6 +31,7 @@ import {
   Menu,
   X,
   Home,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCallback, useState, useEffect } from "react";
@@ -41,7 +42,7 @@ import DashboardNavbar from "@/components/dashboard-navbar";
 import AddEntryButton from "@/components/add-entry-button";
 
 interface DashboardTabsProps {
-  userRole: "manager" | "employee";
+  userRole: "admin" | "manager" | "employee";
   isOnboarded?: boolean;
   children?: React.ReactNode;
 }
@@ -425,6 +426,42 @@ export default function DashboardTabs({
                             Kategorien verwalten
                           </Button>
                         </Link>
+                        {userRole === "admin" && (
+                          <>
+                            <Link
+                              href="/dashboard/team"
+                              passHref
+                              className="w-full"
+                            >
+                              <Button
+                                variant={
+                                  activeTab === "team" ? "secondary" : "ghost"
+                                }
+                                className="w-full justify-start gap-2 mb-2 text-left"
+                              >
+                                <Users className="w-4 h-4" />
+                                Team
+                              </Button>
+                            </Link>
+                            <Link
+                              href="/dashboard/team-performance"
+                              passHref
+                              className="w-full"
+                            >
+                              <Button
+                                variant={
+                                  activeTab === "team-performance"
+                                    ? "secondary"
+                                    : "ghost"
+                                }
+                                className="w-full justify-start gap-2 mb-4 text-left"
+                              >
+                                <BarChart3 className="w-4 h-4" />
+                                Team Performance
+                              </Button>
+                            </Link>
+                          </>
+                        )}
                         <Link
                           href="/dashboard/profile"
                           passHref
@@ -533,6 +570,36 @@ export default function DashboardTabs({
                   </Button>
                 </Link>
 
+                {userRole === "admin" && (
+                  <>
+                    <Link href="/dashboard/team" passHref className="w-full">
+                      <Button
+                        variant={activeTab === "team" ? "secondary" : "ghost"}
+                        className="w-full justify-start gap-2 mb-2 text-left"
+                      >
+                        <Users className="w-4 h-4" />
+                        Team
+                      </Button>
+                    </Link>
+                    <Link
+                      href="/dashboard/team-performance"
+                      passHref
+                      className="w-full"
+                    >
+                      <Button
+                        variant={
+                          activeTab === "team-performance"
+                            ? "secondary"
+                            : "ghost"
+                        }
+                        className="w-full justify-start gap-2 mb-4 text-left"
+                      >
+                        <BarChart3 className="w-4 h-4" />
+                        Team Performance
+                      </Button>
+                    </Link>
+                  </>
+                )}
                 <Link href="/dashboard/profile" passHref className="w-full">
                   <Button
                     variant={activeTab === "profile" ? "secondary" : "ghost"}

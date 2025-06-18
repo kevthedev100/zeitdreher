@@ -54,24 +54,33 @@ interface TimeEntry {
 }
 
 interface TimeEntriesTableProps {
-  userRole?: "manager" | "employee";
+  userRole?: "manager" | "employee" | "admin";
   isOnboarded?: boolean;
+  userId?: string | null;
+  selectedMemberId?: string | null;
 }
 
 export default function TimeEntriesTable({
   userRole = "employee",
   isOnboarded = false,
+  userId = null,
+  selectedMemberId = null,
 }: TimeEntriesTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterArea, setFilterArea] = useState("all");
   const [filterField, setFilterField] = useState("all");
   const [filterActivity, setFilterActivity] = useState("all");
+  const [filterMember, setFilterMember] = useState(
+    selectedMemberId || "current",
+  );
+  const [currentUserRecord, setCurrentUserRecord] = useState<any>(null);
   const [sortBy, setSortBy] = useState("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [areas, setAreas] = useState<any[]>([]);
   const [fields, setFields] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
@@ -82,6 +91,9 @@ export default function TimeEntriesTable({
   useEffect(() => {
     loadCurrentUser();
     loadAreas();
+    if (userRole === "manager" || userRole === "admin") {
+      loadTeamMembers();
+    }
     loadTimeEntries();
   }, []);
 
@@ -128,20 +140,60 @@ export default function TimeEntriesTable({
     }
   }, [filterField]);
 
+  useEffect(() => {
+    loadTimeEntries();
+    // Reload areas when filter changes to show only relevant categories
+    loadAreas();
+  }, [filterMember, currentUserRecord]);
+
   const loadCurrentUser = async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
     setCurrentUser(user);
+
+    if (user) {
+      // Also get the user record from the users table
+      const { data: userRecord } = await supabase
+        .from("users")
+        .select("id, role")
+        .eq("user_id", user.id)
+        .single();
+
+      if (userRecord) {
+        setCurrentUserRecord(userRecord);
+      }
+    }
+  };
+
+  const loadTeamMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("user_id, full_name, email")
+        .order("full_name");
+
+      if (error) throw error;
+      setTeamMembers(data || []);
+    } catch (error) {
+      console.error("Error loading team members:", error);
+    }
   };
 
   const loadAreas = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("areas")
         .select("*")
         .eq("is_active", true)
         .order("name");
+
+      // If filtering for current user only, filter areas by current user
+      if (filterMember === "current" && currentUserRecord) {
+        query = query.eq("user_id", currentUserRecord.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setAreas(data || []);
@@ -152,12 +204,19 @@ export default function TimeEntriesTable({
 
   const loadFieldsByArea = async (areaId: string) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("fields")
         .select("*")
         .eq("area_id", areaId)
         .eq("is_active", true)
         .order("name");
+
+      // If filtering for current user only, filter fields by current user
+      if (filterMember === "current" && currentUserRecord) {
+        query = query.eq("user_id", currentUserRecord.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setFields(data || []);
@@ -168,12 +227,19 @@ export default function TimeEntriesTable({
 
   const loadActivitiesByField = async (fieldId: string) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("activities")
         .select("*")
         .eq("field_id", fieldId)
         .eq("is_active", true)
         .order("name");
+
+      // If filtering for current user only, filter activities by current user
+      if (filterMember === "current" && currentUserRecord) {
+        query = query.eq("user_id", currentUserRecord.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setActivities(data || []);
@@ -185,27 +251,79 @@ export default function TimeEntriesTable({
   const loadTimeEntries = async () => {
     try {
       setLoading(true);
+
+      // Get current user info to determine access level
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
+      // Get user role from database
+      const { data: userData } = await supabase
+        .from("users")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+
+      const currentUserRole = userData?.role || "employee";
+      console.log(
+        "Current user role for time entries loading:",
+        currentUserRole,
+      );
+
+      // Use explicit foreign key references to ensure correct joins
       let query = supabase
         .from("time_entries")
         .select(
           `
-          *,
-          areas(name, color),
-          fields(name),
-          activities(name),
-          users(full_name, email)
+          id, user_id, area_id, field_id, activity_id, duration, date, description, created_at, start_time, end_time, status,
+          areas:area_id(id, name, color),
+          fields:field_id(id, name),
+          activities:activity_id(id, name),
+          users:user_id(full_name, email)
         `,
         )
         .order("date", { ascending: false });
 
-      // Filter by user role
-      if (userRole === "employee" && currentUser) {
-        query = query.eq("user_id", currentUser.id);
+      // Filter by selected member or current user
+      if (filterMember === "current" || filterMember === null) {
+        // Show only current user's entries - always use current user ID
+        if (currentUser) {
+          query = query.eq("user_id", currentUser.id);
+          console.log("Filtering for current user entries:", currentUser.id);
+        }
+      } else if (
+        filterMember === "all" &&
+        (currentUserRole === "manager" || currentUserRole === "admin")
+      ) {
+        // Show all entries for managers and admins
+        // No filter needed - RLS policies will handle access control
+        console.log("Loading all entries for manager/admin");
+      } else if (
+        filterMember &&
+        filterMember !== "current" &&
+        filterMember !== "all" &&
+        (currentUserRole === "manager" || currentUserRole === "admin")
+      ) {
+        // Show entries for specific team member
+        query = query.eq("user_id", filterMember);
+        console.log("Filtering for specific team member:", filterMember);
+      } else {
+        // Fallback to current user
+        if (currentUser) {
+          query = query.eq("user_id", currentUser.id);
+          console.log("Fallback to current user entries:", currentUser.id);
+        }
       }
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error("Database error loading time entries:", error);
+        throw error;
+      }
 
       // Use real data from the database
       setTimeEntries(data || []);
@@ -214,6 +332,18 @@ export default function TimeEntriesTable({
         data ? data.length : 0,
         "entries",
       );
+
+      // Debug: Log the first entry to check structure
+      if (data && data.length > 0) {
+        console.log("Sample entry structure:", data[0]);
+        // Check if categories are properly loaded
+        const firstEntry = data[0];
+        console.log("Categories check:", {
+          area: firstEntry.areas,
+          field: firstEntry.fields,
+          activity: firstEntry.activities,
+        });
+      }
     } catch (error) {
       console.error("Error loading time entries:", error);
       // Show empty state on error
@@ -320,7 +450,7 @@ export default function TimeEntriesTable({
         .from("time_entries")
         .select(
           `
-          *,
+          id, user_id, area_id, field_id, activity_id, duration, date, description, created_at, start_time, end_time, status,
           areas(id, name, color),
           fields(id, name),
           activities(id, name),
@@ -334,6 +464,30 @@ export default function TimeEntriesTable({
 
       if (entry) {
         console.log("Loaded entry for editing:", entry);
+
+        // Get the user record ID for the entry owner
+        const { data: entryOwnerData } = await supabase
+          .from("users")
+          .select("id")
+          .eq("user_id", entry.user_id)
+          .single();
+
+        if (entryOwnerData) {
+          // Pass the entry owner's user record ID to the form so it can load the correct categories
+          entry.entry_owner_id = entryOwnerData.id;
+          console.log(
+            "Set entry_owner_id to:",
+            entryOwnerData.id,
+            "for user_id:",
+            entry.user_id,
+          );
+        } else {
+          console.warn(
+            "Could not find user record for user_id:",
+            entry.user_id,
+          );
+        }
+
         setEditingEntry(entry);
         setIsEditDialogOpen(true);
       }
@@ -471,6 +625,34 @@ export default function TimeEntriesTable({
 
             {/* Filter Row */}
             <div className="flex flex-wrap gap-2 sm:gap-3">
+              {/* Team Member Filter - First position and always visible for managers/admins */}
+              {(userRole === "manager" || userRole === "admin") && (
+                <Select
+                  value={filterMember}
+                  onValueChange={(value) => {
+                    setFilterMember(value);
+                    // Reset other filters when changing member filter
+                    setFilterArea("all");
+                    setFilterField("all");
+                    setFilterActivity("all");
+                  }}
+                >
+                  <SelectTrigger className="w-full sm:w-48 h-9 text-sm">
+                    <Filter className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder="Teammitglied" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="current">Nur meine Einträge</SelectItem>
+                    <SelectItem value="all">Alle Teammitglieder</SelectItem>
+                    {teamMembers.map((member) => (
+                      <SelectItem key={member.user_id} value={member.user_id}>
+                        {member.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
               <Select
                 value={filterArea}
                 onValueChange={(value) => {
@@ -864,6 +1046,7 @@ export default function TimeEntriesTable({
             <TimeEntryForm
               onSubmit={handleEditSubmit}
               editingEntry={editingEntry}
+              specificUserId={editingEntry.specificUserId}
             />
           )}
         </DialogContent>

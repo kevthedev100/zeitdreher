@@ -8,7 +8,9 @@ import { signUpAction } from "@/app/actions";
 import Navbar from "@/components/navbar";
 
 export default async function Signup(props: {
-  searchParams: Promise<Message>;
+  searchParams: Promise<
+    Message & { invitation?: string; role?: string; token?: string }
+  >;
 }) {
   const searchParams = await props.searchParams;
   if ("message" in searchParams) {
@@ -19,6 +21,10 @@ export default async function Signup(props: {
     );
   }
 
+  const isInvitation = searchParams.invitation === "true";
+  const invitationRole = searchParams.role || "member";
+  const invitationToken = searchParams.token;
+
   return (
     <>
       <Navbar />
@@ -26,15 +32,23 @@ export default async function Signup(props: {
         <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-sm">
           <form className="flex flex-col space-y-6">
             <div className="space-y-2 text-center">
-              <h1 className="text-3xl font-semibold tracking-tight">Sign up</h1>
+              <h1 className="text-3xl font-semibold tracking-tight">
+                {isInvitation ? "Join Team" : "Sign up"}
+              </h1>
               <p className="text-sm text-muted-foreground">
-                Already have an account?{" "}
-                <Link
-                  className="text-primary font-medium hover:underline transition-all"
-                  href="/sign-in"
-                >
-                  Sign in
-                </Link>
+                {isInvitation ? (
+                  `You've been invited to join as a ${invitationRole}. Complete your registration below.`
+                ) : (
+                  <>
+                    Already have an account?{" "}
+                    <Link
+                      className="text-primary font-medium hover:underline transition-all"
+                      href="/sign-in"
+                    >
+                      Sign in
+                    </Link>
+                  </>
+                )}
               </p>
             </div>
 
@@ -83,12 +97,23 @@ export default async function Signup(props: {
               </div>
             </div>
 
+            {/* Hidden fields for invitation data */}
+            {isInvitation && (
+              <>
+                <input type="hidden" name="invitation" value="true" />
+                <input type="hidden" name="role" value={invitationRole} />
+                {invitationToken && (
+                  <input type="hidden" name="token" value={invitationToken} />
+                )}
+              </>
+            )}
+
             <SubmitButton
               formAction={signUpAction}
-              pendingText="Signing up..."
+              pendingText={isInvitation ? "Joining team..." : "Signing up..."}
               className="w-full"
             >
-              Sign up
+              {isInvitation ? "Join Team" : "Sign up"}
             </SubmitButton>
 
             <FormMessage message={searchParams} />

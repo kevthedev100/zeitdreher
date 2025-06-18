@@ -47,6 +47,8 @@ interface TimeEntryFormProps {
   selectedField?: string;
   selectedActivity?: string;
   editingEntry?: any;
+  // Optional userId to load categories for a specific user (for admin/manager editing)
+  specificUserId?: string;
 }
 
 export default function TimeEntryForm({
@@ -55,6 +57,7 @@ export default function TimeEntryForm({
   selectedField: initialField = "",
   selectedActivity: initialActivity = "",
   editingEntry = null,
+  specificUserId = null,
 }: TimeEntryFormProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [selectedArea, setSelectedArea] = useState(initialArea);
@@ -80,6 +83,7 @@ export default function TimeEntryForm({
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [entryOwnerId, setEntryOwnerId] = useState<string | null>(null);
   
   // Voice confirmation states
   const [showActivityConfirmation, setShowActivityConfirmation] = useState(false);
@@ -101,6 +105,21 @@ export default function TimeEntryForm({
 
       setIsEditing(true);
       setEditingEntryId(editingEntry.id);
+      
+      // Store the entry owner's user ID for loading their categories
+      if (editingEntry.entry_owner_id) {
+        console.log("Setting entry owner ID:", editingEntry.entry_owner_id);
+        setEntryOwnerId(editingEntry.entry_owner_id);
+      } else if (editingEntry.specificUserId) {
+        console.log("Setting entry owner ID from specificUserId:", editingEntry.specificUserId);
+        setEntryOwnerId(editingEntry.specificUserId);
+      } else if (specificUserId) {
+        console.log("Setting entry owner ID from prop specificUserId:", specificUserId);
+        setEntryOwnerId(specificUserId);
+      } else {
+        console.log("No specific entry owner ID found, will use current user");
+        setEntryOwnerId(null);
+      }
 
       // Set the area, field, and activity IDs
       setSelectedArea(editingEntry.area_id);
@@ -143,7 +162,7 @@ export default function TimeEntryForm({
         loadEditingData();
       }
     }
-  }, [editingEntry, areas]);
+  }, [editingEntry, areas, specificUserId]);
 
   // Listen for populateTimeEntryForm event to handle editing (legacy support)
   useEffect(() => {
@@ -328,15 +347,52 @@ export default function TimeEntryForm({
       } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      // Only load areas that belong to the current user or have null user_id
-      const { data, error } = await supabase
+      // Get current user's role to determine access level
+      const { data: currentUserData } = await supabase
+        .from("users")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+
+      const currentUserRole = currentUserData?.role || "employee";
+      console.log("Current user role for areas loading:", currentUserRole);
+
+      // Determine which user ID to use for loading categories
+      const targetUserId = entryOwnerId || specificUserId;
+      console.log("Loading areas for target user ID:", targetUserId, "(current user:", user.id, ")");
+
+      let query = supabase
         .from("areas")
         .select("*")
         .eq("is_active", true)
-        .filter("user_id", "eq", user.id)
         .order("name");
 
-      if (error) throw error;
+      // If we have a specific target user (editing someone else's entry), filter by that user
+      // Otherwise, load current user's areas
+      if (targetUserId && (currentUserRole === "admin" || currentUserRole === "manager")) {
+        // Admin/Manager editing another user's entry - load that user's areas
+        query = query.eq("user_id", targetUserId);
+        console.log("Admin/Manager loading areas for user:", targetUserId);
+      } else {
+        // Load current user's areas
+        const { data: currentUserRecord } = await supabase
+          .from("users")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+        
+        if (currentUserRecord) {
+          query = query.eq("user_id", currentUserRecord.id);
+          console.log("Loading areas for current user:", currentUserRecord.id);
+        }
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Database error loading areas:", error);
+        throw error;
+      }
 
       if (data && data.length > 0) {
         setAreas(data);
@@ -371,33 +427,63 @@ export default function TimeEntryForm({
       } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      // Only load fields that belong to the current user or have null user_id
-      const { data, error } = await supabase
+      // Get current user's role to determine access level
+      const { data: currentUserData } = await supabase
+        .from("users")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+
+      const currentUserRole = currentUserData?.role || "employee";
+      
+      // Determine which user ID to use for loading categories
+      const targetUserId = entryOwnerId || specificUserId;
+      console.log("Loading fields for area ID:", areaId, "target user:", targetUserId);
+
+      let query = supabase
         .from("fields")
         .select("*")
         .eq("area_id", areaId)
         .eq("is_active", true)
-        .filter("user_id", "eq", user.id)
         .order("name");
 
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        setFields(data);
-        console.log(
-          "Loaded fields data for area",
-          areaId,
-          ":",
-          data.length,
-          "fields",
-        );
+      // If we have a specific target user (editing someone else's entry), filter by that user
+      // Otherwise, load current user's fields
+      if (targetUserId && (currentUserRole === "admin" || currentUserRole === "manager")) {
+        // Admin/Manager editing another user's entry - load that user's fields
+        query = query.eq("user_id", targetUserId);
+        console.log("Admin/Manager loading fields for user:", targetUserId);
       } else {
-        setFields([]);
-        console.log("No fields found for this area");
+        // Load current user's fields
+        const { data: currentUserRecord } = await supabase
+          .from("users")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+        
+        if (currentUserRecord) {
+          query = query.eq("user_id", currentUserRecord.id);
+          console.log("Loading fields for current user:", currentUserRecord.id);
+        }
       }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Database error loading fields:", error);
+        throw error;
+      }
+      
+      console.log(
+        "Fields loaded successfully:",
+        data?.length || 0,
+        "fields",
+      );
+      setFields(data || []);
+      return data || [];
     } catch (error) {
       console.error("Error loading fields:", error);
-      setFields([]);
+      return [];
     }
   };
 
@@ -409,33 +495,63 @@ export default function TimeEntryForm({
       } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      // Only load activities that belong to the current user or have null user_id
-      const { data, error } = await supabase
+      // Get current user's role to determine access level
+      const { data: currentUserData } = await supabase
+        .from("users")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+
+      const currentUserRole = currentUserData?.role || "employee";
+      
+      // Determine which user ID to use for loading categories
+      const targetUserId = entryOwnerId || specificUserId;
+      console.log("Loading activities for field ID:", fieldId, "target user:", targetUserId);
+
+      let query = supabase
         .from("activities")
         .select("*")
         .eq("field_id", fieldId)
         .eq("is_active", true)
-        .filter("user_id", "eq", user.id)
         .order("name");
 
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        setActivities(data);
-        console.log(
-          "Loaded activities data for field",
-          fieldId,
-          ":",
-          data.length,
-          "activities",
-        );
+      // If we have a specific target user (editing someone else's entry), filter by that user
+      // Otherwise, load current user's activities
+      if (targetUserId && (currentUserRole === "admin" || currentUserRole === "manager")) {
+        // Admin/Manager editing another user's entry - load that user's activities
+        query = query.eq("user_id", targetUserId);
+        console.log("Admin/Manager loading activities for user:", targetUserId);
       } else {
-        setActivities([]);
-        console.log("No activities found for this field");
+        // Load current user's activities
+        const { data: currentUserRecord } = await supabase
+          .from("users")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+        
+        if (currentUserRecord) {
+          query = query.eq("user_id", currentUserRecord.id);
+          console.log("Loading activities for current user:", currentUserRecord.id);
+        }
       }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Database error loading activities:", error);
+        throw error;
+      }
+      
+      console.log(
+        "Activities loaded successfully:",
+        data?.length || 0,
+        "activities",
+      );
+      setActivities(data || []);
+      return data || [];
     } catch (error) {
       console.error("Error loading activities:", error);
-      setActivities([]);
+      return [];
     }
   };
 
@@ -864,19 +980,55 @@ export default function TimeEntryForm({
       } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      const { data, error } = await supabase
+      // Get current user's role to determine access level
+      const { data: currentUserData } = await supabase
+        .from("users")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+
+      const currentUserRole = currentUserData?.role || "employee";
+      
+      // Determine which user ID to use for loading categories
+      const targetUserId = entryOwnerId || specificUserId;
+      console.log("Loading fields for target user ID:", targetUserId);
+
+      let query = supabase
         .from("fields")
         .select("*")
         .eq("area_id", areaId)
         .eq("is_active", true)
-        .eq("user_id", user.id) // Filter by current user
         .order("name");
 
-      if (error) throw error;
+      // If we have a specific target user (editing someone else's entry), filter by that user
+      // Otherwise, load current user's fields
+      if (targetUserId && (currentUserRole === "admin" || currentUserRole === "manager")) {
+        // Admin/Manager editing another user's entry - load that user's fields
+        query = query.eq("user_id", targetUserId);
+        console.log("Admin/Manager loading fields for user:", targetUserId);
+      } else {
+        // Load current user's fields
+        const { data: currentUserRecord } = await supabase
+          .from("users")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+        
+        if (currentUserRecord) {
+          query = query.eq("user_id", currentUserRecord.id);
+          console.log("Loading fields for current user:", currentUserRecord.id);
+        }
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Database error loading fields:", error);
+        throw error;
+      }
+      
       console.log(
-        "Fields loaded successfully for user",
-        user.id,
-        ":",
+        "Fields loaded successfully:",
         data?.length || 0,
         "fields",
       );
@@ -898,19 +1050,55 @@ export default function TimeEntryForm({
       } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      const { data, error } = await supabase
+      // Get current user's role to determine access level
+      const { data: currentUserData } = await supabase
+        .from("users")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+
+      const currentUserRole = currentUserData?.role || "employee";
+      
+      // Determine which user ID to use for loading categories
+      const targetUserId = entryOwnerId || specificUserId;
+      console.log("Loading activities for target user ID:", targetUserId);
+
+      let query = supabase
         .from("activities")
         .select("*")
         .eq("field_id", fieldId)
         .eq("is_active", true)
-        .eq("user_id", user.id) // Filter by current user
         .order("name");
 
-      if (error) throw error;
+      // If we have a specific target user (editing someone else's entry), filter by that user
+      // Otherwise, load current user's activities
+      if (targetUserId && (currentUserRole === "admin" || currentUserRole === "manager")) {
+        // Admin/Manager editing another user's entry - load that user's activities
+        query = query.eq("user_id", targetUserId);
+        console.log("Admin/Manager loading activities for user:", targetUserId);
+      } else {
+        // Load current user's activities
+        const { data: currentUserRecord } = await supabase
+          .from("users")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+        
+        if (currentUserRecord) {
+          query = query.eq("user_id", currentUserRecord.id);
+          console.log("Loading activities for current user:", currentUserRecord.id);
+        }
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Database error loading activities:", error);
+        throw error;
+      }
+      
       console.log(
-        "Activities loaded successfully for user",
-        user.id,
-        ":",
+        "Activities loaded successfully:",
         data?.length || 0,
         "activities",
       );
@@ -1372,7 +1560,7 @@ export default function TimeEntryForm({
         const activitiesData = await loadActivitiesAndReturn(selectedField);
         const activity = findBestMatch(parsed.activity, activitiesData, "name");
         if (activity) {
-          console.log("Updating activity to:", activity.name);
+          console.log("Found matching activity:", activity.name);
           setSelectedActivity(activity.id);
           console.log(
             "Activity set to:",
@@ -1381,6 +1569,7 @@ export default function TimeEntryForm({
             activity.id,
           );
         } else if (activitiesData.length === 1) {
+          // Auto-select if only one activity available
           console.log(
             "Auto-selecting single activity:",
             activitiesData[0].name,
@@ -1452,6 +1641,7 @@ export default function TimeEntryForm({
                 activity.id,
               );
             } else if (activitiesData.length === 1) {
+              // Auto-select if only one activity available
               console.log(
                 "Auto-selecting single activity:",
                 activitiesData[0].name,
@@ -1460,6 +1650,7 @@ export default function TimeEntryForm({
               console.log("Activity auto-set to:", activitiesData[0].name);
             }
           } else if (activitiesData.length === 1) {
+            // Auto-select if only one activity available and no activity specified
             console.log(
               "Auto-selecting single activity (no activity specified):",
               activitiesData[0].name,

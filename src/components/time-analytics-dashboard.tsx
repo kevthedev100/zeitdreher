@@ -36,13 +36,15 @@ type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
 type Area = Database["public"]["Tables"]["areas"]["Row"];
 
 interface AnalyticsDashboardProps {
-  userRole?: "manager" | "employee";
+  userRole?: "admin" | "manager" | "employee";
   isOnboarded?: boolean;
+  userId?: string | null;
 }
 
 export default function TimeAnalyticsDashboard({
   userRole = "employee",
   isOnboarded = false,
+  userId = null,
 }: AnalyticsDashboardProps) {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
@@ -163,16 +165,26 @@ export default function TimeAnalyticsDashboard({
         .select(
           `
           *,
-          areas(name, color),
-          fields(name),
-          activities(name),
-          users(full_name, email)
+          areas:area_id(name, color),
+          fields:field_id(name),
+          activities:activity_id(name),
+          users:user_id(full_name, email)
         `,
         )
         .order("date", { ascending: false });
 
-      // Filter by user role
-      if (userRole === "employee" && currentUser) {
+      // Filter by user ID based on role
+      if (userId) {
+        // If userId is explicitly provided, use it
+        query = query.eq("user_id", userId);
+      } else if (userRole === "employee" && currentUser) {
+        // Employees only see their own entries
+        query = query.eq("user_id", currentUser.id);
+      } else if (userRole === "manager" && currentUser) {
+        // Managers only see their own entries in analytics view
+        query = query.eq("user_id", currentUser.id);
+      } else if (currentUser) {
+        // Fallback to current user if no specific filtering is applied
         query = query.eq("user_id", currentUser.id);
       }
 

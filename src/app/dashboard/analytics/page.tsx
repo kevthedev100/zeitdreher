@@ -68,10 +68,9 @@ export default function DashboardAnalyticsPage() {
         )
         .order("date", { ascending: false });
 
-      // Filter by user role
-      if (role === "employee") {
-        query = query.eq("user_id", userId);
-      }
+      // Always filter by user ID regardless of role for analytics page
+      // This ensures users only see their own data in analytics
+      query = query.eq("user_id", userId);
 
       const { data: entries, error } = await query;
 

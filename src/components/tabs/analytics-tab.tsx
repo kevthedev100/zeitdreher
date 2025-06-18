@@ -59,9 +59,9 @@ export default function AnalyticsTab({
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user && userRole !== "manager") return;
+      if (!user) return;
 
-      // Calculate date 14 weeks ago
+      // Calculate date 14 days ago
       const twoWeeksAgo = new Date();
       twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
       const twoWeeksAgoStr = twoWeeksAgo.toISOString().split("T")[0];
@@ -78,12 +78,33 @@ export default function AnalyticsTab({
         `,
         )
         .gte("date", twoWeeksAgoStr)
+        .eq("status", "active")
         .order("date", { ascending: false });
 
-      // Filter by user if employee role
-      if (userRole === "employee" && user) {
+      // Handle different user roles with proper data access
+      if (userRole === "employee") {
+        // Employees see only their own data
         query = query.eq("user_id", user.id);
+      } else if (userRole === "manager") {
+        // Managers see their team's data using the helper function
+        const { data: teamMembers } = await supabase.rpc(
+          "get_user_team_members",
+          {
+            user_uuid: user.id,
+            org_id: null, // Will use user's primary org
+          },
+        );
+
+        if (teamMembers && teamMembers.length > 0) {
+          const memberIds = teamMembers.map((member) => member.member_id);
+          memberIds.push(user.id); // Include manager's own entries
+          query = query.in("user_id", memberIds);
+        } else {
+          // Manager with no team members, show only their own data
+          query = query.eq("user_id", user.id);
+        }
       }
+      // Admin role will see all data (no additional filter)
 
       const { data: entries, error } = await query;
 
@@ -104,7 +125,7 @@ export default function AnalyticsTab({
       setHasEnoughData(formattedEntries.length >= 5);
 
       console.log(
-        `Found ${formattedEntries.length} entries in the last 14 days. Enough data: ${formattedEntries.length >= 5}`,
+        `Found ${formattedEntries.length} entries in the last 14 days for ${userRole}. Enough data: ${formattedEntries.length >= 5}`,
       );
     } catch (error) {
       console.error("Error checking data for analysis:", error);

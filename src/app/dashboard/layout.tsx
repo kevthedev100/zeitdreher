@@ -68,6 +68,29 @@ export default function DashboardLayout({
           // Only show onboarding if onboarded is explicitly false
           setShowOnboarding(data.onboarded === false);
           console.log("User onboarded status:", data.onboarded);
+
+          // Check if user has organization membership and get their effective role
+          try {
+            const { data: hierarchyData } = await supabase
+              .from("organization_hierarchy")
+              .select("user_role, organization_name")
+              .eq("user_id", user.id)
+              .single();
+
+            if (hierarchyData) {
+              console.log(
+                `User role in organization: ${hierarchyData.user_role} at ${hierarchyData.organization_name}`,
+              );
+              // Update user data with organization role if different
+              if (hierarchyData.user_role !== data.role) {
+                setUserData((prev) =>
+                  prev ? { ...prev, role: hierarchyData.user_role } : null,
+                );
+              }
+            }
+          } catch (orgError) {
+            console.log("User not in any organization yet, using default role");
+          }
         }
 
         setLoading(false);
@@ -119,7 +142,7 @@ export default function DashboardLayout({
         />
       )}
       <DashboardTabs
-        userRole={userRole as "manager" | "employee"}
+        userRole={userRole as "admin" | "manager" | "employee"}
         isOnboarded={userData?.onboarded === true}
       >
         {children}
