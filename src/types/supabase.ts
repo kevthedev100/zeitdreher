@@ -531,7 +531,8 @@ export type Database = {
       }
       team_invitations: {
         Row: {
-          accepted: boolean | null
+          accepted: boolean
+          accepted_at: string | null
           created_at: string | null
           email: string
           expires_at: string
@@ -540,7 +541,8 @@ export type Database = {
           role: string
         }
         Insert: {
-          accepted?: boolean | null
+          accepted?: boolean
+          accepted_at?: string | null
           created_at?: string | null
           email: string
           expires_at: string
@@ -549,7 +551,8 @@ export type Database = {
           role?: string
         }
         Update: {
-          accepted?: boolean | null
+          accepted?: boolean
+          accepted_at?: string | null
           created_at?: string | null
           email?: string
           expires_at?: string
@@ -1147,6 +1150,10 @@ export type Database = {
         Args: { target_user_id: string; new_role: string; org_id: string }
         Returns: boolean
       }
+      create_public_user_from_auth: {
+        Args: { auth_user_id: string }
+        Returns: boolean
+      }
       create_user_profile: {
         Args: {
           p_user_id: string
@@ -1186,6 +1193,13 @@ export type Database = {
           member_name: string
           member_email: string
           joined_at: string
+        }[]
+      }
+      sync_all_auth_users_to_public: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          success: boolean
         }[]
       }
     }

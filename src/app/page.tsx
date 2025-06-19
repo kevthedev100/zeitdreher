@@ -818,53 +818,24 @@ export default async function Home() {
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
-            {/* Free Plan */}
-            <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 relative hover:border-blue-300 transition-colors">
-              <div className="text-center">
-                <h3 className="text-2xl font-bold mb-2">Free</h3>
-                <div className="text-4xl font-bold text-gray-900 mb-2">0€</div>
-                <p className="text-gray-600 mb-6">2 Wochen kostenlos testen</p>
-                <ul className="text-left space-y-3 mb-8">
-                  <li className="flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                    <span className="text-gray-600">Grundlegende Zeiterfassung</span>
-                  </li>
-                  <li className="flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                    <span className="text-gray-600">Spracheingabe</span>
-                  </li>
-                  <li className="flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                    <span className="text-gray-600">Basis-Analytik</span>
-                  </li>
-                </ul>
-                <a
-                  href="/dashboard"
-                  className="w-full inline-flex items-center justify-center px-6 py-3 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors font-medium"
-                >
-                  Kostenlos testen
-                </a>
-              </div>
-            </div>
-
             {/* Single User Plan */}
             <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 relative hover:border-blue-300 transition-colors">
               <div className="text-center">
-                <h3 className="text-2xl font-bold mb-2">Single User</h3>
-                <div className="text-4xl font-bold text-gray-900 mb-2">50€</div>
+                <h3 className="text-2xl font-bold mb-2">Einzellizenz</h3>
+                <div className="text-4xl font-bold text-gray-900 mb-2">49€</div>
                 <p className="text-gray-600 mb-6">Pro Monat für Einzelnutzer</p>
                 <ul className="text-left space-y-3 mb-8">
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                    <span className="text-gray-600">Alle Free-Features</span>
+                    <span className="text-gray-600">Vollständige Zeiterfassung</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">KI-gestützte Spracheingabe</span>
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
                     <span className="text-gray-600">Erweiterte KI-Analysen</span>
-                  </li>
-                  <li className="flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                    <span className="text-gray-600">Unbegrenzte Zeiteinträge</span>
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
@@ -888,17 +859,21 @@ export default async function Home() {
                 </span>
               </div>
               <div className="text-center">
-                <h3 className="text-2xl font-bold mb-2">Team</h3>
+                <h3 className="text-2xl font-bold mb-2">Highperformer Team</h3>
                 <div className="text-4xl font-bold text-gray-900 mb-2">299€</div>
-                <p className="text-gray-600 mb-6">Pro Monat für bis zu 5 Mitarbeiter</p>
+                <p className="text-gray-600 mb-6">Pro Monat für bis zu 10 Teammitglieder</p>
                 <ul className="text-left space-y-3 mb-8">
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                    <span className="text-gray-600">Alle Single User-Features</span>
+                    <span className="text-gray-600">Alle Einzellizenz-Features</span>
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
                     <span className="text-gray-600">Team-Dashboard</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Team Performance Features</span>
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
@@ -918,12 +893,12 @@ export default async function Home() {
               </div>
             </div>
 
-            {/* Enterprise Plan */}
-            <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 relative hover:border-purple-300 transition-colors">
+            {/* Big Team Plan */}
+            <div className="bg-white border-2 border-purple-500 rounded-2xl p-8 relative hover:border-purple-600 transition-colors">
               <div className="text-center">
-                <h3 className="text-2xl font-bold mb-2">Enterprise</h3>
-                <div className="text-4xl font-bold text-gray-900 mb-2">Auf Anfrage</div>
-                <p className="text-gray-600 mb-6">Für größere Teams mit erweiterten Rollen</p>
+                <h3 className="text-2xl font-bold mb-2">Highperformer Organization</h3>
+                <div className="text-4xl font-bold text-gray-900 mb-2">599€</div>
+                <p className="text-gray-600 mb-6">Pro Monat für bis zu 50 Mitarbeiter</p>
                 <ul className="text-left space-y-3 mb-8">
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
@@ -931,7 +906,11 @@ export default async function Home() {
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                    <span className="text-gray-600">Unbegrenzte Nutzer</span>
+                    <span className="text-gray-600">Erweiterte Team-Analytik</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Abteilungsbasierte Berichte</span>
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
@@ -939,16 +918,49 @@ export default async function Home() {
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
-                    <span className="text-gray-600">Dedizierter Support</span>
+                    <span className="text-gray-600">Priority Support</span>
+                  </li>
+                </ul>
+                <a
+                  href="/dashboard"
+                  className="w-full inline-flex items-center justify-center px-6 py-3 text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                >
+                  Organization starten
+                </a>
+              </div>
+            </div>
+
+            {/* Enterprise Plan */}
+            <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 relative hover:border-gray-300 transition-colors">
+              <div className="text-center">
+                <h3 className="text-2xl font-bold mb-2">Enterprise</h3>
+                <div className="text-4xl font-bold text-gray-900 mb-2">Auf Anfrage</div>
+                <p className="text-gray-600 mb-6">Für Unternehmen mit besonderen Anforderungen</p>
+                <ul className="text-left space-y-3 mb-8">
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Alle Big Team-Features</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Unbegrenzte Nutzer</span>
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
                     <span className="text-gray-600">Custom Integrationen</span>
                   </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">Dedizierter Account Manager</span>
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">SLA & 24/7 Support</span>
+                  </li>
                 </ul>
                 <a
                   href="mailto:kontakt@timefocusai.de"
-                  className="w-full inline-flex items-center justify-center px-6 py-3 text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors font-medium"
+                  className="w-full inline-flex items-center justify-center px-6 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
                 >
                   Kontakt aufnehmen
                 </a>

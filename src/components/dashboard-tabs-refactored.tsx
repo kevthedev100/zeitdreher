@@ -40,6 +40,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import DashboardNavbar from "@/components/dashboard-navbar";
 import AddEntryButton from "@/components/add-entry-button";
+import SubscriptionStatusBar from "@/components/subscription-status-bar";
 
 interface DashboardTabsProps {
   userRole: "admin" | "manager" | "employee";
@@ -244,7 +245,7 @@ export default function DashboardTabs({
             <div className="flex justify-between items-start">
               <div>
                 <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                  Zeitdreher Dashboard
+                  TimeFocusAI Dashboard
                 </h1>
                 <p className="text-gray-600">
                   Zeit erfassen, Produktivität analysieren und Arbeitsstunden
@@ -492,14 +493,35 @@ export default function DashboardTabs({
                             variant={
                               activeTab === "profile" ? "secondary" : "ghost"
                             }
-                            className="w-full justify-start gap-2 text-left"
+                            className="w-full justify-start gap-2 mb-2 text-left"
                           >
                             <UserCircle className="w-4 h-4" />
                             Profil
                           </Button>
                         </Link>
+
+                        <Link
+                          href="/dashboard/plan"
+                          passHref
+                          className="w-full"
+                        >
+                          <Button
+                            variant={
+                              activeTab === "plan" ? "secondary" : "ghost"
+                            }
+                            className="w-full justify-start gap-2 text-left"
+                          >
+                            <Clock className="w-4 h-4" />
+                            Abonnement
+                          </Button>
+                        </Link>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Mobile Subscription Status Bar */}
+                  <div className="mt-4 px-2">
+                    <SubscriptionStatusBar />
                   </div>
                 </div>
               </SheetContent>
@@ -508,155 +530,182 @@ export default function DashboardTabs({
             {/* Main container */}
             <div className="flex bg-gray-50 pt-0">
               {/* Desktop Sidebar */}
-              <nav className="hidden lg:flex flex-col h-fit w-64 p-2 bg-white shadow-sm border-r">
-                {/* DEIN SPACE Section */}
-                <div className="w-full pt-4 mb-2">
-                  <div className="flex items-center justify-between px-3">
-                    <h3 className="text-sm font-medium text-gray-500">
-                      DEIN SPACE
-                    </h3>
-                  </div>
-                </div>
-
-                <Link href="/dashboard/overview" passHref className="w-full">
-                  <Button
-                    variant={activeTab === "overview" ? "secondary" : "ghost"}
-                    className="w-full justify-start gap-2 mb-2 text-left"
-                  >
-                    <Clock className="w-4 h-4" />
-                    Übersicht
-                  </Button>
-                </Link>
-                <Link href="/dashboard/analytics" passHref className="w-full">
-                  <Button
-                    variant={activeTab === "analytics" ? "secondary" : "ghost"}
-                    className="w-full justify-start gap-2 mb-2 text-left"
-                  >
-                    <BarChart3 className="w-4 h-4" />
-                    Analytik
-                  </Button>
-                </Link>
-                <Link href="/dashboard/new-entry" passHref className="w-full">
-                  <Button
-                    variant={activeTab === "new-entry" ? "secondary" : "ghost"}
-                    className="w-full justify-start gap-2 mb-2 text-left"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Neuer Eintrag
-                  </Button>
-                </Link>
-                <Link href="/dashboard/entries" passHref className="w-full">
-                  <Button
-                    variant={activeTab === "entries" ? "secondary" : "ghost"}
-                    className="w-full justify-start gap-2 mb-2 text-left"
-                  >
-                    <Table className="w-4 h-4" />
-                    Alle Einträge
-                  </Button>
-                </Link>
-                <Link href="/dashboard/ai-chat" passHref className="w-full">
-                  <Button
-                    variant={activeTab === "ai-chat" ? "secondary" : "ghost"}
-                    className="w-full justify-start gap-2 mb-4 text-left"
-                  >
-                    <Bot className="w-4 h-4" />
-                    AI-Chat
-                  </Button>
-                </Link>
-
-                <div className="w-full border-t pt-4 mb-2">
-                  <div className="flex items-center justify-between px-3">
-                    <h3 className="text-sm font-medium text-gray-500">
-                      KATEGORIEN
-                    </h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      onClick={() =>
-                        setShowHierarchicalNav(!showHierarchicalNav)
-                      }
-                    >
-                      {showHierarchicalNav ? "-" : "+"}
-                    </Button>
-                  </div>
-                </div>
-
-                {showHierarchicalNav && (
-                  <div className="mb-4">
-                    <HierarchicalNavigation
-                      onSelectActivity={handleActivitySelect}
-                    />
-                  </div>
-                )}
-
-                <Link href="/dashboard/categories" passHref className="w-full">
-                  <Button
-                    variant={activeTab === "categories" ? "secondary" : "ghost"}
-                    className="w-full justify-start gap-2 mb-4 text-left"
-                  >
-                    <Layers className="w-4 h-4" />
-                    Kategorien verwalten
-                  </Button>
-                </Link>
-
-                {userRole === "admin" && (
-                  <>
-                    {/* MITGLIEDER Section */}
-                    <div className="w-full border-t pt-4 mb-2">
-                      <div className="flex items-center justify-between px-3">
-                        <h3 className="text-sm font-medium text-gray-500">
-                          MITGLIEDER
-                        </h3>
-                      </div>
+              <nav className="hidden lg:flex flex-col h-fit w-64 bg-white shadow-sm border-r relative">
+                <div className="flex-1 p-2">
+                  {/* DEIN SPACE Section */}
+                  <div className="w-full pt-4 mb-2">
+                    <div className="flex items-center justify-between px-3">
+                      <h3 className="text-sm font-medium text-gray-500">
+                        DEIN SPACE
+                      </h3>
                     </div>
-
-                    <Link href="/dashboard/team" passHref className="w-full">
-                      <Button
-                        variant={activeTab === "team" ? "secondary" : "ghost"}
-                        className="w-full justify-start gap-2 mb-2 text-left"
-                      >
-                        <Users className="w-4 h-4" />
-                        Team
-                      </Button>
-                    </Link>
-                    <Link
-                      href="/dashboard/team-performance"
-                      passHref
-                      className="w-full"
-                    >
-                      <Button
-                        variant={
-                          activeTab === "team-performance"
-                            ? "secondary"
-                            : "ghost"
-                        }
-                        className="w-full justify-start gap-2 mb-4 text-left"
-                      >
-                        <BarChart3 className="w-4 h-4" />
-                        Team Performance
-                      </Button>
-                    </Link>
-                  </>
-                )}
-                {/* EINSTELLUNGEN Section */}
-                <div className="w-full border-t pt-4 mb-2">
-                  <div className="flex items-center justify-between px-3">
-                    <h3 className="text-sm font-medium text-gray-500">
-                      EINSTELLUNGEN
-                    </h3>
                   </div>
+
+                  <Link href="/dashboard/overview" passHref className="w-full">
+                    <Button
+                      variant={activeTab === "overview" ? "secondary" : "ghost"}
+                      className="w-full justify-start gap-2 mb-2 text-left"
+                    >
+                      <Clock className="w-4 h-4" />
+                      Übersicht
+                    </Button>
+                  </Link>
+                  <Link href="/dashboard/analytics" passHref className="w-full">
+                    <Button
+                      variant={
+                        activeTab === "analytics" ? "secondary" : "ghost"
+                      }
+                      className="w-full justify-start gap-2 mb-2 text-left"
+                    >
+                      <BarChart3 className="w-4 h-4" />
+                      Analytik
+                    </Button>
+                  </Link>
+                  <Link href="/dashboard/new-entry" passHref className="w-full">
+                    <Button
+                      variant={
+                        activeTab === "new-entry" ? "secondary" : "ghost"
+                      }
+                      className="w-full justify-start gap-2 mb-2 text-left"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Neuer Eintrag
+                    </Button>
+                  </Link>
+                  <Link href="/dashboard/entries" passHref className="w-full">
+                    <Button
+                      variant={activeTab === "entries" ? "secondary" : "ghost"}
+                      className="w-full justify-start gap-2 mb-2 text-left"
+                    >
+                      <Table className="w-4 h-4" />
+                      Alle Einträge
+                    </Button>
+                  </Link>
+                  <Link href="/dashboard/ai-chat" passHref className="w-full">
+                    <Button
+                      variant={activeTab === "ai-chat" ? "secondary" : "ghost"}
+                      className="w-full justify-start gap-2 mb-4 text-left"
+                    >
+                      <Bot className="w-4 h-4" />
+                      AI-Chat
+                    </Button>
+                  </Link>
+
+                  <div className="w-full border-t pt-4 mb-2">
+                    <div className="flex items-center justify-between px-3">
+                      <h3 className="text-sm font-medium text-gray-500">
+                        KATEGORIEN
+                      </h3>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() =>
+                          setShowHierarchicalNav(!showHierarchicalNav)
+                        }
+                      >
+                        {showHierarchicalNav ? "-" : "+"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {showHierarchicalNav && (
+                    <div className="mb-4">
+                      <HierarchicalNavigation
+                        onSelectActivity={handleActivitySelect}
+                      />
+                    </div>
+                  )}
+
+                  <Link
+                    href="/dashboard/categories"
+                    passHref
+                    className="w-full"
+                  >
+                    <Button
+                      variant={
+                        activeTab === "categories" ? "secondary" : "ghost"
+                      }
+                      className="w-full justify-start gap-2 mb-4 text-left"
+                    >
+                      <Layers className="w-4 h-4" />
+                      Kategorien verwalten
+                    </Button>
+                  </Link>
+
+                  {userRole === "admin" && (
+                    <>
+                      {/* MITGLIEDER Section */}
+                      <div className="w-full border-t pt-4 mb-2">
+                        <div className="flex items-center justify-between px-3">
+                          <h3 className="text-sm font-medium text-gray-500">
+                            MITGLIEDER
+                          </h3>
+                        </div>
+                      </div>
+
+                      <Link href="/dashboard/team" passHref className="w-full">
+                        <Button
+                          variant={activeTab === "team" ? "secondary" : "ghost"}
+                          className="w-full justify-start gap-2 mb-2 text-left"
+                        >
+                          <Users className="w-4 h-4" />
+                          Team
+                        </Button>
+                      </Link>
+                      <Link
+                        href="/dashboard/team-performance"
+                        passHref
+                        className="w-full"
+                      >
+                        <Button
+                          variant={
+                            activeTab === "team-performance"
+                              ? "secondary"
+                              : "ghost"
+                          }
+                          className="w-full justify-start gap-2 mb-4 text-left"
+                        >
+                          <BarChart3 className="w-4 h-4" />
+                          Team Performance
+                        </Button>
+                      </Link>
+                    </>
+                  )}
+                  {/* EINSTELLUNGEN Section */}
+                  <div className="w-full border-t pt-4 mb-2">
+                    <div className="flex items-center justify-between px-3">
+                      <h3 className="text-sm font-medium text-gray-500">
+                        EINSTELLUNGEN
+                      </h3>
+                    </div>
+                  </div>
+
+                  <Link href="/dashboard/profile" passHref className="w-full">
+                    <Button
+                      variant={activeTab === "profile" ? "secondary" : "ghost"}
+                      className="w-full justify-start gap-2 text-left mb-2"
+                    >
+                      <UserCircle className="w-4 h-4" />
+                      Profil
+                    </Button>
+                  </Link>
+
+                  <Link href="/dashboard/plan" passHref className="w-full">
+                    <Button
+                      variant={activeTab === "plan" ? "secondary" : "ghost"}
+                      className="w-full justify-start gap-2 text-left"
+                    >
+                      <Clock className="w-4 h-4" />
+                      Abonnement
+                    </Button>
+                  </Link>
                 </div>
 
-                <Link href="/dashboard/profile" passHref className="w-full">
-                  <Button
-                    variant={activeTab === "profile" ? "secondary" : "ghost"}
-                    className="w-full justify-start gap-2 text-left"
-                  >
-                    <UserCircle className="w-4 h-4" />
-                    Profil
-                  </Button>
-                </Link>
+                {/* Subscription Status Bar at bottom */}
+                <div className="w-full">
+                  <SubscriptionStatusBar />
+                </div>
               </nav>
 
               {/* Content area */}

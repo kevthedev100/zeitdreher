@@ -8,9 +8,10 @@ export const signUpAction = async (formData: FormData) => {
   const email = formData.get("email")?.toString();
   const password = formData.get("password")?.toString();
   const fullName = formData.get("full_name")?.toString() || "";
-  const isInvitation = formData.get("invitation")?.toString() === "true";
+  const isInvitation = formData.get("invitation")?.toString();
   const invitationRole = formData.get("role")?.toString() || "member";
   const invitationToken = formData.get("token")?.toString();
+  const organizationId = formData.get("org")?.toString();
   const supabase = await createClient();
 
   if (!email || !password) {
@@ -69,52 +70,80 @@ export const signUpAction = async (formData: FormData) => {
         .eq("user_id", user.id);
     }
 
-    // If this is an invitation signup, check for pending invitations and process them
+    // If this is an invitation signup, process the invitation
     if (isInvitation) {
-      // If we have a token, use it to find the invitation
-      const query = supabase
-        .from("team_invitations")
-        .select("*")
-        .eq("email", email)
-        .gt("expires_at", new Date().toISOString())
-        .order("created_at", { ascending: false })
-        .limit(1);
+      try {
+        // Call the process invitation edge function
+        const { data: invitationResult, error: invitationError } =
+          await supabase.functions.invoke(
+            "supabase-functions-process-invitation-signup",
+            {
+              body: {
+                invitationId: isInvitation,
+                userEmail: email,
+                userId: user.id,
+              },
+            },
+          );
 
-      // If we have a token, add it to the query
-      const { data: pendingInvitation } = await query.single();
+        if (invitationError) {
+          console.error("Error processing invitation:", invitationError);
+        } else {
+          console.log("Invitation processed successfully:", invitationResult);
+        }
 
-      if (pendingInvitation) {
-        // Get the inviter's organization
-        const { data: inviterData } = await supabase
-          .from("organization_hierarchy")
-          .select("organization_id, user_id")
-          .eq("user_id", pendingInvitation.invited_by)
-          .single();
-
-        if (inviterData) {
-          // Add user to the organization
-          const { data: userData } = await supabase
-            .from("users")
-            .select("id")
-            .eq("user_id", user.id)
+        // If we have organization context, try to add user to organization
+        if (organizationId) {
+          // Find pending invitations for this email
+          const { data: pendingInvitation } = await supabase
+            .from("team_invitations")
+            .select("*")
+            .eq("email", email)
+            .gt("expires_at", new Date().toISOString())
+            .order("created_at", { ascending: false })
+            .limit(1)
             .single();
 
-          if (userData) {
-            await supabase.from("organization_members").insert({
-              organization_id: inviterData.organization_id,
-              user_id: userData.id,
-              role: invitationRole,
-              invited_by: inviterData.user_id,
-              joined_at: new Date().toISOString(),
-            });
+          if (pendingInvitation) {
+            // Get the inviter's organization
+            const { data: inviterData } = await supabase
+              .from("organization_hierarchy")
+              .select("organization_id, user_id")
+              .eq("user_id", pendingInvitation.invited_by)
+              .single();
 
-            // Mark invitation as used (delete it)
-            await supabase
-              .from("team_invitations")
-              .delete()
-              .eq("id", pendingInvitation.id);
+            if (inviterData) {
+              // Add user to the organization
+              const { data: userData } = await supabase
+                .from("users")
+                .select("id")
+                .eq("user_id", user.id)
+                .single();
+
+              if (userData) {
+                await supabase.from("organization_members").insert({
+                  organization_id: inviterData.organization_id,
+                  user_id: userData.id,
+                  role: invitationRole,
+                  invited_by: inviterData.user_id,
+                  joined_at: new Date().toISOString(),
+                });
+
+                // Mark invitation as used (delete it)
+                await supabase
+                  .from("team_invitations")
+                  .delete()
+                  .eq("id", pendingInvitation.id);
+              }
+            }
           }
         }
+      } catch (invitationProcessError) {
+        console.error(
+          "Error in invitation processing:",
+          invitationProcessError,
+        );
+        // Don't fail the signup if invitation processing fails
       }
     }
   }
@@ -726,28 +755,67 @@ export const removeTeamMember = async (memberId: string) => {
     return { success: false, error: "User not authenticated" };
   }
 
-  // Check if the user is an admin
-  const { data: userData, error: userError } = await supabase
-    .from("users")
-    .select("role")
-    .eq("user_id", user.id)
-    .single();
+  try {
+    // Get current user data
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
 
-  if (userError || !userData || userData.role !== "admin") {
-    return { success: false, error: "Only admins can remove team members" };
+    if (userError || !userData) {
+      return { success: false, error: "User data not found" };
+    }
+
+    // Get user's organization membership to check permissions
+    const { data: orgMembership } = await supabase
+      .from("organization_members")
+      .select("organization_id, role")
+      .eq("user_id", userData.id)
+      .eq("is_active", true)
+      .single();
+
+    if (!orgMembership || !["admin", "manager"].includes(orgMembership.role)) {
+      return {
+        success: false,
+        error: "Only admins and managers can remove team members",
+      };
+    }
+
+    // Get the target member's data
+    const { data: targetMember } = await supabase
+      .from("users")
+      .select("id")
+      .eq("user_id", memberId)
+      .single();
+
+    if (!targetMember) {
+      return { success: false, error: "Target member not found" };
+    }
+
+    // Remove from organization_members (the correct table)
+    const { error: removeError } = await supabase
+      .from("organization_members")
+      .delete()
+      .eq("organization_id", orgMembership.organization_id)
+      .eq("user_id", targetMember.id);
+
+    if (removeError) {
+      return { success: false, error: removeError.message };
+    }
+
+    // Also remove from team_hierarchies if exists
+    await supabase
+      .from("team_hierarchies")
+      .delete()
+      .eq("organization_id", orgMembership.organization_id)
+      .eq("member_id", targetMember.id);
+
+    return { success: true, message: "Team member removed successfully" };
+  } catch (error) {
+    console.error("Error removing team member:", error);
+    return { success: false, error: "Failed to remove team member" };
   }
-
-  // Remove the team member
-  const { error } = await supabase
-    .from("team_members")
-    .delete()
-    .eq("member_id", memberId);
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
-  return { success: true };
 };
 
 // Organization management actions
@@ -1155,47 +1223,24 @@ export const inviteTeamMember = async (formData: FormData) => {
         };
       }
 
-      // Add user to organization
-      const { error: orgError } = await supabase
-        .from("organization_members")
-        .insert({
-          organization_id: organizationId,
-          user_id: existingUser.id,
-          role: role,
-          invited_by: userData.id,
-          joined_at: new Date().toISOString(),
-          is_active: true,
-        });
-
-      if (orgError) {
-        return {
-          success: false,
-          error: `Error adding organization member: ${orgError.message}`,
-        };
-      }
-
-      // If inviting as a manager, create team hierarchy relationship
-      if (orgMember.role === "manager" && role === "member") {
-        const { error: hierarchyError } = await supabase
-          .from("team_hierarchies")
-          .insert({
-            organization_id: organizationId,
-            manager_id: userData.id,
-            member_id: existingUser.id,
-            created_by: userData.id,
-            is_active: true,
-          });
-
-        if (hierarchyError) {
-          console.error("Error creating team hierarchy:", hierarchyError);
-          // Don't fail the invitation, just log the error
-        }
-      }
-
-      return { success: true, message: "Team member added successfully" };
+      // CRITICAL FIX: Even for existing users, send an invitation instead of directly adding them
+      // This ensures proper invitation workflow and security
     }
 
-    // Call the Edge Function to send invitation via Supabase Auth
+    // Get organization and inviter details for the invitation
+    const { data: orgData } = await supabase
+      .from("organizations")
+      .select("name")
+      .eq("id", organizationId)
+      .single();
+
+    const { data: inviterData } = await supabase
+      .from("users")
+      .select("full_name")
+      .eq("id", userData.id)
+      .single();
+
+    // Call the Edge Function to send invitation
     const response = await supabase.functions.invoke(
       "supabase-functions-send-team-invitation",
       {
@@ -1204,6 +1249,8 @@ export const inviteTeamMember = async (formData: FormData) => {
           role: role,
           organizationId: organizationId,
           inviterUserId: userData.id,
+          organizationName: orgData?.name || "Your Organization",
+          inviterName: inviterData?.full_name || "Team Admin",
           redirectUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/sign-up?invitation=true&role=${role}`,
         },
       },
@@ -1217,23 +1264,8 @@ export const inviteTeamMember = async (formData: FormData) => {
       };
     }
 
-    // Store invitation in our database for tracking
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // Expires in 7 days
-
-    const { error: inviteError } = await supabase
-      .from("team_invitations")
-      .insert({
-        email,
-        invited_by: userData.id,
-        expires_at: expiresAt.toISOString(),
-        role: role,
-      });
-
-    if (inviteError) {
-      console.error("Error storing invitation:", inviteError);
-      // Don't fail the invitation since the email was sent
-    }
+    // The Edge Function handles storing the invitation in the database
+    // No need to duplicate the invitation creation here
 
     return { success: true, message: "Invitation sent successfully" };
   } catch (error) {

@@ -7,3 +7,4 @@ export { default as CategoriesTab } from "./categories-tab";
 export { default as TeamTab } from "./team-tab";
 export { default as TeamPerformanceTab } from "./team-performance-tab";
 export { default as ProfileTab } from "./profile-tab";
+export { default as PlanTab } from "./plan-tab";
