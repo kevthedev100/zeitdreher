@@ -3,6 +3,7 @@
 import { encodedRedirect } from "@/utils/utils";
 import { redirect } from "next/navigation";
 import { createClient } from "../../supabase/server";
+import { v4 as uuidv4 } from "uuid";
 
 export const signUpAction = async (formData: FormData) => {
   const email = formData.get("email")?.toString();
@@ -70,49 +71,37 @@ export const signUpAction = async (formData: FormData) => {
         .eq("user_id", user.id);
     }
 
-    // If this is an invitation signup, process the invitation
-    if (isInvitation) {
+    // If this is an invitation signup, handle the invitation directly
+    if (isInvitation && organizationId) {
       try {
-        // Call the process invitation edge function
-        const { data: invitationResult, error: invitationError } =
-          await supabase.functions.invoke(
-            "supabase-functions-process-invitation-signup",
-            {
-              body: {
-                invitationId: isInvitation,
-                userEmail: email,
-                userId: user.id,
-              },
-            },
-          );
+        // Find pending invitations for this email
+        const { data: pendingInvitation } = await supabase
+          .from("team_invitations")
+          .select("*")
+          .eq("email", email)
+          .gt("expires_at", new Date().toISOString())
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
 
-        if (invitationError) {
-          console.error("Error processing invitation:", invitationError);
-        } else {
-          console.log("Invitation processed successfully:", invitationResult);
-        }
-
-        // If we have organization context, try to add user to organization
-        if (organizationId) {
-          // Find pending invitations for this email
-          const { data: pendingInvitation } = await supabase
-            .from("team_invitations")
-            .select("*")
-            .eq("email", email)
-            .gt("expires_at", new Date().toISOString())
-            .order("created_at", { ascending: false })
-            .limit(1)
+        if (pendingInvitation) {
+          // Get the inviter's user data
+          const { data: inviterUserData } = await supabase
+            .from("users")
+            .select("id")
+            .eq("user_id", pendingInvitation.invited_by)
             .single();
 
-          if (pendingInvitation) {
-            // Get the inviter's organization
-            const { data: inviterData } = await supabase
-              .from("organization_hierarchy")
-              .select("organization_id, user_id")
-              .eq("user_id", pendingInvitation.invited_by)
+          if (inviterUserData) {
+            // Get the inviter's organization membership
+            const { data: inviterOrgData } = await supabase
+              .from("organization_members")
+              .select("organization_id")
+              .eq("user_id", inviterUserData.id)
+              .eq("is_active", true)
               .single();
 
-            if (inviterData) {
+            if (inviterOrgData) {
               // Add user to the organization
               const { data: userData } = await supabase
                 .from("users")
@@ -122,17 +111,21 @@ export const signUpAction = async (formData: FormData) => {
 
               if (userData) {
                 await supabase.from("organization_members").insert({
-                  organization_id: inviterData.organization_id,
+                  organization_id: inviterOrgData.organization_id,
                   user_id: userData.id,
                   role: invitationRole,
-                  invited_by: inviterData.user_id,
+                  invited_by: inviterUserData.id,
                   joined_at: new Date().toISOString(),
+                  is_active: true,
                 });
 
-                // Mark invitation as used (delete it)
+                // Mark invitation as accepted
                 await supabase
                   .from("team_invitations")
-                  .delete()
+                  .update({
+                    accepted: true,
+                    accepted_at: new Date().toISOString(),
+                  })
                   .eq("id", pendingInvitation.id);
               }
             }
@@ -1119,6 +1112,256 @@ export const checkUserManagementPermission = async (
   }
 
   return data || false;
+};
+
+export const createUserAction = async (formData: FormData) => {
+  const fullName = formData.get("full_name")?.toString();
+  const email = formData.get("email")?.toString();
+  const password = formData.get("password")?.toString();
+  const role = "member"; // Always create users as members, never admin
+  const organizationId = formData.get("organization_id")?.toString();
+  const isAdminCreated = formData.get("admin_created")?.toString() === "true";
+
+  if (!fullName || !email || !password) {
+    return { success: false, error: "All fields are required" };
+  }
+
+  if (!organizationId && isAdminCreated) {
+    return { success: false, error: "Organization ID is required" };
+  }
+
+  try {
+    // Create admin client with service role for user creation
+    const { createClient: createSupabaseClient } = await import(
+      "@supabase/supabase-js"
+    );
+
+    // Get environment variables with proper validation
+    const supabaseUrl =
+      process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+
+    console.log("Environment check:", {
+      supabaseUrl: supabaseUrl ? "Present" : "Missing",
+      supabaseServiceKey: supabaseServiceKey ? "Present" : "Missing",
+      SUPABASE_URL: process.env.SUPABASE_URL ? "Present" : "Missing",
+      NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL
+        ? "Present"
+        : "Missing",
+      actualUrl: supabaseUrl || "EMPTY",
+      actualServiceKey: supabaseServiceKey ? "[REDACTED]" : "EMPTY",
+    });
+
+    // Validate that both URL and service key are non-empty strings
+    if (
+      !supabaseUrl ||
+      typeof supabaseUrl !== "string" ||
+      supabaseUrl.trim() === ""
+    ) {
+      console.error("Invalid supabaseUrl:", { supabaseUrl });
+      return {
+        success: false,
+        error:
+          "Invalid Supabase URL. Please check SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL environment variable.",
+      };
+    }
+
+    if (
+      !supabaseServiceKey ||
+      typeof supabaseServiceKey !== "string" ||
+      supabaseServiceKey.trim() === ""
+    ) {
+      console.error("Invalid supabaseServiceKey:", {
+        supabaseServiceKey: supabaseServiceKey ? "[REDACTED]" : "EMPTY",
+      });
+      return {
+        success: false,
+        error:
+          "Invalid Supabase Service Key. Please check SUPABASE_SERVICE_KEY environment variable.",
+      };
+    }
+
+    let supabaseAdmin;
+    try {
+      supabaseAdmin = createSupabaseClient(
+        supabaseUrl.trim(),
+        supabaseServiceKey.trim(),
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          },
+        },
+      );
+    } catch (clientError) {
+      console.error("Error creating Supabase admin client:", clientError);
+      return {
+        success: false,
+        error:
+          "Failed to initialize Supabase admin client. Please check environment variables.",
+      };
+    }
+
+    const supabase = await createClient();
+
+    // Get current user (admin) if this is admin-created
+    let adminUserId = null;
+    if (isAdminCreated) {
+      const {
+        data: { user: adminUser },
+      } = await supabase.auth.getUser();
+      if (!adminUser) {
+        return { success: false, error: "Admin not authenticated" };
+      }
+      adminUserId = adminUser.id;
+
+      // Verify admin has permission to create users in this organization
+      const { data: adminData } = await supabase
+        .from("users")
+        .select("id")
+        .eq("user_id", adminUser.id)
+        .single();
+
+      if (!adminData) {
+        return { success: false, error: "Admin data not found" };
+      }
+
+      const { data: orgMember } = await supabase
+        .from("organization_members")
+        .select("role")
+        .eq("user_id", adminData.id)
+        .eq("organization_id", organizationId)
+        .eq("is_active", true)
+        .single();
+
+      if (!orgMember || !["admin", "manager"].includes(orgMember.role)) {
+        return {
+          success: false,
+          error: "Only admins and managers can create users",
+        };
+      }
+    }
+
+    // Create the user account using admin client
+    const { data: authData, error: authError } =
+      await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        user_metadata: {
+          full_name: fullName,
+          email: email,
+        },
+        email_confirm: true, // Auto-confirm email for admin-created users
+      });
+
+    if (authError || !authData.user) {
+      console.error("Error creating auth user:", authError);
+      return {
+        success: false,
+        error: authError?.message || "Failed to create user account",
+      };
+    }
+
+    // The database trigger should automatically create the public.users record
+    // Wait a moment for the trigger to complete
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Verify the user was created in public.users table
+    const { data: publicUser, error: publicUserError } = await supabaseAdmin
+      .from("users")
+      .select("*")
+      .eq("user_id", authData.user.id)
+      .single();
+
+    if (publicUserError || !publicUser) {
+      console.error(
+        "Public user not found after trigger, creating manually:",
+        publicUserError,
+      );
+
+      // If trigger failed, create manually
+      const { error: manualCreateError } = await supabaseAdmin
+        .from("users")
+        .insert({
+          id: authData.user.id, // Use the auth user ID as the UUID
+          user_id: authData.user.id,
+          full_name: fullName,
+          email: email,
+          role: role,
+          onboarded: isAdminCreated,
+          token_identifier: Math.random().toString(36).substring(2, 15),
+          is_active: true,
+          email_verified: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+      if (manualCreateError) {
+        console.error(
+          "Error creating public user manually:",
+          manualCreateError,
+        );
+        // Clean up auth user if public user creation fails
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        return {
+          success: false,
+          error: `Failed to create user profile: ${manualCreateError.message}`,
+        };
+      }
+    }
+
+    // If admin-created, add to organization
+    if (isAdminCreated && organizationId) {
+      const { data: newUserData } = await supabaseAdmin
+        .from("users")
+        .select("id")
+        .eq("user_id", authData.user.id)
+        .single();
+
+      const { data: adminData } = await supabaseAdmin
+        .from("users")
+        .select("id")
+        .eq("user_id", adminUserId)
+        .single();
+
+      if (newUserData && adminData) {
+        const { error: orgMemberError } = await supabaseAdmin
+          .from("organization_members")
+          .insert({
+            organization_id: organizationId,
+            user_id: newUserData.id,
+            role: role,
+            invited_by: adminData.id,
+            joined_at: new Date().toISOString(),
+            is_active: true,
+          });
+
+        if (orgMemberError) {
+          console.error("Error adding user to organization:", orgMemberError);
+          // Don't fail the entire operation, just log the error
+        }
+      }
+    }
+
+    return {
+      success: true,
+      message: isAdminCreated
+        ? "User created and added to organization as member successfully"
+        : "User created successfully",
+      data: {
+        id: authData.user.id,
+        email: authData.user.email,
+        full_name: fullName,
+        role: role,
+      },
+    };
+  } catch (error: any) {
+    console.error("Error in createUserAction:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to create user",
+    };
+  }
 };
 
 export const inviteTeamMember = async (formData: FormData) => {

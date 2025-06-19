@@ -86,9 +86,13 @@ export default function TeamTab({ userRole }: TeamTabProps) {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteLoading, setInviteLoading] = useState(false);
+  const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
+  const [addUserLoading, setAddUserLoading] = useState(false);
+  const [newUserData, setNewUserData] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+  });
   const [teamStats, setTeamStats] = useState({
     totalMembers: 0,
     totalHoursThisWeek: 0,
@@ -205,37 +209,49 @@ export default function TeamTab({ userRole }: TeamTabProps) {
     }
   };
 
-  const handleInviteMember = async (e: React.FormEvent) => {
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteEmail.trim()) return;
+    if (
+      !newUserData.fullName.trim() ||
+      !newUserData.email.trim() ||
+      !newUserData.password.trim()
+    ) {
+      console.error("All fields are required");
+      return;
+    }
     if (!selectedOrganizationId) {
       console.error("No organization selected");
       return;
     }
 
-    setInviteLoading(true);
+    setAddUserLoading(true);
     try {
       const formData = new FormData();
-      formData.append("email", inviteEmail);
-      formData.append("role", "member"); // Default role for team invitations
+      formData.append("full_name", newUserData.fullName);
+      formData.append("email", newUserData.email);
+      formData.append("password", newUserData.password);
+      formData.append("role", "member"); // Default role for new users
       formData.append("organization_id", selectedOrganizationId);
+      formData.append("admin_created", "true"); // Flag to indicate admin creation
 
-      const result = await inviteTeamMember(formData);
+      // Import the createUserAction from actions
+      const { createUserAction } = await import("@/app/actions");
+      const result = await createUserAction(formData);
 
       if (result.success) {
         // Refresh data and close dialog
         await loadTeamData();
-        setInviteEmail("");
-        setInviteDialogOpen(false);
-        console.log("Invitation sent successfully:", result.message);
+        setNewUserData({ fullName: "", email: "", password: "" });
+        setAddUserDialogOpen(false);
+        console.log("User created successfully:", result.message);
       } else {
-        console.error("Error inviting team member:", result.error);
+        console.error("Error creating user:", result.error);
         // You might want to show an error toast here
       }
     } catch (error) {
-      console.error("Error inviting team member:", error);
+      console.error("Error creating user:", error);
     } finally {
-      setInviteLoading(false);
+      setAddUserLoading(false);
     }
   };
 
@@ -354,13 +370,13 @@ export default function TeamTab({ userRole }: TeamTabProps) {
               </Button>
               {hasOrganization ? (
                 <Dialog
-                  open={inviteDialogOpen}
-                  onOpenChange={setInviteDialogOpen}
+                  open={addUserDialogOpen}
+                  onOpenChange={setAddUserDialogOpen}
                 >
                   <DialogTrigger asChild>
                     <Button className="bg-blue-600 hover:bg-blue-700">
                       <UserPlus className="w-4 h-4 mr-2" />
-                      Invite Member
+                      Nutzer Hinzufügen
                     </Button>
                   </DialogTrigger>
                 </Dialog>
@@ -371,27 +387,64 @@ export default function TeamTab({ userRole }: TeamTabProps) {
               )}
               {hasOrganization && (
                 <Dialog
-                  open={inviteDialogOpen}
-                  onOpenChange={setInviteDialogOpen}
+                  open={addUserDialogOpen}
+                  onOpenChange={setAddUserDialogOpen}
                 >
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Invite Team Member</DialogTitle>
+                      <DialogTitle>Neuen Nutzer Hinzufügen</DialogTitle>
                       <DialogDescription>
-                        Send an invitation to join your team. They will receive
-                        an email with instructions and become a member by
-                        default upon accepting.
+                        Erstellen Sie einen neuen Nutzer für Ihre Organisation.
+                        Der Nutzer wird automatisch als Mitglied hinzugefügt.
                       </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleInviteMember} className="space-y-4">
+                    <form onSubmit={handleCreateUser} className="space-y-4">
                       <div>
-                        <Label htmlFor="email">Email Address</Label>
+                        <Label htmlFor="fullName">Vollständiger Name</Label>
+                        <Input
+                          id="fullName"
+                          type="text"
+                          value={newUserData.fullName}
+                          onChange={(e) =>
+                            setNewUserData((prev) => ({
+                              ...prev,
+                              fullName: e.target.value,
+                            }))
+                          }
+                          placeholder="Max Mustermann"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="email">E-Mail-Adresse</Label>
                         <Input
                           id="email"
                           type="email"
-                          value={inviteEmail}
-                          onChange={(e) => setInviteEmail(e.target.value)}
-                          placeholder="colleague@example.com"
+                          value={newUserData.email}
+                          onChange={(e) =>
+                            setNewUserData((prev) => ({
+                              ...prev,
+                              email: e.target.value,
+                            }))
+                          }
+                          placeholder="max.mustermann@example.com"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="password">Passwort</Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          value={newUserData.password}
+                          onChange={(e) =>
+                            setNewUserData((prev) => ({
+                              ...prev,
+                              password: e.target.value,
+                            }))
+                          }
+                          placeholder="Mindestens 6 Zeichen"
+                          minLength={6}
                           required
                         />
                       </div>
@@ -399,17 +452,24 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => setInviteDialogOpen(false)}
+                          onClick={() => {
+                            setAddUserDialogOpen(false);
+                            setNewUserData({
+                              fullName: "",
+                              email: "",
+                              password: "",
+                            });
+                          }}
                         >
-                          Cancel
+                          Abbrechen
                         </Button>
-                        <Button type="submit" disabled={inviteLoading}>
-                          {inviteLoading ? (
+                        <Button type="submit" disabled={addUserLoading}>
+                          {addUserLoading ? (
                             <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                           ) : (
-                            <Mail className="w-4 h-4 mr-2" />
+                            <UserPlus className="w-4 h-4 mr-2" />
                           )}
-                          Send Invitation
+                          Nutzer Erstellen
                         </Button>
                       </div>
                     </form>
@@ -683,71 +743,32 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                     <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     <p>No team members yet</p>
                     <p className="text-sm">
-                      Invite your first team member to get started
+                      Fügen Sie Ihren ersten Nutzer hinzu, um zu beginnen
                     </p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Pending Invitations */}
+            {/* Recent Activity */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Mail className="w-5 h-5" />
-                  Pending Invitations ({invitations.length})
+                  <Clock className="w-5 h-5" />
+                  Letzte Aktivitäten
                 </CardTitle>
                 <CardDescription>
-                  Track sent invitations and their status
+                  Übersicht der neuesten Team-Aktivitäten
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {loading ? (
-                  <div className="space-y-3 animate-pulse">
-                    {Array.from({ length: 2 }).map((_, i) => (
-                      <div key={i} className="p-3 border rounded-lg">
-                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                      </div>
-                    ))}
-                  </div>
-                ) : invitations.length > 0 ? (
-                  <div className="space-y-3">
-                    {invitations.map((invitation) => (
-                      <div
-                        key={invitation.id}
-                        className="p-3 border rounded-lg"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">{invitation.email}</p>
-                            <p className="text-sm text-gray-500">
-                              Sent{" "}
-                              {new Date(
-                                invitation.created_at,
-                              ).toLocaleDateString()}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                              Expires{" "}
-                              {new Date(
-                                invitation.expires_at,
-                              ).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <Badge variant="secondary">Pending</Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Mail className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>No pending invitations</p>
-                    <p className="text-sm">
-                      All invitations have been processed
-                    </p>
-                  </div>
-                )}
+                <div className="text-center py-8 text-gray-500">
+                  <Clock className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>Keine aktuellen Aktivitäten</p>
+                  <p className="text-sm">
+                    Team-Aktivitäten werden hier angezeigt
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </div>
