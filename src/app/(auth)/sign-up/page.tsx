@@ -23,6 +23,8 @@ export default async function Signup(props: {
       token?: string;
       email?: string;
       org?: string;
+      admin_invitation?: string;
+      full_name?: string;
     }
   >;
 }) {
@@ -40,13 +42,36 @@ export default async function Signup(props: {
   const invitationToken = searchParams.token;
   const invitationEmail = searchParams.email;
   const organizationId = searchParams.org;
+  const adminInvitationId = searchParams.admin_invitation;
+  const adminInvitationFullName = searchParams.full_name;
+  const isAdminInvitation = !!adminInvitationId;
 
   return (
     <>
       <Navbar />
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8">
         <div className="w-full max-w-md">
-          {isInvitation && (
+          {isAdminInvitation && (
+            <Card className="mb-6 border-purple-200 bg-purple-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  🎯 Welcome to the Team!
+                  <Badge
+                    variant="secondary"
+                    className="bg-purple-100 text-purple-800"
+                  >
+                    Full License
+                  </Badge>
+                </CardTitle>
+                <CardDescription>
+                  Your administrator has created an account for you with{" "}
+                  <strong>full license privileges</strong>. Complete your
+                  registration below to activate your account!
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
+          {isInvitation && !isAdminInvitation && (
             <Card className="mb-6 border-blue-200 bg-blue-50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -66,10 +91,16 @@ export default async function Signup(props: {
             <form className="flex flex-col space-y-6">
               <div className="space-y-2 text-center">
                 <h1 className="text-3xl font-semibold tracking-tight">
-                  {isInvitation ? "Complete Your Invitation" : "Sign up"}
+                  {isAdminInvitation
+                    ? "Activate Your Account"
+                    : isInvitation
+                      ? "Complete Your Invitation"
+                      : "Sign up"}
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  {isInvitation ? (
+                  {isAdminInvitation ? (
+                    "Set your password to activate your account with full license privileges."
+                  ) : isInvitation ? (
                     `You've been invited to join as a ${invitationRole}. Complete your registration below.`
                   ) : (
                     <>
@@ -95,6 +126,8 @@ export default async function Signup(props: {
                     name="full_name"
                     type="text"
                     placeholder="John Doe"
+                    defaultValue={adminInvitationFullName || ""}
+                    readOnly={!!adminInvitationFullName}
                     required
                     className="w-full"
                   />
@@ -110,7 +143,7 @@ export default async function Signup(props: {
                     type="email"
                     placeholder="you@example.com"
                     defaultValue={invitationEmail || ""}
-                    readOnly={!!invitationEmail}
+                    readOnly={!!(invitationEmail || isAdminInvitation)}
                     required
                     className="w-full"
                   />
@@ -133,7 +166,26 @@ export default async function Signup(props: {
               </div>
 
               {/* Hidden fields for invitation data */}
-              {isInvitation && (
+              {isAdminInvitation && (
+                <>
+                  <input
+                    type="hidden"
+                    name="admin_invitation"
+                    value={adminInvitationId}
+                  />
+                  <input
+                    type="hidden"
+                    name="token"
+                    value={invitationToken || ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="org"
+                    value={organizationId || ""}
+                  />
+                </>
+              )}
+              {isInvitation && !isAdminInvitation && (
                 <>
                   <input type="hidden" name="invitation" value={isInvitation} />
                   <input type="hidden" name="role" value={invitationRole} />
@@ -150,10 +202,20 @@ export default async function Signup(props: {
 
               <SubmitButton
                 formAction={signUpAction}
-                pendingText={isInvitation ? "Joining team..." : "Signing up..."}
+                pendingText={
+                  isAdminInvitation
+                    ? "Activating account..."
+                    : isInvitation
+                      ? "Joining team..."
+                      : "Signing up..."
+                }
                 className="w-full"
               >
-                {isInvitation ? "Accept Invitation & Join Team" : "Sign up"}
+                {isAdminInvitation
+                  ? "Activate Account"
+                  : isInvitation
+                    ? "Accept Invitation & Join Team"
+                    : "Sign up"}
               </SubmitButton>
 
               <FormMessage message={searchParams} />

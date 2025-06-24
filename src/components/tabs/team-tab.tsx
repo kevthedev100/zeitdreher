@@ -57,6 +57,139 @@ import { Badge } from "@/components/ui/badge";
 import CreateOrganizationDialog from "@/components/create-organization-dialog";
 import OrganizationSelector from "@/components/organization-selector";
 
+// Recent Activities Component
+function RecentActivities({
+  organizationId,
+}: {
+  organizationId: string | null;
+}) {
+  const [activities, setActivities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
+
+  useEffect(() => {
+    if (organizationId) {
+      loadActivities();
+    } else {
+      setActivities([]);
+      setLoading(false);
+    }
+  }, [organizationId]);
+
+  const loadActivities = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("team_activities")
+        .select(
+          `
+          *,
+          user:user_id(full_name, email),
+          created_by_user:created_by(full_name)
+        `,
+        )
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error("Error loading team activities:", error);
+        setActivities([]);
+      } else {
+        setActivities(data || []);
+      }
+    } catch (error) {
+      console.error("Error loading team activities:", error);
+      setActivities([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatActivityTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor(diffInHours * 60);
+      return `vor ${diffInMinutes} Min.`;
+    } else if (diffInHours < 24) {
+      return `vor ${Math.floor(diffInHours)} Std.`;
+    } else {
+      const diffInDays = Math.floor(diffInHours / 24);
+      return `vor ${diffInDays} Tag${diffInDays > 1 ? "en" : ""}`;
+    }
+  };
+
+  const getActivityIcon = (activityType: string) => {
+    switch (activityType) {
+      case "member_joined":
+        return <UserPlus className="w-4 h-4 text-green-600" />;
+      case "member_removed":
+        return <Trash2 className="w-4 h-4 text-red-600" />;
+      case "role_changed":
+        return <Users className="w-4 h-4 text-blue-600" />;
+      default:
+        return <Clock className="w-4 h-4 text-gray-600" />;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-3 animate-pulse">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+            <div className="flex-1">
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (activities.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        <Clock className="w-12 h-12 mx-auto mb-2 opacity-50" />
+        <p>Keine aktuellen Aktivitäten</p>
+        <p className="text-sm">Team-Aktivitäten werden hier angezeigt</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {activities.map((activity) => (
+        <div
+          key={activity.id}
+          className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50"
+        >
+          <div className="flex-shrink-0 mt-1">
+            {getActivityIcon(activity.activity_type)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900">
+              {activity.description}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {formatActivityTime(activity.created_at)}
+            </p>
+            {activity.metadata && activity.metadata.user_email && (
+              <p className="text-xs text-gray-400 mt-1">
+                {activity.metadata.user_email}
+              </p>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 interface TeamTabProps {
   userRole: "admin" | "manager" | "employee";
 }
@@ -762,13 +895,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  <Clock className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>Keine aktuellen Aktivitäten</p>
-                  <p className="text-sm">
-                    Team-Aktivitäten werden hier angezeigt
-                  </p>
-                </div>
+                <RecentActivities organizationId={selectedOrganizationId} />
               </CardContent>
             </Card>
           </div>

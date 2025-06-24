@@ -22,6 +22,26 @@ export default function SubscriptionStatusBar() {
         } = await supabase.auth.getUser();
         if (!user) return;
 
+        // Check user role first
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("role")
+          .eq("user_id", user.id)
+          .single();
+
+        if (userError) {
+          console.error("Error fetching user data:", userError);
+        }
+
+        // If user is admin_member, set special subscription status
+        if (userData?.role === "admin_member") {
+          setSubscription({
+            status: "admin_member",
+            metadata: { quantity: "1" },
+          });
+          return;
+        }
+
         // Get user's subscription
         const { data, error: subscriptionError } = await supabase
           .from("subscriptions")
@@ -81,7 +101,9 @@ export default function SubscriptionStatusBar() {
   const getSubscriptionStatus = () => {
     if (!subscription) return "trial"; // Default to trial for new users
 
-    if (subscription.status === "trialing") {
+    if (subscription.status === "admin_member") {
+      return "admin_member";
+    } else if (subscription.status === "trialing") {
       return "trialing";
     } else if (subscription.status === "active") {
       return "active";
@@ -115,7 +137,14 @@ export default function SubscriptionStatusBar() {
     ? parseInt(subscription.metadata.quantity, 10)
     : subscription?.items?.data?.[0]?.quantity || 1; // Default to 1 license
 
-  if (status === "trial" || status === "trialing") {
+  if (status === "admin_member") {
+    return (
+      <div className="w-full bg-purple-50 p-2 text-center text-sm text-purple-700 flex items-center justify-center">
+        <CheckCircle className="h-3 w-3 mr-2" />
+        Team-Mitglied: Vollzugang durch Administrator
+      </div>
+    );
+  } else if (status === "trial" || status === "trialing") {
     const progressPercentage = ((14 - trialDaysLeft) / 14) * 100;
 
     return (

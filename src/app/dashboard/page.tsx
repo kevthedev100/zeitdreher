@@ -148,12 +148,8 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => {
-    // Redirect to overview tab by default
-    if (!loading && user) {
-      redirect("/dashboard/overview");
-    }
-  }, [loading, user]);
+  // Redirect is now handled at the sign-in level
+  // This page should only be accessed directly via URL
 
   if (loading) {
     return (

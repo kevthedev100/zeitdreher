@@ -660,12 +660,37 @@ export default function TimeEntryForm({
       formData.append("language", "de");
       formData.append("user_id", user.id); // Pass user ID to the transcription function
 
-      const { data, error } = await supabase.functions.invoke(
-        "supabase-functions-transcribe-audio",
+      // Get the session for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("No active session found");
+      }
+
+      // Use direct fetch to ensure proper multipart/form-data content type
+      const response = await fetch(
+        `${supabase.supabaseUrl}/functions/v1/supabase-functions-transcribe-audio`,
         {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${session.access_token}`,
+            "apikey": supabase.supabaseKey,
+          },
           body: formData,
-        },
+        }
       );
+
+      let data, error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        try {
+          const errorJson = JSON.parse(errorText);
+          error = errorJson;
+        } catch {
+          error = { message: errorText, status: response.status };
+        }
+      } else {
+        data = await response.json();
+      }
 
       // Remove processing status
       document.body.removeChild(statusDiv);

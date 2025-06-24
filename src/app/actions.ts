@@ -3,6 +3,7 @@
 import { encodedRedirect } from "@/utils/utils";
 import { redirect } from "next/navigation";
 import { createClient } from "../../supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { v4 as uuidv4 } from "uuid";
 
 export const signUpAction = async (formData: FormData) => {
@@ -13,6 +14,8 @@ export const signUpAction = async (formData: FormData) => {
   const invitationRole = formData.get("role")?.toString() || "member";
   const invitationToken = formData.get("token")?.toString();
   const organizationId = formData.get("org")?.toString();
+  const adminInvitationId = formData.get("admin_invitation")?.toString();
+  const adminInvitationToken = formData.get("token")?.toString();
   const supabase = await createClient();
 
   if (!email || !password) {
@@ -41,9 +44,48 @@ export const signUpAction = async (formData: FormData) => {
     return encodedRedirect("error", "/sign-up", error.message);
   }
 
+  // Initialize variables that will be used later
+  let isAdminCreated = false;
+  let userRole = "member"; // Default for self-registered users
+
   // User data is automatically inserted into public.users table via database trigger
   // Double-check that the user was created in the public.users table
   if (user) {
+    // Check if this is an admin invitation signup
+    if (adminInvitationId && adminInvitationToken) {
+      const { data: adminInvitation, error: adminInvitationError } =
+        await supabase
+          .from("admin_invitations")
+          .select("*")
+          .eq("id", adminInvitationId)
+          .eq("token", adminInvitationToken)
+          .eq("email", email)
+          .eq("accepted", false)
+          .gt("expires_at", new Date().toISOString())
+          .single();
+
+      if (adminInvitation && !adminInvitationError) {
+        userRole = "admin_member";
+        isAdminCreated = true;
+
+        console.log(
+          "Admin invitation found, setting role to admin_member for user:",
+          email,
+        );
+
+        // Mark admin invitation as accepted
+        await supabase
+          .from("admin_invitations")
+          .update({
+            accepted: true,
+            accepted_at: new Date().toISOString(),
+          })
+          .eq("id", adminInvitationId);
+      }
+    } else if (isInvitation) {
+      userRole = invitationRole;
+    }
+
     const { data: publicUser, error: publicUserError } = await supabase
       .from("users")
       .select("*")
@@ -52,27 +94,121 @@ export const signUpAction = async (formData: FormData) => {
 
     if (publicUserError || !publicUser) {
       // If the user wasn't created in the public.users table, create it manually
-      // Set role based on invitation or default to admin for non-invited users
-      const userRole = isInvitation ? invitationRole : "admin";
-
       await supabase.from("users").upsert({
         user_id: user.id,
         full_name: fullName,
         email: email,
         token_identifier: Math.random().toString(36).substring(2, 15),
         role: userRole,
-        onboarded: false,
+        onboarded: isAdminCreated, // Admin-created users are considered onboarded
       });
-    } else if (isInvitation) {
-      // Update existing user role if they were invited
+    } else {
+      // Update existing user role and onboarding status
       await supabase
         .from("users")
-        .update({ role: invitationRole })
+        .update({
+          role: userRole,
+          onboarded: isAdminCreated || publicUser.onboarded,
+        })
         .eq("user_id", user.id);
     }
 
-    // If this is an invitation signup, handle the invitation directly
-    if (isInvitation && organizationId) {
+    // Handle organization membership for different invitation types
+    if (isAdminCreated && adminInvitationId && organizationId) {
+      try {
+        // Get the admin invitation data
+        const { data: adminInvitation } = await supabase
+          .from("admin_invitations")
+          .select("*")
+          .eq("id", adminInvitationId)
+          .single();
+
+        if (adminInvitation) {
+          // Get user data
+          const { data: userData } = await supabase
+            .from("users")
+            .select("id")
+            .eq("user_id", user.id)
+            .single();
+
+          if (userData) {
+            // Add user to the organization with admin_member role
+            const { error: orgMemberError } = await supabase
+              .from("organization_members")
+              .insert({
+                organization_id: organizationId,
+                user_id: userData.id,
+                role: "admin_member",
+                invited_by: adminInvitation.invited_by,
+                joined_at: new Date().toISOString(),
+                is_active: true,
+              });
+
+            if (orgMemberError) {
+              console.error(
+                "Error adding user to organization:",
+                orgMemberError,
+              );
+            } else {
+              console.log(
+                "Successfully added admin_member to organization:",
+                userData.id,
+              );
+
+              // Create team activity entry
+              try {
+                // Get inviter's name for the activity log
+                const { data: inviterData } = await supabase
+                  .from("users")
+                  .select("full_name")
+                  .eq("id", adminInvitation.invited_by)
+                  .single();
+
+                // Create a team activity entry (you may need to create this table if it doesn't exist)
+                // For now, we'll use a simple approach and create an entry in a team_activities table
+                // If this table doesn't exist, you can create it or use another approach
+                const activityData = {
+                  organization_id: organizationId,
+                  user_id: userData.id,
+                  activity_type: "member_joined",
+                  description: `${fullName} joined the team as admin member`,
+                  created_by: adminInvitation.invited_by,
+                  created_at: new Date().toISOString(),
+                  metadata: {
+                    user_name: fullName,
+                    user_email: email,
+                    role: "admin_member",
+                    invited_by: inviterData?.full_name || "Admin",
+                  },
+                };
+
+                // Try to insert into team_activities table (create if needed)
+                const { error: activityError } = await supabase
+                  .from("team_activities")
+                  .insert(activityData);
+
+                if (activityError) {
+                  console.log(
+                    "Team activities table might not exist, creating activity log entry in alternative way:",
+                    activityError,
+                  );
+                  // Alternative: Log to console or handle differently
+                  console.log("Team Activity:", activityData);
+                }
+              } catch (activityError) {
+                console.error("Error creating team activity:", activityError);
+              }
+            }
+          }
+        }
+      } catch (adminInvitationProcessError) {
+        console.error(
+          "Error in admin invitation processing:",
+          adminInvitationProcessError,
+        );
+        // Don't fail the signup if invitation processing fails
+      }
+    } else if (isInvitation && organizationId) {
       try {
         // Find pending invitations for this email
         const { data: pendingInvitation } = await supabase
@@ -141,9 +277,17 @@ export const signUpAction = async (formData: FormData) => {
     }
   }
 
-  const successMessage = isInvitation
-    ? "Welcome to the team! Please check your email for a verification link."
-    : "Thanks for signing up! Please check your email for a verification link.";
+  let successMessage;
+  if (isAdminCreated) {
+    successMessage =
+      "Welcome to the team! Your account has been activated with full license privileges.";
+  } else if (isInvitation) {
+    successMessage =
+      "Welcome to the team! Please check your email for a verification link.";
+  } else {
+    successMessage =
+      "Thanks for signing up! Please check your email for a verification link.";
+  }
 
   return encodedRedirect("success", "/sign-up", successMessage);
 };
@@ -162,7 +306,7 @@ export const signInAction = async (formData: FormData) => {
     return encodedRedirect("error", "/sign-in", error.message);
   }
 
-  return redirect("/dashboard");
+  return redirect("/dashboard/overview");
 };
 
 export const forgotPasswordAction = async (formData: FormData) => {
@@ -653,17 +797,28 @@ export const getTeamMembers = async (organizationId?: string) => {
   if (!orgId) return [];
 
   // Get team members based on user role using helper functions
-  if (userHierarchy.user_role === "admin") {
-    // Admins can see all organization members
+  if (
+    userHierarchy.user_role === "admin" ||
+    userHierarchy.user_role === "admin_member"
+  ) {
+    // Admins and admin_members can see all organization members
     const { data, error } = await supabase
       .from("organization_hierarchy")
       .select("*")
       .eq("organization_id", orgId);
 
     if (error) {
-      console.error("Error fetching team members for admin:", error);
+      console.error(
+        "Error fetching team members for admin/admin_member:",
+        error,
+      );
       return [];
     }
+
+    console.log(
+      "Found team members for admin/admin_member:",
+      data?.length || 0,
+    );
 
     return (
       data?.map((member) => ({
@@ -1117,13 +1272,14 @@ export const checkUserManagementPermission = async (
 export const createUserAction = async (formData: FormData) => {
   const fullName = formData.get("full_name")?.toString();
   const email = formData.get("email")?.toString();
-  const password = formData.get("password")?.toString();
-  const role = "member"; // Always create users as members, never admin
   const organizationId = formData.get("organization_id")?.toString();
   const isAdminCreated = formData.get("admin_created")?.toString() === "true";
+  const password =
+    formData.get("password")?.toString() ||
+    Math.random().toString(36).slice(-8); // Generate temporary password
 
-  if (!fullName || !email || !password) {
-    return { success: false, error: "All fields are required" };
+  if (!fullName || !email) {
+    return { success: false, error: "Full name and email are required" };
   }
 
   if (!organizationId && isAdminCreated) {
@@ -1131,228 +1287,133 @@ export const createUserAction = async (formData: FormData) => {
   }
 
   try {
-    // Create admin client with service role for user creation
-    const { createClient: createSupabaseClient } = await import(
-      "@supabase/supabase-js"
-    );
-
-    // Get environment variables with proper validation
-    const supabaseUrl =
-      process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
-
-    console.log("Environment check:", {
-      supabaseUrl: supabaseUrl ? "Present" : "Missing",
-      supabaseServiceKey: supabaseServiceKey ? "Present" : "Missing",
-      SUPABASE_URL: process.env.SUPABASE_URL ? "Present" : "Missing",
-      NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL
-        ? "Present"
-        : "Missing",
-      actualUrl: supabaseUrl || "EMPTY",
-      actualServiceKey: supabaseServiceKey ? "[REDACTED]" : "EMPTY",
-    });
-
-    // Validate that both URL and service key are non-empty strings
-    if (
-      !supabaseUrl ||
-      typeof supabaseUrl !== "string" ||
-      supabaseUrl.trim() === ""
-    ) {
-      console.error("Invalid supabaseUrl:", { supabaseUrl });
-      return {
-        success: false,
-        error:
-          "Invalid Supabase URL. Please check SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL environment variable.",
-      };
-    }
-
-    if (
-      !supabaseServiceKey ||
-      typeof supabaseServiceKey !== "string" ||
-      supabaseServiceKey.trim() === ""
-    ) {
-      console.error("Invalid supabaseServiceKey:", {
-        supabaseServiceKey: supabaseServiceKey ? "[REDACTED]" : "EMPTY",
-      });
-      return {
-        success: false,
-        error:
-          "Invalid Supabase Service Key. Please check SUPABASE_SERVICE_KEY environment variable.",
-      };
-    }
-
-    let supabaseAdmin;
-    try {
-      supabaseAdmin = createSupabaseClient(
-        supabaseUrl.trim(),
-        supabaseServiceKey.trim(),
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          },
-        },
-      );
-    } catch (clientError) {
-      console.error("Error creating Supabase admin client:", clientError);
-      return {
-        success: false,
-        error:
-          "Failed to initialize Supabase admin client. Please check environment variables.",
-      };
-    }
-
     const supabase = await createClient();
 
-    // Get current user (admin) if this is admin-created
-    let adminUserId = null;
-    if (isAdminCreated) {
-      const {
-        data: { user: adminUser },
-      } = await supabase.auth.getUser();
-      if (!adminUser) {
-        return { success: false, error: "Admin not authenticated" };
-      }
-      adminUserId = adminUser.id;
-
-      // Verify admin has permission to create users in this organization
-      const { data: adminData } = await supabase
-        .from("users")
-        .select("id")
-        .eq("user_id", adminUser.id)
-        .single();
-
-      if (!adminData) {
-        return { success: false, error: "Admin data not found" };
-      }
-
-      const { data: orgMember } = await supabase
-        .from("organization_members")
-        .select("role")
-        .eq("user_id", adminData.id)
-        .eq("organization_id", organizationId)
-        .eq("is_active", true)
-        .single();
-
-      if (!orgMember || !["admin", "manager"].includes(orgMember.role)) {
-        return {
-          success: false,
-          error: "Only admins and managers can create users",
-        };
-      }
+    // Get current user (admin)
+    const {
+      data: { user: adminUser },
+    } = await supabase.auth.getUser();
+    if (!adminUser) {
+      return { success: false, error: "Admin not authenticated" };
     }
 
-    // Create the user account using admin client
-    const { data: authData, error: authError } =
-      await supabaseAdmin.auth.admin.createUser({
-        email,
-        password,
-        user_metadata: {
-          full_name: fullName,
-          email: email,
-        },
-        email_confirm: true, // Auto-confirm email for admin-created users
-      });
+    // Verify admin has permission to create users in this organization
+    const { data: adminData } = await supabase
+      .from("users")
+      .select("id")
+      .eq("user_id", adminUser.id)
+      .single();
 
-    if (authError || !authData.user) {
-      console.error("Error creating auth user:", authError);
+    if (!adminData) {
+      return { success: false, error: "Admin data not found" };
+    }
+
+    const { data: orgMember } = await supabase
+      .from("organization_members")
+      .select("role")
+      .eq("user_id", adminData.id)
+      .eq("organization_id", organizationId)
+      .eq("is_active", true)
+      .single();
+
+    if (!orgMember || !["admin", "manager"].includes(orgMember.role)) {
       return {
         success: false,
-        error: authError?.message || "Failed to create user account",
+        error: "Only admins and managers can create users",
       };
     }
 
-    // The database trigger should automatically create the public.users record
-    // Wait a moment for the trigger to complete
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Note: We don't need to check for existing users here since signUp() will handle duplicates gracefully
 
-    // Verify the user was created in public.users table
-    const { data: publicUser, error: publicUserError } = await supabaseAdmin
-      .from("users")
-      .select("*")
-      .eq("user_id", authData.user.id)
+    // Store admin invitation record for tracking BEFORE creating the user
+    const token = crypto.randomUUID();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    const { data: invitationData, error: invitationError } = await supabase
+      .from("admin_invitations")
+      .insert({
+        email,
+        full_name: fullName,
+        organization_id: organizationId,
+        invited_by: adminData.id,
+        token,
+        expires_at: expiresAt.toISOString(),
+        accepted: false,
+      })
+      .select()
       .single();
 
-    if (publicUserError || !publicUser) {
-      console.error(
-        "Public user not found after trigger, creating manually:",
-        publicUserError,
-      );
+    if (invitationError) {
+      console.error("Error creating admin invitation:", invitationError);
+      return {
+        success: false,
+        error: "Failed to create invitation record",
+      };
+    }
 
-      // If trigger failed, create manually
-      const { error: manualCreateError } = await supabaseAdmin
-        .from("users")
-        .insert({
-          id: authData.user.id, // Use the auth user ID as the UUID
-          user_id: authData.user.id,
+    // Use Supabase's built-in signUp method like in the normal sign-up flow
+    // This will automatically send the verification email
+    const {
+      data: { user },
+      error: signUpError,
+    } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
           full_name: fullName,
           email: email,
-          role: role,
-          onboarded: isAdminCreated,
-          token_identifier: Math.random().toString(36).substring(2, 15),
-          is_active: true,
-          email_verified: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
+          admin_invitation: invitationData.id,
+          token: token,
+          org: organizationId,
+        },
+      },
+    });
 
-      if (manualCreateError) {
-        console.error(
-          "Error creating public user manually:",
-          manualCreateError,
-        );
-        // Clean up auth user if public user creation fails
-        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-        return {
-          success: false,
-          error: `Failed to create user profile: ${manualCreateError.message}`,
-        };
-      }
+    if (signUpError) {
+      console.error("Error creating user with signUp:", signUpError);
+      // Clean up the invitation record since user creation failed
+      await supabase
+        .from("admin_invitations")
+        .delete()
+        .eq("id", invitationData.id);
+
+      return {
+        success: false,
+        error: `Failed to create user: ${signUpError.message}`,
+      };
     }
 
-    // If admin-created, add to organization
-    if (isAdminCreated && organizationId) {
-      const { data: newUserData } = await supabaseAdmin
-        .from("users")
-        .select("id")
-        .eq("user_id", authData.user.id)
-        .single();
+    if (!user) {
+      // Clean up the invitation record since user creation failed
+      await supabase
+        .from("admin_invitations")
+        .delete()
+        .eq("id", invitationData.id);
 
-      const { data: adminData } = await supabaseAdmin
-        .from("users")
-        .select("id")
-        .eq("user_id", adminUserId)
-        .single();
-
-      if (newUserData && adminData) {
-        const { error: orgMemberError } = await supabaseAdmin
-          .from("organization_members")
-          .insert({
-            organization_id: organizationId,
-            user_id: newUserData.id,
-            role: role,
-            invited_by: adminData.id,
-            joined_at: new Date().toISOString(),
-            is_active: true,
-          });
-
-        if (orgMemberError) {
-          console.error("Error adding user to organization:", orgMemberError);
-          // Don't fail the entire operation, just log the error
-        }
-      }
+      return {
+        success: false,
+        error: "Failed to create user - no user returned",
+      };
     }
+
+    console.log(
+      "User created successfully with built-in verification email:",
+      user.id,
+    );
 
     return {
       success: true,
-      message: isAdminCreated
-        ? "User created and added to organization as member successfully"
-        : "User created successfully",
+      message:
+        "User created successfully! They will receive a verification email to activate their account with full license privileges.",
       data: {
-        id: authData.user.id,
-        email: authData.user.email,
+        email,
         full_name: fullName,
-        role: role,
+        role: "admin_member",
+        invitation_id: invitationData.id,
+        user_id: user.id,
+        confirmation_sent: true,
       },
     };
   } catch (error: any) {

@@ -50,6 +50,91 @@ export type Database = {
           },
         ]
       }
+      admin_invitations: {
+        Row: {
+          accepted: boolean | null
+          accepted_at: string | null
+          created_at: string | null
+          email: string
+          expires_at: string
+          full_name: string
+          id: string
+          invited_by: string
+          organization_id: string
+          token: string
+          updated_at: string | null
+        }
+        Insert: {
+          accepted?: boolean | null
+          accepted_at?: string | null
+          created_at?: string | null
+          email: string
+          expires_at?: string
+          full_name: string
+          id?: string
+          invited_by: string
+          organization_id: string
+          token: string
+          updated_at?: string | null
+        }
+        Update: {
+          accepted?: boolean | null
+          accepted_at?: string | null
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          full_name?: string
+          id?: string
+          invited_by?: string
+          organization_id?: string
+          token?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "manager_team_performance"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "admin_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "manager_team_performance"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "admin_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "organization_hierarchy"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "admin_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_hierarchy"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "admin_invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       areas: {
         Row: {
           color: string | null
@@ -390,6 +475,110 @@ export type Database = {
           },
           {
             foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_activities: {
+        Row: {
+          activity_type: string
+          created_at: string | null
+          created_by: string | null
+          description: string
+          id: string
+          metadata: Json | null
+          organization_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string | null
+          created_by?: string | null
+          description: string
+          id?: string
+          metadata?: Json | null
+          organization_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          id?: string
+          metadata?: Json | null
+          organization_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_activities_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "manager_team_performance"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "team_activities_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "manager_team_performance"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "team_activities_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "organization_hierarchy"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "team_activities_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_activities_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_hierarchy"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "team_activities_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_activities_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "manager_team_performance"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "team_activities_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "manager_team_performance"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "team_activities_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "organization_hierarchy"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "team_activities_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -1149,6 +1338,10 @@ export type Database = {
       change_user_role: {
         Args: { target_user_id: string; new_role: string; org_id: string }
         Returns: boolean
+      }
+      cleanup_expired_admin_invitations: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       create_public_user_from_auth: {
         Args: { auth_user_id: string }

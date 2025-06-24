@@ -33,6 +33,22 @@ export function SubscriptionCheck({
       setUser(user);
       setLoading(false);
 
+      // Check user role - admin_member users get full access without subscription
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+
+      if (userError) {
+        console.error("Error fetching user data:", userError);
+      }
+
+      // Admin members get full access without subscription check
+      if (userData?.role === "admin_member") {
+        return; // Skip subscription check for admin members
+      }
+
       // Check if the user has an active subscription or is in trial period
       const { data: subscription, error: subscriptionError } = await supabase
         .from("subscriptions")
