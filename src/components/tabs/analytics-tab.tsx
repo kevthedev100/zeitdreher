@@ -21,6 +21,7 @@ import {
 import { createClient } from "../../../supabase/client";
 import AIDailySummary from "@/components/ai-daily-summary";
 import AIWeeklySummary from "@/components/ai-weekly-summary";
+import AIMonthlySummary from "@/components/ai-monthly-summary";
 
 interface AnalyticsTabProps {
   userRole: "manager" | "employee";
@@ -400,6 +401,14 @@ export default function AnalyticsTab({
 
         {/* AI Weekly Summary */}
         <AIWeeklySummary weekHours={quickStats.weekHours} loading={loading} />
+      </div>
+
+      {/* AI Monthly Summary - Full Width */}
+      <div className="mt-6">
+        <AIMonthlySummary
+          monthHours={quickStats.monthHours}
+          loading={loading}
+        />
       </div>
 
       {/* AI Optimization Suggestions */}

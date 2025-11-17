@@ -92,11 +92,11 @@ async function handleSubscriptionCreated(supabaseClient: any, event: any) {
       const customer = await stripe.customers.retrieve(subscription.customer);
       const { data: userData } = await supabaseClient
         .from("users")
-        .select("id")
+        .select("user_id")
         .eq("email", customer.email)
         .single();
 
-      userId = userData?.id;
+      userId = userData?.user_id;
       if (!userId) {
         throw new Error("User not found");
       }
@@ -140,6 +140,14 @@ async function handleSubscriptionCreated(supabaseClient: any, event: any) {
     canceled_at: subscription.canceled_at,
     ended_at: subscription.ended_at,
   };
+
+  // Set trial_start timestamp when subscription is created
+  if (subscription.trial_start) {
+    subscriptionData.trial_start = subscription.trial_start;
+  } else {
+    // If no trial_start from Stripe, set it to now
+    subscriptionData.trial_start = Math.floor(Date.now() / 1000);
+  }
 
   // First, check if a subscription with this stripe_id already exists
   const { data: existingSubscription } = await supabaseClient

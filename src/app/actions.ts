@@ -49,6 +49,7 @@ export const signUpAction = async (formData: FormData) => {
   let userRole = "member"; // Default for self-registered users
 
   // User data is automatically inserted into public.users table via database trigger
+  // The trigger will automatically set trial_start and trial_end for new users
   // Double-check that the user was created in the public.users table
   if (user) {
     // Check if this is an admin invitation signup
@@ -94,6 +95,7 @@ export const signUpAction = async (formData: FormData) => {
 
     if (publicUserError || !publicUser) {
       // If the user wasn't created in the public.users table, create it manually
+      // The database trigger will automatically set trial_start and trial_end
       await supabase.from("users").upsert({
         user_id: user.id,
         full_name: fullName,
@@ -104,13 +106,21 @@ export const signUpAction = async (formData: FormData) => {
       });
     } else {
       // Update existing user role and onboarding status
-      await supabase
-        .from("users")
-        .update({
-          role: userRole,
-          onboarded: isAdminCreated || publicUser.onboarded,
-        })
-        .eq("user_id", user.id);
+      // Ensure trial period is set if not already present
+      const updateData: any = {
+        role: userRole,
+        onboarded: isAdminCreated || publicUser.onboarded,
+      };
+
+      // Set trial period if not already set
+      if (!publicUser.trial_start) {
+        updateData.trial_start = new Date().toISOString();
+        updateData.trial_end = new Date(
+          Date.now() + 14 * 24 * 60 * 60 * 1000,
+        ).toISOString();
+      }
+
+      await supabase.from("users").update(updateData).eq("user_id", user.id);
     }
 
     // Handle organization membership for different invitation types

@@ -31,29 +31,92 @@ Deno.serve(async (req) => {
     const isOptimizationAnalysis = analysisType === "optimization";
 
     // Construct messages for OpenAI API
-    const messages = isOptimizationAnalysis
-      ? [
-          {
-            role: "system",
-            content:
-              "Du bist ein intelligenter KI-Assistent, der Zeiterfassungsdaten analysiert und strukturierte Optimierungsvorschläge erstellt. Antworte auf Deutsch in professionellem Ton. Verwende ausschließlich HTML-Formatierung: <h4> für Überschriften, <ul><li> für Bullet Points, <strong> für wichtige Begriffe, <em> für Schwerpunkte, <p> für Absätze. NIEMALS Markdown verwenden! Erstelle klare, strukturierte Berichte mit Bullet Points und Subheadings.",
-          },
-          {
-            role: "user",
-            content: `Analysiere die folgenden Zeiteinträge der letzten zwei Wochen und erstelle einen strukturierten Optimierungsbericht:\n\n${weeklyEntries}\n\nErstelle einen Bericht mit folgender Struktur:\n\n<h4>🎯 Optimierungspotenzial</h4>\n<p>Kurze Einschätzung der wichtigsten Verbesserungsmöglichkeiten</p>\n\n<h4>⚡ Konkrete Optimierungsvorschläge</h4>\n<ul>\n<li><strong>Automatisierung:</strong> Spezifische Vorschläge mit Zeitersparnis</li>\n<li><strong>Workflow-Optimierung:</strong> Prozessverbesserungen mit Effizienzsteigerung</li>\n<li><strong>Fokus-Verbesserung:</strong> Konzentrations- und Produktivitätstipps</li>\n</ul>\n\n<h4>📊 Erwartete Ergebnisse</h4>\n<p>Quantifizierte Zeitersparnis und Produktivitätssteigerung mit <strong>konkreten Zahlen</strong></p>\n\nHalte jeden Punkt prägnant (max. 2 Sätze) und gib konkrete Zahlen an.",
-          },
-        ]
-      : [
-          {
-            role: "system",
-            content:
-              "Du bist ein erfahrener Produktivitäts-Analyst, der strukturierte Zeitanalysen erstellt. Verwende ausschließlich HTML-Formatierung: <h4> für Überschriften, <ul><li> für Bullet Points, <strong> für wichtige Zahlen, <em> für Trends und Schwerpunkte, <p> für Absätze. NIEMALS Markdown verwenden! Erstelle klare, gut strukturierte Berichte mit Bullet Points und Subheadings. WICHTIG: Liste NIEMALS einzelne Zeiteinträge auf - analysiere Muster und fasse zusammen!",
-          },
-          {
-            role: "user",
-            content: `Analysiere diese Zeitdaten und erstelle zwei strukturierte Berichte mit Bullet Points und Subheadings. WICHTIG: Liste KEINE einzelnen Zeiteinträge auf!\n\nTAGESDATE:\n${dailyEntries || "Keine Einträge für heute"}\n\n---SUMMARY_SEPARATOR---\n\nWOCHENDATE:\n${weeklyEntries || "Keine wöchentlichen Einträge"}\n\nFür jeden Bericht verwende diese Struktur:\n\n<h4>📈 Produktivitätsübersicht</h4>\n<p>Kurze Analyse der Haupttätigkeiten und Gesamtstunden mit wichtigsten Erkenntnissen</p>\n\n<h4>🎯 Aktivitätsschwerpunkte</h4>\n<ul>\n<li><strong>Hauptbereich 1:</strong> Stundenzahl und Anteil</li>\n<li><strong>Hauptbereich 2:</strong> Stundenzahl und Anteil</li>\n<li><strong>Weitere Bereiche:</strong> Zusammenfassung</li>\n</ul>\n\n<h4>⚡ Effizienz-Highlights</h4>\n<ul>\n<li><em>Produktivitätsmuster:</em> Erkannte Trends und Zeiten</li>\n<li><em>Arbeitsverteilung:</em> Balance zwischen verschiedenen Aufgaben</li>\n<li><em>Besondere Erkenntnisse:</em> Auffälligkeiten oder Optimierungspotenzial</li>\n</ul>\n\n<h4>📊 Zahlen & Trends</h4>\n<p>Bewertung mit <strong>konkreten Zahlen</strong> und <em>identifizierten Trends</em></p>\n\nTrenne die beiden Berichte mit '---SUMMARY_SEPARATOR---'. Fasse zusammen, liste nicht auf!",
-          },
-        ];
+    let messages;
+
+    if (isOptimizationAnalysis) {
+      const systemPrompt =
+        "Du bist ein präziser Datenanalyst, der ausschließlich auf bereitgestellten Zeiterfassungsdaten basiert. KRITISCH: Verwende NUR die Informationen aus den bereitgestellten Zeiteinträgen. Erfinde NIEMALS zusätzliche Informationen, Aktivitäten oder Details, die nicht explizit in den Daten stehen. Wenn Informationen fehlen, sage explizit 'Keine Daten verfügbar'. Verwende ausschließlich HTML-Formatierung: <h4> für Überschriften, <ul><li> für Bullet Points, <strong> für wichtige Begriffe, <em> für Schwerpunkte, <p> für Absätze. NIEMALS Markdown verwenden!";
+
+      const userPrompt = `Analysiere AUSSCHLIESSLICH die folgenden Zeiteinträge und erstelle einen strukturierten Bericht. WICHTIG: Verwende NUR die Informationen aus diesen Einträgen:
+
+${weeklyEntries}
+
+Erstelle einen Bericht basierend NUR auf den obigen Daten:
+
+<h4>🎯 Optimierungspotenzial</h4>
+<p>Kurze Einschätzung basierend NUR auf den bereitgestellten Zeiteinträgen</p>
+
+<h4>⚡ Konkrete Optimierungsvorschläge</h4>
+<ul>
+<li><strong>Automatisierung:</strong> Nur basierend auf erkennbaren Mustern in den Daten</li>
+<li><strong>Workflow-Optimierung:</strong> Nur basierend auf den tatsächlichen Aktivitäten</li>
+<li><strong>Fokus-Verbesserung:</strong> Nur basierend auf der Zeitverteilung in den Daten</li>
+</ul>
+
+<h4>📊 Erwartete Ergebnisse</h4>
+<p>Quantifizierte Analyse mit <strong>nur den tatsächlichen Zahlen aus den Einträgen</strong></p>
+
+Verwende NUR Informationen aus den bereitgestellten Zeiteinträgen. Erfinde NICHTS hinzu!`;
+
+      messages = [
+        {
+          role: "system",
+          content: systemPrompt,
+        },
+        {
+          role: "user",
+          content: userPrompt,
+        },
+      ];
+    } else {
+      const systemPrompt =
+        "Du bist ein präziser Datenanalyst für Zeiterfassung. KRITISCH: Verwende ausschließlich die Informationen aus den bereitgestellten Zeiteinträgen. Erfinde NIEMALS zusätzliche Aktivitäten, Projekte oder Details, die nicht explizit in den Daten stehen. Wenn du unsicher bist oder Informationen fehlen, sage explizit 'Basierend auf den verfügbaren Daten' oder 'Keine weiteren Details verfügbar'. Verwende ausschließlich HTML-Formatierung: <h4> für Überschriften, <ul><li> für Bullet Points, <strong> für wichtige Zahlen, <em> für Trends, <p> für Absätze. NIEMALS Markdown verwenden! Analysiere nur Muster in den tatsächlichen Daten - erfinde keine zusätzlichen Erkenntnisse!";
+
+      const userPrompt = `Analysiere diese Zeitdaten und erstelle zwei strukturierte Berichte. KRITISCH: Verwende NUR die Informationen aus den bereitgestellten Einträgen. Erfinde KEINE zusätzlichen Aktivitäten oder Details!
+
+TAGESDATE:
+${dailyEntries || "Keine Einträge für heute"}
+
+---SUMMARY_SEPARATOR---
+
+WOCHENDATE:
+${weeklyEntries || "Keine wöchentlichen Einträge"}
+
+Für jeden Bericht verwende diese Struktur und beziehe dich NUR auf die obigen Daten:
+
+<h4>📈 Produktivitätsübersicht</h4>
+<p>Analyse der tatsächlich erfassten Aktivitäten und Gesamtstunden aus den bereitgestellten Daten</p>
+
+<h4>🎯 Aktivitätsschwerpunkte</h4>
+<ul>
+<li><strong>Bereich aus den Daten:</strong> Tatsächliche Stundenzahl und Anteil</li>
+<li><strong>Weiterer Bereich aus den Daten:</strong> Tatsächliche Stundenzahl und Anteil</li>
+<li><strong>Weitere Bereiche:</strong> Nur wenn in den Daten vorhanden</li>
+</ul>
+
+<h4>⚡ Effizienz-Highlights</h4>
+<ul>
+<li><em>Produktivitätsmuster:</em> Nur erkennbare Muster aus den tatsächlichen Daten</li>
+<li><em>Arbeitsverteilung:</em> Nur basierend auf den erfassten Aktivitäten</li>
+<li><em>Besondere Erkenntnisse:</em> Nur aus den bereitgestellten Zeiteinträgen</li>
+</ul>
+
+<h4>📊 Zahlen & Trends</h4>
+<p>Bewertung mit <strong>nur den tatsächlichen Zahlen aus den Einträgen</strong> und <em>nur erkennbaren Trends aus den Daten</em></p>
+
+WICHTIG: Trenne die beiden Berichte mit '---SUMMARY_SEPARATOR---'. Verwende NUR Informationen aus den bereitgestellten Zeiteinträgen!`;
+
+      messages = [
+        {
+          role: "system",
+          content: systemPrompt,
+        },
+        {
+          role: "user",
+          content: userPrompt,
+        },
+      ];
+    }
 
     // Get OpenAI API key from environment
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
@@ -72,13 +135,15 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${openaiApiKey}`,
+        Authorization: `Bearer ${openaiApiKey}`,
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages,
-        temperature: 0.7,
+        temperature: 0.1, // Very low temperature to reduce hallucinations
         max_tokens: isOptimizationAnalysis ? 800 : 600,
+        presence_penalty: 0.0, // No penalty for repetitions
+        frequency_penalty: 0.0, // No penalty for frequent terms
       }),
     });
 
