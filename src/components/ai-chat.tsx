@@ -28,6 +28,7 @@ interface TimeEntry {
   fields: { name: string };
   activities: { name: string };
   users: { full_name: string; email: string };
+  start_time?: string | null;
 }
 
 interface AIMessage {
