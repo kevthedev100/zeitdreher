@@ -42,7 +42,7 @@ export default function OrganizationSelector({
     try {
       setLoading(true);
       const orgs = await getUserOrganizations();
-      setOrganizations(orgs);
+      setOrganizations(orgs as any);
     } catch (error) {
       console.error("Error loading organizations:", error);
     } finally {

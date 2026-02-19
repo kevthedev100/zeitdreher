@@ -44,8 +44,7 @@ export default function DashboardLayout({
           .from("users")
           .select("*")
           .eq("user_id", user.id)
-          .single()
-          .throwOnError();
+          .single();
 
         if (error) {
           // PGRST116 means no rows returned - this is a new user
@@ -136,8 +135,7 @@ export default function DashboardLayout({
         const { error } = await supabase
           .from("users")
           .update({ onboarded: true })
-          .eq("user_id", user.id)
-          .throwOnError();
+          .eq("user_id", user.id);
 
         if (error) {
           console.error("Error updating onboarded status:", error);

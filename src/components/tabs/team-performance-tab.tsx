@@ -137,11 +137,11 @@ export default function TeamPerformanceTab({
     try {
       setOrganizationsLoading(true);
       const orgs = await getUserOrganizations();
-      setOrganizations(orgs);
+      setOrganizations(orgs as any);
 
       // Auto-select the first organization if available
       if (orgs.length > 0) {
-        setSelectedOrganization(orgs[0].organization.id);
+        setSelectedOrganization((orgs[0] as any).organization.id);
       }
     } catch (error) {
       console.error("Error loading organizations:", error);
@@ -173,7 +173,7 @@ export default function TeamPerformanceTab({
       }));
 
       // Auto-select all team members for convenience
-      setSelectedMembers(formattedMembers.map((member) => member.user_id));
+      setSelectedMembers(formattedMembers.map((member: any) => member.user_id));
     } catch (error) {
       console.error("Error loading team members:", error);
       // Set empty state on error
@@ -252,8 +252,8 @@ export default function TeamPerformanceTab({
         };
       });
 
-      setTimeEntries(enrichedEntries);
-      calculateStats(enrichedEntries);
+      setTimeEntries(enrichedEntries as any);
+      calculateStats(enrichedEntries as any);
     } catch (error) {
       console.error("Error loading time entries:", error);
       setTimeEntries([]);

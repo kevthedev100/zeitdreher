@@ -691,7 +691,7 @@ export default function TimeAnalyticsDashboard({
                         // Each segment represents 5 minutes
                         const totalMinutes = 19 * 60; // 19 hours from 5:00 to 0:00
                         const segmentSize = 5; // 5-minute segments
-                        const segments = Array(totalMinutes / segmentSize)
+                        const segments: any[][] = Array(totalMinutes / segmentSize)
                           .fill(null)
                           .map(() => []);
 

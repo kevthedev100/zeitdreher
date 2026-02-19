@@ -21,10 +21,16 @@ interface PlanTabProps {
 
 interface Plan {
   id: string;
+  name?: string;
   nickname?: string;
   product: string;
   unit_amount: number;
+  amount?: number;
   currency: string;
+  interval?: string;
+  description?: string;
+  popular?: boolean;
+  custom?: boolean;
   recurring: {
     interval: string;
     interval_count: number;
@@ -37,6 +43,10 @@ interface Subscription {
   current_period_end: number;
   trial_end: number | null;
   cancel_at_period_end: boolean;
+  metadata?: {
+    quantity?: string;
+    [key: string]: any;
+  };
   items: {
     data: Array<{
       quantity: number;
@@ -188,7 +198,7 @@ export default function PlanTab({ userId }: PlanTabProps) {
     return daysLeft;
   };
 
-  const getSubscriptionStatus = () => {
+  const getSubscriptionStatus = (): string => {
     if (!subscription) return "trial"; // Default to trial for new users
 
     if (subscription.status === "trialing") {
@@ -493,7 +503,7 @@ export default function PlanTab({ userId }: PlanTabProps) {
                     <span className="text-3xl font-bold text-gray-900">
                       {plan.custom
                         ? "Auf Anfrage"
-                        : formatCurrency(plan.amount, "eur")}
+                        : formatCurrency(plan.amount || 0, "eur")}
                     </span>
                     {!plan.custom && (
                       <span className="text-gray-600">
@@ -553,7 +563,7 @@ export default function PlanTab({ userId }: PlanTabProps) {
 
                       <div className="text-right text-lg font-semibold mb-2">
                         Gesamt:{" "}
-                        {formatCurrency(plan.amount * licenseCount, "eur")} /
+                        {formatCurrency((plan.amount || 0) * licenseCount, "eur")} /
                         Monat
                       </div>
                     </div>

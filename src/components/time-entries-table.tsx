@@ -47,10 +47,16 @@ interface TimeEntry {
   date: string;
   description: string;
   created_at: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  status?: string;
   areas: { name: string; color: string };
   fields: { name: string };
   activities: { name: string };
   users: { full_name: string; email: string };
+  entry_owner_id?: string;
+  specificUserId?: string;
+  [key: string]: any;
 }
 
 interface TimeEntriesTableProps {
@@ -326,7 +332,7 @@ export default function TimeEntriesTable({
       }
 
       // Use real data from the database
-      setTimeEntries(data || []);
+      setTimeEntries((data as any) || []);
       console.log(
         "Loaded time entries data:",
         data ? data.length : 0,
@@ -474,7 +480,7 @@ export default function TimeEntriesTable({
 
         if (entryOwnerData) {
           // Pass the entry owner's user record ID to the form so it can load the correct categories
-          entry.entry_owner_id = entryOwnerData.id;
+          (entry as any).entry_owner_id = entryOwnerData.id;
           console.log(
             "Set entry_owner_id to:",
             entryOwnerData.id,
@@ -488,7 +494,7 @@ export default function TimeEntriesTable({
           );
         }
 
-        setEditingEntry(entry);
+        setEditingEntry(entry as any);
         setIsEditDialogOpen(true);
       }
     } catch (error) {

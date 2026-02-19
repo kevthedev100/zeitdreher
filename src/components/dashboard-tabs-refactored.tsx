@@ -159,7 +159,7 @@ export default function DashboardTabs({
           error,
         );
         alert(
-          "Fehler beim Laden des Zeiteintrags zum Bearbeiten: " + error.message,
+          "Fehler beim Laden des Zeiteintrags zum Bearbeiten: " + (error as Error).message,
         );
       }
     };
@@ -169,13 +169,13 @@ export default function DashboardTabs({
     window.addEventListener("openNewEntry", handleOpenNewEntry);
     window.addEventListener(
       "openTimeEntryEditDialog",
-      handleOpenEditDialog as EventListener,
+      handleOpenEditDialog as unknown as EventListener,
     );
 
     // Also listen on document as fallback
     document.addEventListener(
       "openTimeEntryEditDialog",
-      handleOpenEditDialog as EventListener,
+      handleOpenEditDialog as unknown as EventListener,
     );
 
     return () => {
@@ -183,11 +183,11 @@ export default function DashboardTabs({
       window.removeEventListener("openNewEntry", handleOpenNewEntry);
       window.removeEventListener(
         "openTimeEntryEditDialog",
-        handleOpenEditDialog as EventListener,
+        handleOpenEditDialog as unknown as EventListener,
       );
       document.removeEventListener(
         "openTimeEntryEditDialog",
-        handleOpenEditDialog as EventListener,
+        handleOpenEditDialog as unknown as EventListener,
       );
     };
   }, [router, supabase]);

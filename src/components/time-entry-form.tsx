@@ -56,8 +56,8 @@ export default function TimeEntryForm({
   selectedArea: initialArea = "",
   selectedField: initialField = "",
   selectedActivity: initialActivity = "",
-  editingEntry = null,
-  specificUserId = null,
+  editingEntry = null as any,
+  specificUserId = null as any,
 }: TimeEntryFormProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [selectedArea, setSelectedArea] = useState(initialArea);
@@ -668,12 +668,12 @@ export default function TimeEntryForm({
 
       // Use direct fetch to ensure proper multipart/form-data content type
       const response = await fetch(
-        `${supabase.supabaseUrl}/functions/v1/supabase-functions-transcribe-audio`,
+        `${(supabase as any).supabaseUrl}/functions/v1/supabase-functions-transcribe-audio`,
         {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${session.access_token}`,
-            "apikey": supabase.supabaseKey,
+            "apikey": (supabase as any).supabaseKey,
           },
           body: formData,
         }
@@ -1457,7 +1457,7 @@ export default function TimeEntryForm({
 
     } catch (error) {
       console.error("Error creating new activity:", error);
-      alert("Fehler beim Erstellen der neuen Aktivität: " + error.message);
+      alert("Fehler beim Erstellen der neuen Aktivität: " + (error as Error).message);
     }
   };
 
@@ -1492,7 +1492,7 @@ export default function TimeEntryForm({
         console.log("Found activity with confidence:", activityResult.confidence);
 
         // Check confidence level and ask for confirmation if uncertain
-        if (activityResult.confidence < 0.8) {
+        if ((activityResult.confidence ?? 0) < 0.8) {
           console.log("Low confidence match, asking for confirmation");
           showActivityConfirmationDialog(activityResult, parsed.activity, parsed);
           return; // Stop processing until user confirms
@@ -2171,7 +2171,7 @@ export default function TimeEntryForm({
       const errorNotification = document.createElement("div");
       errorNotification.className =
         "fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300";
-      errorNotification.textContent = `Fehler beim Erstellen des Zeiteintrags: ${error.message || error}`;
+      errorNotification.textContent = `Fehler beim Erstellen des Zeiteintrags: ${(error as Error).message || error}`;
       document.body.appendChild(errorNotification);
 
       // Remove error notification after 5 seconds
@@ -2765,7 +2765,7 @@ export default function TimeEntryForm({
                       </p>
                       <p className="text-sm text-gray-600">
                         <strong>Ich habe gefunden:</strong> "{activityConfirmationData.activityName}" 
-                        im Bereich "{activityConfirmationData.areaName}" > "{activityConfirmationData.fieldName}"
+                        im Bereich "{activityConfirmationData.areaName}" {'>'} "{activityConfirmationData.fieldName}"
                       </p>
                       <p className="text-xs text-gray-500 mt-2">
                         Übereinstimmung: {Math.round(activityConfirmationData.confidence * 100)}%
@@ -2855,7 +2855,7 @@ export default function TimeEntryForm({
                         <Select 
                           value={newActivitySuggestionData.suggestedArea.id}
                           onValueChange={async (value) => {
-                            const selectedArea = newActivitySuggestionData.allAreas.find(a => a.id === value);
+                            const selectedArea = newActivitySuggestionData.allAreas.find((a: any) => a.id === value);
                             if (selectedArea) {
                               // Load fields for the new area
                               const { data: fields } = await supabase
@@ -2866,7 +2866,7 @@ export default function TimeEntryForm({
                                 .eq("user_id", (await supabase.auth.getUser()).data.user?.id)
                                 .order("name");
                               
-                              setNewActivitySuggestionData(prev => ({
+                              setNewActivitySuggestionData((prev: any) => ({
                                 ...prev,
                                 suggestedArea: selectedArea,
                                 suggestedField: fields?.[0] || prev.suggestedField,
@@ -2879,7 +2879,7 @@ export default function TimeEntryForm({
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {newActivitySuggestionData.allAreas.map((area) => (
+                            {newActivitySuggestionData.allAreas.map((area: any) => (
                               <SelectItem key={area.id} value={area.id}>
                                 {area.name}
                               </SelectItem>
@@ -2893,9 +2893,9 @@ export default function TimeEntryForm({
                         <Select 
                           value={newActivitySuggestionData.suggestedField.id}
                           onValueChange={(value) => {
-                            const selectedField = newActivitySuggestionData.allFields.find(f => f.id === value);
+                            const selectedField = newActivitySuggestionData.allFields.find((f: any) => f.id === value);
                             if (selectedField) {
-                              setNewActivitySuggestionData(prev => ({
+                              setNewActivitySuggestionData((prev: any) => ({
                                 ...prev,
                                 suggestedField: selectedField
                               }));
@@ -2906,7 +2906,7 @@ export default function TimeEntryForm({
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {newActivitySuggestionData.allFields.map((field) => (
+                            {newActivitySuggestionData.allFields.map((field: any) => (
                               <SelectItem key={field.id} value={field.id}>
                                 {field.name}
                               </SelectItem>
