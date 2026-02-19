@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "../../supabase/server";
 import { Button } from "./ui/button";
-import { User, UserCircle, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import UserProfile from "./user-profile";
 
 export default async function Navbar() {
@@ -12,24 +12,40 @@ export default async function Navbar() {
   } = await supabase.auth.getUser();
 
   return (
-    <nav className="w-full border-b border-gray-200 bg-white py-2">
-      <div className="container mx-auto px-4 flex justify-between items-center">
+    <nav className="fixed top-0 w-full z-50 backdrop-blur-xl bg-gray-950/70 border-b border-white/5">
+      <div className="container mx-auto px-4 flex justify-between items-center h-16">
         <Link
           href="/"
           prefetch
-          className="text-xl font-bold text-black flex items-center gap-2"
+          className="text-xl font-bold text-white flex items-center gap-2.5"
         >
-          <Clock className="w-6 h-6" />
-          TimeFocusAI
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+            <Clock className="w-4.5 h-4.5 text-white" />
+          </div>
+          <span className="bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+            TimeFocusAI
+          </span>
         </Link>
-        <div className="flex gap-4 items-center">
+
+        <div className="hidden md:flex items-center gap-8">
+          <Link href="#features" className="text-sm text-gray-400 hover:text-white transition-colors">
+            Features
+          </Link>
+          <Link href="#how-it-works" className="text-sm text-gray-400 hover:text-white transition-colors">
+            So funktioniert{"'"}s
+          </Link>
+          <Link href="#pricing" className="text-sm text-gray-400 hover:text-white transition-colors">
+            Preise
+          </Link>
+        </div>
+
+        <div className="flex gap-3 items-center">
           {user ? (
             <>
-              <Link
-                href="/dashboard"
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-              >
-                <Button>Dashboard</Button>
+              <Link href="/dashboard">
+                <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 rounded-lg px-5">
+                  Dashboard
+                </Button>
               </Link>
               <UserProfile />
             </>
@@ -37,15 +53,14 @@ export default async function Navbar() {
             <>
               <Link
                 href="/sign-in"
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
               >
                 Anmelden
               </Link>
-              <Link
-                href="/sign-up"
-                className="px-4 py-2 text-sm font-medium text-white bg-black rounded-md hover:bg-gray-800"
-              >
-                Registrieren
+              <Link href="/sign-up">
+                <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 rounded-lg px-5 text-sm font-medium glow-button">
+                  Kostenlos testen
+                </Button>
               </Link>
             </>
           )}
