@@ -242,9 +242,7 @@ export default function AIMonthlySummary({
           0,
         );
         const areas = Array.from(new Set(monthlyEntries.map((entry) => entry.area)));
-        const activities = [
-          ...new Set(monthlyEntries.map((entry) => entry.activity)),
-        ];
+        const activities = Array.from(new Set(monthlyEntries.map((entry) => entry.activity)));
 
         monthlySummary = `<h4>Monatsübersicht (30 Tage)</h4><p>In den letzten 30 Tagen wurden insgesamt <strong>${totalHours.toFixed(1)} Stunden</strong> in ${areas.length} verschiedenen Bereichen und ${activities.length} Aktivitäten erfasst.</p><h4>Hauptbereiche</h4><ul>${areas
           .slice(0, 4)
