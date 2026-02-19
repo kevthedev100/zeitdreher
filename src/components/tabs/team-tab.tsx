@@ -247,7 +247,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
 
   const checkOrganizationStatus = async () => {
     try {
-      const organizations = await getUserOrganizations();
+      const organizations = await getUserOrganizations() as any[];
       setHasOrganization(organizations.length > 0);
       if (organizations.length > 0) {
         setSelectedOrganizationId(organizations[0].organization.id);

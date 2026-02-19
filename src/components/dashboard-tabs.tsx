@@ -175,7 +175,7 @@ export default function DashboardTabs({
           error,
         );
         alert(
-          "Fehler beim Laden des Zeiteintrags zum Bearbeiten: " + error.message,
+          "Fehler beim Laden des Zeiteintrags zum Bearbeiten: " + (error as Error).message,
         );
       }
     };
@@ -185,13 +185,13 @@ export default function DashboardTabs({
     window.addEventListener("openNewEntry", handleOpenNewEntry);
     window.addEventListener(
       "openTimeEntryEditDialog",
-      handleOpenEditDialog as EventListener,
+      handleOpenEditDialog as unknown as EventListener,
     );
 
     // Also listen on document as fallback
     document.addEventListener(
       "openTimeEntryEditDialog",
-      handleOpenEditDialog as EventListener,
+      handleOpenEditDialog as unknown as EventListener,
     );
 
     return () => {
@@ -199,11 +199,11 @@ export default function DashboardTabs({
       window.removeEventListener("openNewEntry", handleOpenNewEntry);
       window.removeEventListener(
         "openTimeEntryEditDialog",
-        handleOpenEditDialog as EventListener,
+        handleOpenEditDialog as unknown as EventListener,
       );
       document.removeEventListener(
         "openTimeEntryEditDialog",
-        handleOpenEditDialog as EventListener,
+        handleOpenEditDialog as unknown as EventListener,
       );
     };
   }, [supabase]);
@@ -309,7 +309,7 @@ export default function DashboardTabs({
       if (data.suggestions && data.suggestions.length > 0) {
         // Convert area suggestions format to match the expected format for aiSuggestions
         const formattedSuggestions = data.suggestions.map(
-          (suggestion, index) => {
+          (suggestion: any, index: number) => {
             const types = ["purple", "blue", "green", "amber"];
             return {
               title: suggestion.area,
@@ -1253,7 +1253,7 @@ export default function DashboardTabs({
                             <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
                               {areaSuggestion.suggestion
                                 .split("\n")
-                                .map((line, lineIndex) => {
+                                .map((line: string, lineIndex: number) => {
                                   if (line.trim() === "")
                                     return <br key={lineIndex} />;
                                   if (line.startsWith("•")) {
@@ -1274,7 +1274,7 @@ export default function DashboardTabs({
                                     const parts = line.split("**");
                                     return (
                                       <p key={lineIndex} className="my-2">
-                                        {parts.map((part, partIndex) =>
+                                        {parts.map((part: string, partIndex: number) =>
                                           partIndex % 2 === 1 ? (
                                             <strong
                                               key={partIndex}

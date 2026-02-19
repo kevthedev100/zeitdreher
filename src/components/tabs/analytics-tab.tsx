@@ -97,7 +97,7 @@ export default function AnalyticsTab({
         );
 
         if (teamMembers && teamMembers.length > 0) {
-          const memberIds = teamMembers.map((member) => member.member_id);
+          const memberIds = teamMembers.map((member: any) => member.member_id);
           memberIds.push(user.id); // Include manager's own entries
           query = query.in("user_id", memberIds);
         } else {
@@ -157,7 +157,7 @@ export default function AnalyticsTab({
       if (data.suggestions && data.suggestions.length > 0) {
         // Convert area suggestions format to match the expected format for aiSuggestions
         const formattedSuggestions = data.suggestions.map(
-          (suggestion, index) => {
+          (suggestion: any, index: number) => {
             const types = ["purple", "blue", "green", "amber"];
             return {
               title: suggestion.area,
