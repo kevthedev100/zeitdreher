@@ -227,7 +227,7 @@ export default function AIWeeklySummary({
           (sum, entry) => sum + entry.duration,
           0,
         );
-        const areas = [...new Set(weeklyEntries.map((entry) => entry.area))];
+        const areas = Array.from(new Set(weeklyEntries.map((entry) => entry.area)));
 
         weeklySummary = `<h4>Wochenübersicht</h4><p>Diese Woche wurden insgesamt <strong>${totalHours.toFixed(1)} Stunden</strong> in ${areas.length} verschiedenen Bereichen erfasst.</p><h4>Hauptbereiche</h4><ul>${areas
           .slice(0, 3)

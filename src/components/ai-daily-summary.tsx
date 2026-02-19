@@ -160,7 +160,7 @@ export default function AIDailySummary({
           const activities = todayEntries.map(
             (entry) => entry.activities?.name || "Unbekannte Aktivität",
           );
-          const uniqueActivities = [...new Set(activities)];
+          const uniqueActivities = Array.from(new Set(activities));
 
           dailySummary = `<h4>Tagesübersicht</h4><p>Heute wurden insgesamt <strong>${totalHours.toFixed(1)} Stunden</strong> für ${uniqueActivities.length} verschiedene Aktivitäten aufgewendet.</p><h4>Hauptaktivitäten</h4><ul>${uniqueActivities
             .slice(0, 3)

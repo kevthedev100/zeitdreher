@@ -241,7 +241,7 @@ export default function AIMonthlySummary({
           (sum, entry) => sum + entry.duration,
           0,
         );
-        const areas = [...new Set(monthlyEntries.map((entry) => entry.area))];
+        const areas = Array.from(new Set(monthlyEntries.map((entry) => entry.area)));
         const activities = [
           ...new Set(monthlyEntries.map((entry) => entry.activity)),
         ];
