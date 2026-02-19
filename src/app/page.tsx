@@ -52,7 +52,7 @@ export default async function Home() {
                     <div className="mt-4 p-2 bg-blue-50 rounded-lg">
                       <div className="flex items-center gap-2 text-sm text-blue-700">
                         <Clock className="w-4 h-4" />
-                        <span>Automatisch kategorisiert: Vertrieb > Kaltakquise > Telefonzeit</span>
+                        <span>Automatisch kategorisiert: Vertrieb {'>'} Kaltakquise {'>'} Telefonzeit</span>
                       </div>
                     </div>
                   </div>
