@@ -831,7 +831,7 @@ export const getTeamMembers = async (organizationId?: string) => {
     );
 
     return (
-      data?.map((member) => ({
+      data?.map((member: { user_id: string; user_role: string; user_name: string; user_email: string }) => ({
         id: member.user_id,
         role: member.user_role,
         joined_at: new Date().toISOString(), // Placeholder since view doesn't have this
@@ -858,9 +858,9 @@ export const getTeamMembers = async (organizationId?: string) => {
     }
 
     return (
-      data?.map((member) => ({
+      data?.map((member: { member_id: string; member_name: string; member_email: string; joined_at: string }) => ({
         id: member.member_id,
-        role: "member", // Team members are typically members
+        role: "member",
         joined_at: member.joined_at,
         user: {
           id: member.member_id,
