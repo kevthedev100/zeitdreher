@@ -36,7 +36,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 
 interface DashboardTabsProps {
-  userRole: "admin" | "member";
+  userRole: "admin" | "geschaeftsfuehrer" | "member";
   isOnboarded?: boolean;
   children?: React.ReactNode;
 }
@@ -217,8 +217,8 @@ export default function DashboardTabs({
           {categoryItems.map((item) => renderNavLink(item, mobile))}
         </div>
 
-        {/* Admin section */}
-        {userRole === "admin" && (
+        {/* Admin / Geschäftsführer section */}
+        {userRole !== "member" && (
           <div className="mt-6">
             <span className="px-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Team</span>
             <div className="mt-2 space-y-1">

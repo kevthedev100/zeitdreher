@@ -190,7 +190,7 @@ function RecentActivities({
 }
 
 interface TeamTabProps {
-  userRole: "admin" | "member";
+  userRole: "admin" | "geschaeftsfuehrer" | "member";
 }
 
 interface TeamMember {
@@ -404,16 +404,16 @@ export default function TeamTab({ userRole }: TeamTabProps) {
     }
   };
 
-  if (userRole !== "admin") {
+  if (userRole === "member") {
     return (
       <div className="bg-white p-6 border border-gray-200 rounded-lg">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 mx-auto mb-4 text-amber-500" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Access Denied
+            Zugriff verweigert
           </h3>
           <p className="text-gray-500">
-            Only administrators and managers can access team management.
+            Nur Administratoren und Geschäftsführer haben Zugriff auf die Teamverwaltung.
           </p>
         </div>
       </div>
@@ -498,22 +498,24 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                   className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
                 />
               </Button>
-              {hasOrganization ? (
-                <Dialog
-                  open={addUserDialogOpen}
-                  onOpenChange={setAddUserDialogOpen}
-                >
-                  <DialogTrigger asChild>
-                    <Button className="bg-gray-900 text-white hover:bg-gray-800">
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      Nutzer Hinzufügen
-                    </Button>
-                  </DialogTrigger>
-                </Dialog>
-              ) : (
-                <CreateOrganizationDialog
-                  onOrganizationCreated={checkOrganizationStatus}
-                />
+              {userRole === "admin" && (
+                hasOrganization ? (
+                  <Dialog
+                    open={addUserDialogOpen}
+                    onOpenChange={setAddUserDialogOpen}
+                  >
+                    <DialogTrigger asChild>
+                      <Button className="bg-gray-900 text-white hover:bg-gray-800">
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        Nutzer Hinzufügen
+                      </Button>
+                    </DialogTrigger>
+                  </Dialog>
+                ) : (
+                  <CreateOrganizationDialog
+                    onOrganizationCreated={checkOrganizationStatus}
+                  />
+                )
               )}
               {hasOrganization && (
                 <Dialog
@@ -718,6 +720,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                               {member.user.email}
                             </p>
                             <div className="flex items-center gap-2">
+                              {userRole === "admin" ? (
                               <Dialog>
                                 <DialogTrigger asChild>
                                   <Badge
@@ -728,20 +731,19 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                                     }
                                     className="text-xs cursor-pointer hover:bg-gray-100"
                                   >
-                                    {member.role}
+                                    {member.role === "geschaeftsfuehrer" ? "Geschäftsführer" : member.role}
                                   </Badge>
                                 </DialogTrigger>
                                 <DialogContent>
                                   <DialogHeader>
                                     <DialogTitle>
-                                      Change Member Role
+                                      Rolle ändern
                                     </DialogTitle>
                                     <DialogDescription>
-                                      Update the role for{" "}
+                                      Rolle ändern für{" "}
                                       {member.user.full_name ||
                                         member.user.email}
-                                      . Different roles have different
-                                      permissions in the system.
+                                      .
                                     </DialogDescription>
                                   </DialogHeader>
                                   <form
@@ -775,7 +777,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                                   >
                                     <div className="space-y-2">
                                       <Label htmlFor="new_role">
-                                        Select Role
+                                        Rolle auswählen
                                       </Label>
                                       <select
                                         id="new_role"
@@ -783,16 +785,16 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                                         className="w-full p-2 border rounded-md"
                                         defaultValue={member.role}
                                       >
-                                        {userRole === "admin" && (
-                                          <option value="admin">Admin</option>
-                                        )}
-                                        <option value="member">Member</option>
+                                        <option value="admin">Administrator</option>
+                                        <option value="geschaeftsfuehrer">Geschäftsführer</option>
+                                        <option value="member">Mitglied</option>
                                       </select>
                                       <p className="text-xs text-gray-500 mt-1">
-                                        Admin: Full access to all features
+                                        Administrator: Voller Zugriff auf alle Funktionen
                                         <br />
-                                        Member: Basic access to time tracking
-                                        features
+                                        Geschäftsführer: Einblick in Mitglieder und Performance
+                                        <br />
+                                        Mitglied: Zugriff auf eigene Zeiterfassung
                                       </p>
                                     </div>
                                     <div className="flex justify-end gap-2">
@@ -807,13 +809,21 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                                             ?.dispatchEvent(new Event("close"))
                                         }
                                       >
-                                        Cancel
+                                        Abbrechen
                                       </Button>
-                                      <Button type="submit">Update Role</Button>
+                                      <Button type="submit">Rolle ändern</Button>
                                     </div>
                                   </form>
                                 </DialogContent>
                               </Dialog>
+                              ) : (
+                              <Badge
+                                variant={member.role === "admin" ? "default" : "outline"}
+                                className="text-xs"
+                              >
+                                {member.role === "geschaeftsfuehrer" ? "Geschäftsführer" : member.role === "admin" ? "Admin" : "Mitglied"}
+                              </Badge>
+                              )}
                               <p className="text-xs text-gray-400">
                                 Joined{" "}
                                 {new Date(
@@ -823,6 +833,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                             </div>
                           </div>
                         </div>
+                        {userRole === "admin" && (
                         <div className="flex items-center gap-2">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -837,29 +848,29 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>
-                                  Remove Team Member
+                                  Mitglied entfernen
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to remove{" "}
+                                  Möchten Sie{" "}
                                   {member.user.full_name || member.user.email}{" "}
-                                  from your team? This action cannot be undone
-                                  and they will lose access to team features.
+                                  wirklich aus dem Team entfernen? Diese Aktion kann nicht rückgängig gemacht werden.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() =>
                                     handleRemoveMember(member.user.id)
                                   }
                                   className="bg-red-600 hover:bg-red-700"
                                 >
-                                  Remove Member
+                                  Entfernen
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
                         </div>
+                        )}
                       </div>
                     ))}
                   </div>

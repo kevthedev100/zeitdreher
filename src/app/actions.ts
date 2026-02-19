@@ -718,7 +718,7 @@ export const getTeamMembers = async (organizationId?: string) => {
   const orgId = organizationId || userHierarchyData.organization_id;
   if (!orgId) return [];
 
-  if (userHierarchy.user_role !== "admin") {
+  if (userHierarchy.user_role !== "admin" && userHierarchy.user_role !== "geschaeftsfuehrer") {
     return [];
   }
 
@@ -975,8 +975,8 @@ export const changeUserRole = async (formData: FormData) => {
     return { success: false, error: "Missing required parameters" };
   }
 
-  if (!["admin", "member"].includes(newRole)) {
-    return { success: false, error: "Invalid role. Must be admin or member." };
+  if (!["admin", "geschaeftsfuehrer", "member"].includes(newRole)) {
+    return { success: false, error: "Invalid role. Must be admin, geschaeftsfuehrer, or member." };
   }
 
   const supabase = await createClient();
@@ -1025,7 +1025,7 @@ export const getTeamPerformanceData = async (organizationId?: string) => {
     .eq("user_id", user.id)
     .single();
 
-  if (!userHierarchy || userHierarchy.user_role !== "admin") return [];
+  if (!userHierarchy || (userHierarchy.user_role !== "admin" && userHierarchy.user_role !== "geschaeftsfuehrer")) return [];
 
   const orgId = organizationId || userHierarchy.organization_id;
   if (!orgId) return [];

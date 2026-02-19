@@ -53,7 +53,7 @@ import AIWeeklySummary from "@/components/ai-weekly-summary";
 import RecentTimeEntry from "@/components/recent-time-entry";
 
 interface DashboardTabsProps {
-  userRole: "admin" | "member";
+  userRole: "admin" | "geschaeftsfuehrer" | "member";
   isOnboarded?: boolean;
 }
 

@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import TimeEntriesTable from "@/components/time-entries-table";
 
 interface EntriesTabProps {
-  userRole: "admin" | "member";
+  userRole: "admin" | "geschaeftsfuehrer" | "member";
   isOnboarded?: boolean;
   userId?: string | null;
   selectedMemberId?: string | null;

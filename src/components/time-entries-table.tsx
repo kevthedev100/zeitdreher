@@ -60,7 +60,7 @@ interface TimeEntry {
 }
 
 interface TimeEntriesTableProps {
-  userRole?: "admin" | "member";
+  userRole?: "admin" | "geschaeftsfuehrer" | "member";
   isOnboarded?: boolean;
   userId?: string | null;
   selectedMemberId?: string | null;

@@ -24,7 +24,7 @@ import AIWeeklySummary from "@/components/ai-weekly-summary";
 import AIMonthlySummary from "@/components/ai-monthly-summary";
 
 interface AnalyticsTabProps {
-  userRole: "admin" | "member";
+  userRole: "admin" | "geschaeftsfuehrer" | "member";
   quickStats: {
     todayHours: number;
     weekHours: number;

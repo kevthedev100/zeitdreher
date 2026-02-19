@@ -15,7 +15,7 @@ export default function DashboardAnalyticsPage() {
   });
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<"admin" | "member">("member");
+  const [userRole, setUserRole] = useState<"admin" | "geschaeftsfuehrer" | "member">("member");
 
   useEffect(() => {
     const getUser = async () => {
@@ -37,7 +37,7 @@ export default function DashboardAnalyticsPage() {
           .single();
 
         if (data) {
-          setUserRole(data.role as "admin" | "member");
+          setUserRole(data.role as "admin" | "geschaeftsfuehrer" | "member");
         }
 
         await loadQuickData(user.id, data?.role || "member");

@@ -6,7 +6,7 @@ import { createClient } from "../../../../supabase/client";
 import { useEffect, useState } from "react";
 
 export default function TeamPerformancePage() {
-  const [userRole, setUserRole] = useState<"admin" | "member">(
+  const [userRole, setUserRole] = useState<"admin" | "geschaeftsfuehrer" | "member">(
     "member",
   );
   const [loading, setLoading] = useState(true);
@@ -42,7 +42,7 @@ export default function TeamPerformancePage() {
             .single();
 
           if (orgMember) {
-            setUserRole(orgMember.role as "admin" | "member");
+            setUserRole(orgMember.role as "admin" | "geschaeftsfuehrer" | "member");
           } else {
             // Fallback to user table role if no organization membership
             const { data: userRole } = await supabase
@@ -53,7 +53,7 @@ export default function TeamPerformancePage() {
 
             if (userRole) {
               setUserRole(
-                userRole.role as "admin" | "member",
+                userRole.role as "admin" | "geschaeftsfuehrer" | "member",
               );
             }
           }

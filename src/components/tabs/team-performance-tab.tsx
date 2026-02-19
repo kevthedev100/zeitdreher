@@ -34,7 +34,7 @@ import {
 } from "@/app/actions";
 
 interface TeamPerformanceTabProps {
-  userRole: "admin" | "member";
+  userRole: "admin" | "geschaeftsfuehrer" | "member";
 }
 
 interface Organization {
@@ -349,16 +349,16 @@ export default function TeamPerformanceTab({
     return colorMap[hexColor] || "bg-gray-50 text-gray-600";
   };
 
-  if (userRole !== "admin") {
+  if (userRole === "member") {
     return (
       <div className="bg-white p-6 border border-gray-200 rounded-lg">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 mx-auto mb-4 text-amber-500" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Access Denied
+            Zugriff verweigert
           </h3>
           <p className="text-gray-500">
-            Only administrators and managers can access team performance data.
+            Nur Administratoren und Geschäftsführer haben Zugriff auf Team-Performance-Daten.
           </p>
         </div>
       </div>
