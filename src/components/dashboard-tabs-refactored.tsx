@@ -1,6 +1,5 @@
 "use client";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -10,8 +9,6 @@ import {
 import {
   Sheet,
   SheetContent,
-  SheetHeader,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import TimeEntryForm from "@/components/time-entry-form";
 import HierarchicalNavigation from "@/components/hierarchical-navigation";
@@ -20,33 +17,51 @@ import {
   BarChart3,
   Table,
   Plus,
-  Settings,
-  FolderPlus,
   Bot,
   UserCircle,
   Layers,
-  RefreshCw,
-  AlertCircle,
-  Sparkles,
   Menu,
   X,
   Home,
   Users,
+  CreditCard,
+  ChevronDown,
+  LogOut,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCallback, useState, useEffect } from "react";
 import { createClient } from "../../supabase/client";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import DashboardNavbar from "@/components/dashboard-navbar";
-import AddEntryButton from "@/components/add-entry-button";
-import SubscriptionStatusBar from "@/components/subscription-status-bar";
 
 interface DashboardTabsProps {
-  userRole: "admin" | "manager" | "employee";
+  userRole: "admin" | "member";
   isOnboarded?: boolean;
   children?: React.ReactNode;
 }
+
+const navItems = [
+  { id: "overview", label: "Übersicht", icon: Home, href: "/dashboard/overview" },
+  { id: "new-entry", label: "Neuer Eintrag", icon: Plus, href: "/dashboard/new-entry" },
+  { id: "analytics", label: "Analytik", icon: BarChart3, href: "/dashboard/analytics" },
+  { id: "entries", label: "Alle Einträge", icon: Table, href: "/dashboard/entries" },
+  { id: "ai-chat", label: "AI-Chat", icon: Bot, href: "/dashboard/ai-chat" },
+];
+
+const categoryItems = [
+  { id: "categories", label: "Kategorien", icon: Layers, href: "/dashboard/categories" },
+];
+
+const adminItems = [
+  { id: "team", label: "Mitglieder", icon: Users, href: "/dashboard/team" },
+  { id: "team-performance", label: "Performance", icon: TrendingUp, href: "/dashboard/team-performance" },
+];
+
+const settingsItems = [
+  { id: "profile", label: "Profil", icon: UserCircle, href: "/dashboard/profile" },
+  { id: "plan", label: "Abonnement", icon: CreditCard, href: "/dashboard/plan" },
+];
 
 export default function DashboardTabs({
   userRole,
@@ -54,773 +69,277 @@ export default function DashboardTabs({
   children,
 }: DashboardTabsProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [showHierarchicalNav, setShowHierarchicalNav] = useState<boolean>(true);
+  const [showHierarchicalNav, setShowHierarchicalNav] = useState(true);
   const [editingEntry, setEditingEntry] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedAreaId, setSelectedAreaId] = useState<string>("");
-  const [selectedFieldId, setSelectedFieldId] = useState<string>("");
-  const [selectedActivityId, setSelectedActivityId] = useState<string>("");
+  const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
 
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
 
-  // Determine active tab from pathname
-  const getActiveTabFromPathname = () => {
+  const activeTab = (() => {
     const path = pathname.split("/").pop();
     if (!path || path === "dashboard") return "overview";
     return path;
-  };
+  })();
 
-  const activeTab = getActiveTabFromPathname();
-
-  // Check if the device is mobile or tablet based on screen width
   useEffect(() => {
-    const checkScreenSize = () => {
-      setIsMobile(window.innerWidth < 1024); // Consider devices with width < 1024px as mobile/tablet
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserEmail(user.email || "");
+        const { data } = await supabase
+          .from("users")
+          .select("full_name")
+          .eq("user_id", user.id)
+          .single();
+        if (data) setUserName(data.full_name || "");
+      }
     };
-
-    // Initial check
-    checkScreenSize();
-
-    // Add event listener for window resize
-    window.addEventListener("resize", checkScreenSize);
-
-    // Cleanup
-    return () => window.removeEventListener("resize", checkScreenSize);
-  }, []);
+    fetchUser();
+  }, [supabase]);
 
   useEffect(() => {
-    // Listen for the openNewEntry event from AddEntryButton
     const handleOpenNewEntry = () => {
       router.push("/dashboard/new-entry");
     };
 
-    // Listen for the openTimeEntryEditDialog event from time analytics dashboard
     const handleOpenEditDialog = async (event: CustomEvent) => {
-      console.log(
-        "[DASHBOARD-TABS] Received openTimeEntryEditDialog event:",
-        event.detail,
-      );
       const { entryId } = event.detail;
-
-      if (!entryId) {
-        console.error("[DASHBOARD-TABS] No entryId provided in event detail");
-        return;
-      }
+      if (!entryId) return;
 
       try {
-        console.log(
-          "[DASHBOARD-TABS] Loading time entry for editing:",
-          entryId,
-        );
-        // Load the time entry data from database
         const { data: entry, error } = await supabase
           .from("time_entries")
-          .select(
-            `
-            *,
-            areas(id, name, color),
-            fields(id, name),
-            activities(id, name),
-            users(full_name, email)
-          `,
-          )
+          .select(`*, areas(id, name, color), fields(id, name), activities(id, name), users(full_name, email)`)
           .eq("id", entryId)
           .single();
 
-        if (error) {
-          console.error(
-            "[DASHBOARD-TABS] Database error loading entry:",
-            error,
-          );
-          throw error;
-        }
-
+        if (error) throw error;
         if (entry) {
-          console.log(
-            "[DASHBOARD-TABS] Loaded entry for editing from dashboard:",
-            entry,
-          );
           setEditingEntry(entry);
           setIsEditDialogOpen(true);
-          console.log(
-            "[DASHBOARD-TABS] Edit dialog should now be open, isEditDialogOpen:",
-            true,
-          );
-        } else {
-          console.error("[DASHBOARD-TABS] No entry found with ID:", entryId);
-          alert("Zeiteintrag nicht gefunden.");
         }
       } catch (error) {
-        console.error(
-          "[DASHBOARD-TABS] Error loading time entry for editing:",
-          error,
-        );
-        alert(
-          "Fehler beim Laden des Zeiteintrags zum Bearbeiten: " + (error as Error).message,
-        );
+        console.error("Error loading time entry:", error);
       }
     };
 
-    console.log("[DASHBOARD-TABS] Setting up event listeners");
-
     window.addEventListener("openNewEntry", handleOpenNewEntry);
-    window.addEventListener(
-      "openTimeEntryEditDialog",
-      handleOpenEditDialog as unknown as EventListener,
-    );
-
-    // Also listen on document as fallback
-    document.addEventListener(
-      "openTimeEntryEditDialog",
-      handleOpenEditDialog as unknown as EventListener,
-    );
+    window.addEventListener("openTimeEntryEditDialog", handleOpenEditDialog as unknown as EventListener);
+    document.addEventListener("openTimeEntryEditDialog", handleOpenEditDialog as unknown as EventListener);
 
     return () => {
-      console.log("[DASHBOARD-TABS] Cleaning up event listeners");
       window.removeEventListener("openNewEntry", handleOpenNewEntry);
-      window.removeEventListener(
-        "openTimeEntryEditDialog",
-        handleOpenEditDialog as unknown as EventListener,
-      );
-      document.removeEventListener(
-        "openTimeEntryEditDialog",
-        handleOpenEditDialog as unknown as EventListener,
-      );
+      window.removeEventListener("openTimeEntryEditDialog", handleOpenEditDialog as unknown as EventListener);
+      document.removeEventListener("openTimeEntryEditDialog", handleOpenEditDialog as unknown as EventListener);
     };
   }, [router, supabase]);
 
   const handleActivitySelect = useCallback(
     (areaId: string, fieldId: string, activityId: string) => {
-      console.log("Activity selected:", { areaId, fieldId, activityId });
-      setSelectedAreaId(areaId);
-      setSelectedFieldId(fieldId);
-      setSelectedActivityId(activityId);
-
-      // Navigate to new entry tab with URL parameters
-      const params = new URLSearchParams({
-        area: areaId,
-        field: fieldId,
-        activity: activityId,
-      });
-
-      console.log("Navigating to new-entry with params:", params.toString());
+      const params = new URLSearchParams({ area: areaId, field: fieldId, activity: activityId });
       router.push(`/dashboard/new-entry?${params.toString()}`);
     },
     [router],
   );
 
   const handleEditSubmit = (data: any) => {
-    // Close the dialog after submission
     setIsEditDialogOpen(false);
     setEditingEntry(null);
-
-    // Dispatch the timeEntryUpdated event to refresh other components
     window.dispatchEvent(new CustomEvent("timeEntryUpdated", { detail: data }));
   };
 
-  const handleEditDialogClose = () => {
-    setIsEditDialogOpen(false);
-    setEditingEntry(null);
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/");
   };
 
-  const navigateToTab = (tab: string) => {
-    console.log(`Navigating to tab: ${tab}`);
-    // Use replace instead of push to avoid stacking history entries
-    router.replace(`/dashboard/${tab}`);
+  const renderNavLink = (item: { id: string; label: string; icon: any; href: string }, closeMobile?: boolean) => {
+    const isActive = activeTab === item.id;
+    const Icon = item.icon;
+    return (
+      <Link
+        key={item.id}
+        href={item.href}
+        onClick={closeMobile ? () => setIsMobileMenuOpen(false) : undefined}
+        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+          isActive
+            ? "bg-gray-100 text-gray-900 font-medium"
+            : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+        }`}
+      >
+        <Icon className={`w-[18px] h-[18px] ${isActive ? "text-gray-900" : "text-gray-400"}`} />
+        {item.label}
+      </Link>
+    );
   };
 
-  return (
-    <>
-      {/* Only show DashboardNavbar on desktop, rely on mobile menu for mobile */}
-      <div className="hidden lg:block">
-        <DashboardNavbar />
+  const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
+    <div className="flex flex-col h-full">
+      {/* Logo */}
+      <div className="flex items-center gap-2.5 px-4 h-14 border-b border-gray-200 flex-shrink-0">
+        {mobile && (
+          <button onClick={() => setIsMobileMenuOpen(false)} className="mr-1 p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-600">
+            <X className="w-5 h-5" />
+          </button>
+        )}
+        <div className="w-7 h-7 bg-gray-900 rounded-lg flex items-center justify-center">
+          <Clock className="w-4 h-4 text-white" />
+        </div>
+        <span className="font-semibold text-gray-900 text-sm">TimeFocusAI</span>
       </div>
-      <main className="w-full bg-gray-50 min-h-screen">
-        <div className="container mx-auto px-4 py-8">
-          {/* Header Section - Only visible on desktop */}
-          <header className="mb-8 hidden lg:block">
-            <div className="flex justify-between items-start">
-              <div>
-                <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                  TimeFocusAI Dashboard
-                </h1>
-                <p className="text-gray-600">
-                  Zeit erfassen, Produktivität analysieren und Arbeitsstunden
-                  verwalten
-                </p>
-              </div>
-              <AddEntryButton
-                onAddEntry={() => {
-                  // This will be handled by the event listener
-                  const event = new CustomEvent("openNewEntry");
-                  window.dispatchEvent(event);
-                }}
-              />
-            </div>
-          </header>
 
-          {/* Mobile Header - Completely isolated from main container */}
-          <div className="lg:hidden fixed top-0 left-0 right-0 flex items-center justify-between px-4 py-3 bg-white shadow-sm border-b z-30 w-full">
-            <div className="flex items-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="mr-2"
-                onClick={() => setIsMobileMenuOpen(true)}
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-              <div className="flex items-center">
-                <Clock className="h-5 w-5 text-blue-600 mr-2" />
-                <h1 className="text-lg font-bold">Zeitdreher</h1>
-              </div>
+      {/* Navigation */}
+      <div className="flex-1 overflow-y-auto px-3 py-4">
+        <div className="space-y-1">
+          {navItems.map((item) => renderNavLink(item, mobile))}
+        </div>
+
+        {/* Categories */}
+        <div className="mt-6">
+          <div className="flex items-center justify-between px-3 mb-2">
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Kategorien</span>
+            <button
+              onClick={() => setShowHierarchicalNav(!showHierarchicalNav)}
+              className="text-xs text-gray-400 hover:text-gray-600 p-0.5"
+            >
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showHierarchicalNav ? "" : "-rotate-90"}`} />
+            </button>
+          </div>
+          {showHierarchicalNav && (
+            <div className="mb-2 px-1">
+              <HierarchicalNavigation onSelectActivity={handleActivitySelect} />
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigateToTab("new-entry")}
-                className="text-blue-600 px-2 py-1 h-8"
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                <span className="text-xs">Neu</span>
-              </Button>
+          )}
+          {categoryItems.map((item) => renderNavLink(item, mobile))}
+        </div>
+
+        {/* Admin section */}
+        {userRole === "admin" && (
+          <div className="mt-6">
+            <span className="px-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Team</span>
+            <div className="mt-2 space-y-1">
+              {adminItems.map((item) => renderNavLink(item, mobile))}
             </div>
           </div>
+        )}
 
-          <div className="relative pt-12 lg:pt-0">
-            {/* Mobile Menu */}
-            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-              <SheetContent
-                side="left"
-                className="w-full max-w-none p-0 border-0"
-              >
-                <div className="flex flex-col h-full bg-white">
-                  {/* Menu Header */}
-                  <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-600 to-blue-700">
-                    <div className="flex items-center gap-2 text-white">
-                      <Clock className="h-5 w-5" />
-                      <span className="font-semibold">Zeitdreher</span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="text-white hover:bg-white/20"
-                    >
-                      <X className="h-5 w-5" />
-                    </Button>
-                  </div>
-
-                  {/* Menu Content */}
-                  <div className="flex-1 overflow-y-auto p-2">
-                    <div className="space-y-2">
-                      {/* DEIN SPACE Section */}
-                      <div className="pt-4 mb-2">
-                        <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide px-3 mb-3">
-                          DEIN SPACE
-                        </h3>
-                      </div>
-
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start gap-3 h-12"
-                        onClick={() => {
-                          navigateToTab("overview");
-                          setIsMobileMenuOpen(false);
-                        }}
-                      >
-                        <Clock className="w-5 h-5" />
-                        Übersicht
-                      </Button>
-                      <Button
-                        variant={
-                          activeTab === "analytics" ? "secondary" : "ghost"
-                        }
-                        className="w-full justify-start gap-3 h-12"
-                        onClick={() => {
-                          navigateToTab("analytics");
-                          setIsMobileMenuOpen(false);
-                        }}
-                      >
-                        <BarChart3 className="w-5 h-5" />
-                        Analytik
-                      </Button>
-                      <Button
-                        variant={
-                          activeTab === "new-entry" ? "secondary" : "ghost"
-                        }
-                        className="w-full justify-start gap-3 h-12"
-                        onClick={() => {
-                          navigateToTab("new-entry");
-                          setIsMobileMenuOpen(false);
-                        }}
-                      >
-                        <Plus className="w-5 h-5" />
-                        Neuer Eintrag
-                      </Button>
-                      <Button
-                        variant={
-                          activeTab === "entries" ? "secondary" : "ghost"
-                        }
-                        className="w-full justify-start gap-3 h-12"
-                        onClick={() => {
-                          navigateToTab("entries");
-                          setIsMobileMenuOpen(false);
-                        }}
-                      >
-                        <Table className="w-5 h-5" />
-                        Alle Einträge
-                      </Button>
-                      <Link
-                        href="/dashboard/ai-chat"
-                        passHref
-                        className="w-full"
-                      >
-                        <Button
-                          variant={
-                            activeTab === "ai-chat" ? "secondary" : "ghost"
-                          }
-                          className="w-full justify-start gap-2 mb-4 text-left"
-                        >
-                          <Bot className="w-4 h-4" />
-                          AI-Chat
-                        </Button>
-                      </Link>
-                    </div>
-
-                    {/* Categories Section */}
-                    <div className="mt-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-                          Kategorien
-                        </h3>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={() =>
-                            setShowHierarchicalNav(!showHierarchicalNav)
-                          }
-                        >
-                          {showHierarchicalNav ? "-" : "+"}
-                        </Button>
-                      </div>
-
-                      {showHierarchicalNav && (
-                        <div className="mb-4">
-                          <HierarchicalNavigation
-                            onSelectActivity={handleActivitySelect}
-                          />
-                        </div>
-                      )}
-
-                      <div className="space-y-2">
-                        <Link
-                          href="/dashboard/categories"
-                          passHref
-                          className="w-full"
-                        >
-                          <Button
-                            variant={
-                              activeTab === "categories" ? "secondary" : "ghost"
-                            }
-                            className="w-full justify-start gap-2 mb-4 text-left"
-                          >
-                            <Layers className="w-4 h-4" />
-                            Kategorien verwalten
-                          </Button>
-                        </Link>
-                        {userRole === "admin" && (
-                          <>
-                            {/* MITGLIEDER Section */}
-                            <div className="border-t pt-4 mb-2">
-                              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide px-3 mb-3">
-                                MITGLIEDER
-                              </h3>
-                            </div>
-
-                            <Link
-                              href="/dashboard/team"
-                              passHref
-                              className="w-full"
-                            >
-                              <Button
-                                variant={
-                                  activeTab === "team" ? "secondary" : "ghost"
-                                }
-                                className="w-full justify-start gap-2 mb-2 text-left"
-                              >
-                                <Users className="w-4 h-4" />
-                                Team
-                              </Button>
-                            </Link>
-                            <Link
-                              href="/dashboard/team-performance"
-                              passHref
-                              className="w-full"
-                            >
-                              <Button
-                                variant={
-                                  activeTab === "team-performance"
-                                    ? "secondary"
-                                    : "ghost"
-                                }
-                                className="w-full justify-start gap-2 mb-4 text-left"
-                              >
-                                <BarChart3 className="w-4 h-4" />
-                                Team Performance
-                              </Button>
-                            </Link>
-                          </>
-                        )}
-                        {/* EINSTELLUNGEN Section */}
-                        <div className="border-t pt-4 mb-2">
-                          <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide px-3 mb-3">
-                            EINSTELLUNGEN
-                          </h3>
-                        </div>
-
-                        <Link
-                          href="/dashboard/profile"
-                          passHref
-                          className="w-full"
-                        >
-                          <Button
-                            variant={
-                              activeTab === "profile" ? "secondary" : "ghost"
-                            }
-                            className="w-full justify-start gap-2 mb-2 text-left"
-                          >
-                            <UserCircle className="w-4 h-4" />
-                            Profil
-                          </Button>
-                        </Link>
-
-                        <Link
-                          href="/dashboard/plan"
-                          passHref
-                          className="w-full"
-                        >
-                          <Button
-                            variant={
-                              activeTab === "plan" ? "secondary" : "ghost"
-                            }
-                            className="w-full justify-start gap-2 text-left"
-                          >
-                            <Clock className="w-4 h-4" />
-                            Abonnement
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Mobile Subscription Status Bar */}
-                  <div className="mt-4 px-2">
-                    <SubscriptionStatusBar />
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            {/* Main container */}
-            <div className="flex bg-gray-50 pt-0">
-              {/* Desktop Sidebar */}
-              <nav className="hidden lg:flex flex-col h-fit w-64 bg-white shadow-sm border-r relative">
-                <div className="flex-1 p-2">
-                  {/* DEIN SPACE Section */}
-                  <div className="w-full pt-4 mb-2">
-                    <div className="flex items-center justify-between px-3">
-                      <h3 className="text-sm font-medium text-gray-500">
-                        DEIN SPACE
-                      </h3>
-                    </div>
-                  </div>
-
-                  <Link href="/dashboard/overview" passHref className="w-full">
-                    <Button
-                      variant={activeTab === "overview" ? "secondary" : "ghost"}
-                      className="w-full justify-start gap-2 mb-2 text-left"
-                    >
-                      <Clock className="w-4 h-4" />
-                      Übersicht
-                    </Button>
-                  </Link>
-                  <Link href="/dashboard/analytics" passHref className="w-full">
-                    <Button
-                      variant={
-                        activeTab === "analytics" ? "secondary" : "ghost"
-                      }
-                      className="w-full justify-start gap-2 mb-2 text-left"
-                    >
-                      <BarChart3 className="w-4 h-4" />
-                      Analytik
-                    </Button>
-                  </Link>
-                  <Link href="/dashboard/new-entry" passHref className="w-full">
-                    <Button
-                      variant={
-                        activeTab === "new-entry" ? "secondary" : "ghost"
-                      }
-                      className="w-full justify-start gap-2 mb-2 text-left"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Neuer Eintrag
-                    </Button>
-                  </Link>
-                  <Link href="/dashboard/entries" passHref className="w-full">
-                    <Button
-                      variant={activeTab === "entries" ? "secondary" : "ghost"}
-                      className="w-full justify-start gap-2 mb-2 text-left"
-                    >
-                      <Table className="w-4 h-4" />
-                      Alle Einträge
-                    </Button>
-                  </Link>
-                  <Link href="/dashboard/ai-chat" passHref className="w-full">
-                    <Button
-                      variant={activeTab === "ai-chat" ? "secondary" : "ghost"}
-                      className="w-full justify-start gap-2 mb-4 text-left"
-                    >
-                      <Bot className="w-4 h-4" />
-                      AI-Chat
-                    </Button>
-                  </Link>
-
-                  <div className="w-full border-t pt-4 mb-2">
-                    <div className="flex items-center justify-between px-3">
-                      <h3 className="text-sm font-medium text-gray-500">
-                        KATEGORIEN
-                      </h3>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                        onClick={() =>
-                          setShowHierarchicalNav(!showHierarchicalNav)
-                        }
-                      >
-                        {showHierarchicalNav ? "-" : "+"}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {showHierarchicalNav && (
-                    <div className="mb-4">
-                      <HierarchicalNavigation
-                        onSelectActivity={handleActivitySelect}
-                      />
-                    </div>
-                  )}
-
-                  <Link
-                    href="/dashboard/categories"
-                    passHref
-                    className="w-full"
-                  >
-                    <Button
-                      variant={
-                        activeTab === "categories" ? "secondary" : "ghost"
-                      }
-                      className="w-full justify-start gap-2 mb-4 text-left"
-                    >
-                      <Layers className="w-4 h-4" />
-                      Kategorien verwalten
-                    </Button>
-                  </Link>
-
-                  {userRole === "admin" && (
-                    <>
-                      {/* MITGLIEDER Section */}
-                      <div className="w-full border-t pt-4 mb-2">
-                        <div className="flex items-center justify-between px-3">
-                          <h3 className="text-sm font-medium text-gray-500">
-                            MITGLIEDER
-                          </h3>
-                        </div>
-                      </div>
-
-                      <Link href="/dashboard/team" passHref className="w-full">
-                        <Button
-                          variant={activeTab === "team" ? "secondary" : "ghost"}
-                          className="w-full justify-start gap-2 mb-2 text-left"
-                        >
-                          <Users className="w-4 h-4" />
-                          Team
-                        </Button>
-                      </Link>
-                      <Link
-                        href="/dashboard/team-performance"
-                        passHref
-                        className="w-full"
-                      >
-                        <Button
-                          variant={
-                            activeTab === "team-performance"
-                              ? "secondary"
-                              : "ghost"
-                          }
-                          className="w-full justify-start gap-2 mb-4 text-left"
-                        >
-                          <BarChart3 className="w-4 h-4" />
-                          Team Performance
-                        </Button>
-                      </Link>
-                    </>
-                  )}
-                  {/* EINSTELLUNGEN Section */}
-                  <div className="w-full border-t pt-4 mb-2">
-                    <div className="flex items-center justify-between px-3">
-                      <h3 className="text-sm font-medium text-gray-500">
-                        EINSTELLUNGEN
-                      </h3>
-                    </div>
-                  </div>
-
-                  <Link href="/dashboard/profile" passHref className="w-full">
-                    <Button
-                      variant={activeTab === "profile" ? "secondary" : "ghost"}
-                      className="w-full justify-start gap-2 text-left mb-2"
-                    >
-                      <UserCircle className="w-4 h-4" />
-                      Profil
-                    </Button>
-                  </Link>
-
-                  <Link href="/dashboard/plan" passHref className="w-full">
-                    <Button
-                      variant={activeTab === "plan" ? "secondary" : "ghost"}
-                      className="w-full justify-start gap-2 text-left"
-                    >
-                      <Clock className="w-4 h-4" />
-                      Abonnement
-                    </Button>
-                  </Link>
-                </div>
-
-                {/* Subscription Status Bar at bottom */}
-                <div className="w-full">
-                  <SubscriptionStatusBar />
-                </div>
-              </nav>
-
-              {/* Content area */}
-              <div className="flex-1 overflow-auto pb-16 lg:pb-0 lg:min-h-screen mt-0">
-                {children}
-              </div>
-            </div>
-
-            {/* Mobile Bottom Navigation */}
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around items-center p-1 z-10 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-              <Link href="/dashboard/overview" passHref className="w-full">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex flex-col items-center py-1 px-1 h-auto w-full rounded-none"
-                >
-                  <Clock
-                    className={`h-5 w-5 ${activeTab === "overview" ? "text-blue-600" : "text-gray-500"}`}
-                  />
-                  <span
-                    className={`text-[10px] mt-0.5 ${activeTab === "overview" ? "text-blue-600 font-medium" : "text-gray-500"}`}
-                  >
-                    Übersicht
-                  </span>
-                </Button>
-              </Link>
-              <Link href="/dashboard/analytics" passHref className="w-full">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex flex-col items-center py-1 px-1 h-auto w-full rounded-none"
-                >
-                  <BarChart3
-                    className={`h-5 w-5 ${activeTab === "analytics" ? "text-blue-600" : "text-gray-500"}`}
-                  />
-                  <span
-                    className={`text-[10px] mt-0.5 ${activeTab === "analytics" ? "text-blue-600 font-medium" : "text-gray-500"}`}
-                  >
-                    Analytik
-                  </span>
-                </Button>
-              </Link>
-              <Link href="/dashboard/new-entry" passHref className="w-full">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex flex-col items-center py-1 px-1 h-auto w-full rounded-none relative"
-                >
-                  <div
-                    className={`absolute -top-3 rounded-full ${activeTab === "new-entry" ? "bg-blue-600" : "bg-blue-500"} p-1.5 shadow-md`}
-                  >
-                    <Plus className="h-4 w-4 text-white" />
-                  </div>
-                  <div className="h-5 w-5"></div>
-                  <span
-                    className={`text-[10px] mt-0.5 ${activeTab === "new-entry" ? "text-blue-600 font-medium" : "text-gray-500"}`}
-                  >
-                    Neu
-                  </span>
-                </Button>
-              </Link>
-              <Link href="/dashboard/entries" passHref className="w-full">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex flex-col items-center py-1 px-1 h-auto w-full rounded-none"
-                >
-                  <Table
-                    className={`h-5 w-5 ${activeTab === "entries" ? "text-blue-600" : "text-gray-500"}`}
-                  />
-                  <span
-                    className={`text-[10px] mt-0.5 ${activeTab === "entries" ? "text-blue-600 font-medium" : "text-gray-500"}`}
-                  >
-                    Einträge
-                  </span>
-                </Button>
-              </Link>
-              <Link href="/dashboard/ai-chat" passHref className="w-full">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex flex-col items-center py-1 px-1 h-auto w-full rounded-none"
-                >
-                  <Bot
-                    className={`h-5 w-5 ${activeTab === "ai-chat" ? "text-blue-600" : "text-gray-500"}`}
-                  />
-                  <span
-                    className={`text-[10px] mt-0.5 ${activeTab === "ai-chat" ? "text-blue-600 font-medium" : "text-gray-500"}`}
-                  >
-                    AI-Chat
-                  </span>
-                </Button>
-              </Link>
-            </div>
-
-            {/* Edit Dialog */}
-            <Dialog
-              open={isEditDialogOpen}
-              onOpenChange={handleEditDialogClose}
-            >
-              <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Zeiteintrag bearbeiten</DialogTitle>
-                </DialogHeader>
-                {editingEntry && (
-                  <TimeEntryForm
-                    onSubmit={handleEditSubmit}
-                    editingEntry={editingEntry}
-                  />
-                )}
-              </DialogContent>
-            </Dialog>
+        {/* Settings */}
+        <div className="mt-6">
+          <span className="px-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Einstellungen</span>
+          <div className="mt-2 space-y-1">
+            {settingsItems.map((item) => renderNavLink(item, mobile))}
           </div>
         </div>
+      </div>
+
+      {/* User section at bottom */}
+      <div className="flex-shrink-0 border-t border-gray-200 p-3">
+        <div className="flex items-center gap-3 px-2 py-2">
+          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600 flex-shrink-0">
+            {userName ? userName.charAt(0).toUpperCase() : "U"}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-gray-900 truncate">{userName || "Benutzer"}</div>
+            <div className="text-xs text-gray-400 truncate">{userEmail}</div>
+          </div>
+          <button
+            onClick={handleSignOut}
+            className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            title="Abmelden"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex h-screen bg-white">
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex lg:w-60 flex-col border-r border-gray-200 bg-white flex-shrink-0">
+        <SidebarContent />
+      </aside>
+
+      {/* Mobile Header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 z-30">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setIsMobileMenuOpen(true)} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-500">
+            <Menu className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-gray-900 rounded-md flex items-center justify-center">
+              <Clock className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span className="font-semibold text-gray-900 text-sm">TimeFocusAI</span>
+          </div>
+        </div>
+        <Link
+          href="/dashboard/new-entry"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Neu
+        </Link>
+      </div>
+
+      {/* Mobile Sheet Menu */}
+      <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+        <SheetContent side="left" className="w-[280px] p-0 border-r border-gray-200">
+          <SidebarContent mobile />
+        </SheetContent>
+      </Sheet>
+
+      {/* Main content */}
+      <main className="flex-1 overflow-auto pt-14 lg:pt-0">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+          {children}
+        </div>
       </main>
-    </>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-20">
+        <div className="flex items-center justify-around h-14">
+          {[
+            { id: "overview", icon: Home, label: "Home" },
+            { id: "analytics", icon: BarChart3, label: "Analytik" },
+            { id: "new-entry", icon: Plus, label: "Neu" },
+            { id: "entries", icon: Table, label: "Einträge" },
+            { id: "ai-chat", icon: Bot, label: "AI-Chat" },
+          ].map((item) => {
+            const isActive = activeTab === item.id;
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.id}
+                href={`/dashboard/${item.id}`}
+                className="flex flex-col items-center justify-center flex-1 py-1"
+              >
+                <Icon className={`w-5 h-5 ${isActive ? "text-gray-900" : "text-gray-400"}`} />
+                <span className={`text-[10px] mt-0.5 ${isActive ? "text-gray-900 font-medium" : "text-gray-400"}`}>
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={() => { setIsEditDialogOpen(false); setEditingEntry(null); }}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Zeiteintrag bearbeiten</DialogTitle>
+          </DialogHeader>
+          {editingEntry && (
+            <TimeEntryForm onSubmit={handleEditSubmit} editingEntry={editingEntry} />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

@@ -299,11 +299,11 @@ export default function CategoryManagement() {
       <div className="bg-white p-6">
         <div className="max-w-6xl mx-auto">
           <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-            <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+            <div className="h-8 bg-gray-200 rounded-md w-1/3"></div>
+            <div className="h-4 bg-gray-200 rounded-md w-2/3"></div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-64 bg-gray-200 rounded"></div>
+                <div key={i} className="h-64 bg-gray-200 rounded-lg border border-gray-200"></div>
               ))}
             </div>
           </div>
@@ -321,7 +321,7 @@ export default function CategoryManagement() {
             <h1 className="text-3xl font-bold text-gray-900">
               Kategorie-Verwaltung
             </h1>
-            <p className="text-gray-600 mt-1">
+            <p className="text-gray-500 mt-1">
               Verwalten Sie Bereiche, Felder und Aktivitäten für die
               Zeiterfassung
             </p>
@@ -330,7 +330,7 @@ export default function CategoryManagement() {
 
         {/* Error Message */}
         {deleteError && (
-          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md mb-4 flex items-center gap-2">
+          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-4 flex items-center gap-2">
             <AlertTriangle className="w-5 h-5" />
             <div>
               <p className="font-medium">Fehler beim Löschen</p>
@@ -348,16 +348,16 @@ export default function CategoryManagement() {
         {/* Three Column Layout */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Areas Column */}
-          <Card>
+          <Card className="border border-gray-200 rounded-lg bg-white shadow-none">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <FolderPlus className="w-5 h-5" />
+                <CardTitle className="flex items-center gap-2 text-gray-900">
+                  <FolderPlus className="w-5 h-5 text-gray-500" />
                   Bereiche
                 </CardTitle>
                 <Dialog open={isAddingArea} onOpenChange={setIsAddingArea}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="h-8">
+                    <Button size="sm" className="h-8 bg-gray-900 text-white hover:bg-gray-800 rounded-md">
                       <Plus className="w-4 h-4" />
                     </Button>
                   </DialogTrigger>
@@ -371,38 +371,42 @@ export default function CategoryManagement() {
                     </DialogHeader>
                     <form onSubmit={handleCreateArea} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="name">Name</Label>
+                        <Label htmlFor="name" className="text-gray-900">Name</Label>
                         <Input
                           id="name"
                           name="name"
                           placeholder="z.B. Entwicklung"
                           required
+                          className="border-gray-200 rounded-md"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="description">Beschreibung</Label>
+                        <Label htmlFor="description" className="text-gray-900">Beschreibung</Label>
                         <Textarea
                           id="description"
                           name="description"
                           placeholder="Kurze Beschreibung des Bereichs"
                           rows={3}
+                          className="border-gray-200 rounded-md"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="color">Farbe</Label>
+                        <Label htmlFor="color" className="text-gray-900">Farbe</Label>
                         <Input
                           id="color"
                           name="color"
                           type="color"
                           defaultValue="#3B82F6"
+                          className="border-gray-200 rounded-md h-9"
                         />
                       </div>
                       <div className="flex gap-2">
-                        <Button type="submit">Erstellen</Button>
+                        <Button type="submit" className="bg-gray-900 text-white hover:bg-gray-800 rounded-md">Erstellen</Button>
                         <Button
                           type="button"
                           variant="outline"
                           onClick={() => setIsAddingArea(false)}
+                          className="border-gray-200 rounded-md"
                         >
                           Abbrechen
                         </Button>
@@ -411,7 +415,7 @@ export default function CategoryManagement() {
                   </DialogContent>
                 </Dialog>
               </div>
-              <CardDescription>
+              <CardDescription className="text-gray-500">
                 {areas.length} Bereiche verfügbar
               </CardDescription>
             </CardHeader>
@@ -422,8 +426,8 @@ export default function CategoryManagement() {
                     key={area.id}
                     className={`p-3 rounded-lg border transition-colors ${
                       selectedArea === area.id
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 hover:border-gray-300"
+                        ? "border-gray-900 bg-gray-50"
+                        : "border-gray-200 hover:border-gray-300 bg-white"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -438,7 +442,7 @@ export default function CategoryManagement() {
                           className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: area.color }}
                         ></div>
-                        <span className="font-medium">{area.name}</span>
+                        <span className="font-medium text-gray-900">{area.name}</span>
                       </div>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -474,14 +478,14 @@ export default function CategoryManagement() {
                       </AlertDialog>
                     </div>
                     {area.description && (
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-sm text-gray-500 mt-1">
                         {area.description}
                       </p>
                     )}
                   </div>
                 ))}
                 {areas.length === 0 && (
-                  <p className="text-gray-500 text-center py-4">
+                  <p className="text-gray-400 text-center py-4">
                     Keine Bereiche vorhanden
                   </p>
                 )}
@@ -490,16 +494,16 @@ export default function CategoryManagement() {
           </Card>
 
           {/* Fields Column */}
-          <Card>
+          <Card className="border border-gray-200 rounded-lg bg-white shadow-none">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="w-5 h-5" />
+                <CardTitle className="flex items-center gap-2 text-gray-900">
+                  <Settings className="w-5 h-5 text-gray-500" />
                   Felder
                 </CardTitle>
                 <Dialog open={isAddingField} onOpenChange={setIsAddingField}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="h-8" disabled={!selectedArea}>
+                    <Button size="sm" className="h-8 bg-gray-900 text-white hover:bg-gray-800 rounded-md" disabled={!selectedArea}>
                       <Plus className="w-4 h-4" />
                     </Button>
                   </DialogTrigger>
@@ -513,29 +517,32 @@ export default function CategoryManagement() {
                     </DialogHeader>
                     <form onSubmit={handleCreateField} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="field-name">Name</Label>
+                        <Label htmlFor="field-name" className="text-gray-900">Name</Label>
                         <Input
                           id="field-name"
                           name="name"
                           placeholder="z.B. Frontend"
                           required
+                          className="border-gray-200 rounded-md"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="field-description">Beschreibung</Label>
+                        <Label htmlFor="field-description" className="text-gray-900">Beschreibung</Label>
                         <Textarea
                           id="field-description"
                           name="description"
                           placeholder="Kurze Beschreibung des Feldes"
                           rows={3}
+                          className="border-gray-200 rounded-md"
                         />
                       </div>
                       <div className="flex gap-2">
-                        <Button type="submit">Erstellen</Button>
+                        <Button type="submit" className="bg-gray-900 text-white hover:bg-gray-800 rounded-md">Erstellen</Button>
                         <Button
                           type="button"
                           variant="outline"
                           onClick={() => setIsAddingField(false)}
+                          className="border-gray-200 rounded-md"
                         >
                           Abbrechen
                         </Button>
@@ -544,7 +551,7 @@ export default function CategoryManagement() {
                   </DialogContent>
                 </Dialog>
               </div>
-              <CardDescription>
+              <CardDescription className="text-gray-500">
                 {selectedArea
                   ? `${fields.length} Felder im ausgewählten Bereich`
                   : "Wählen Sie einen Bereich aus"}
@@ -559,8 +566,8 @@ export default function CategoryManagement() {
                         key={field.id}
                         className={`p-3 rounded-lg border transition-colors ${
                           selectedField === field.id
-                            ? "border-green-500 bg-green-50"
-                            : "border-gray-200 hover:border-gray-300"
+                            ? "border-gray-900 bg-gray-50"
+                            : "border-gray-200 hover:border-gray-300 bg-white"
                         }`}
                       >
                         <div className="flex items-center justify-between">
@@ -568,9 +575,9 @@ export default function CategoryManagement() {
                             className="flex-1 cursor-pointer"
                             onClick={() => setSelectedField(field.id)}
                           >
-                            <span className="font-medium">{field.name}</span>
+                            <span className="font-medium text-gray-900">{field.name}</span>
                             {field.description && (
-                              <p className="text-sm text-gray-600 mt-1">
+                              <p className="text-sm text-gray-500 mt-1">
                                 {field.description}
                               </p>
                             )}
@@ -613,12 +620,12 @@ export default function CategoryManagement() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-gray-500 text-center py-4">
+                    <p className="text-gray-400 text-center py-4">
                       Keine Felder in diesem Bereich
                     </p>
                   )
                 ) : (
-                  <p className="text-gray-500 text-center py-4">
+                  <p className="text-gray-400 text-center py-4">
                     Wählen Sie zuerst einen Bereich aus
                   </p>
                 )}
@@ -627,11 +634,11 @@ export default function CategoryManagement() {
           </Card>
 
           {/* Activities Column */}
-          <Card>
+          <Card className="border border-gray-200 rounded-lg bg-white shadow-none">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Edit className="w-5 h-5" />
+                <CardTitle className="flex items-center gap-2 text-gray-900">
+                  <Edit className="w-5 h-5 text-gray-500" />
                   Aktivitäten
                 </CardTitle>
                 <Dialog
@@ -639,7 +646,7 @@ export default function CategoryManagement() {
                   onOpenChange={setIsAddingActivity}
                 >
                   <DialogTrigger asChild>
-                    <Button size="sm" className="h-8" disabled={!selectedField}>
+                    <Button size="sm" className="h-8 bg-gray-900 text-white hover:bg-gray-800 rounded-md" disabled={!selectedField}>
                       <Plus className="w-4 h-4" />
                     </Button>
                   </DialogTrigger>
@@ -653,16 +660,17 @@ export default function CategoryManagement() {
                     </DialogHeader>
                     <form onSubmit={handleCreateActivity} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="activity-name">Name</Label>
+                        <Label htmlFor="activity-name" className="text-gray-900">Name</Label>
                         <Input
                           id="activity-name"
                           name="name"
                           placeholder="z.B. React Development"
                           required
+                          className="border-gray-200 rounded-md"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="activity-description">
+                        <Label htmlFor="activity-description" className="text-gray-900">
                           Beschreibung
                         </Label>
                         <Textarea
@@ -670,14 +678,16 @@ export default function CategoryManagement() {
                           name="description"
                           placeholder="Kurze Beschreibung der Aktivität"
                           rows={3}
+                          className="border-gray-200 rounded-md"
                         />
                       </div>
                       <div className="flex gap-2">
-                        <Button type="submit">Erstellen</Button>
+                        <Button type="submit" className="bg-gray-900 text-white hover:bg-gray-800 rounded-md">Erstellen</Button>
                         <Button
                           type="button"
                           variant="outline"
                           onClick={() => setIsAddingActivity(false)}
+                          className="border-gray-200 rounded-md"
                         >
                           Abbrechen
                         </Button>
@@ -686,7 +696,7 @@ export default function CategoryManagement() {
                   </DialogContent>
                 </Dialog>
               </div>
-              <CardDescription>
+              <CardDescription className="text-gray-500">
                 {selectedField
                   ? `${activities.length} Aktivitäten im ausgewählten Feld`
                   : "Wählen Sie ein Feld aus"}
@@ -699,13 +709,13 @@ export default function CategoryManagement() {
                     activities.map((activity) => (
                       <div
                         key={activity.id}
-                        className="p-3 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                        className="p-3 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors bg-white"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <span className="font-medium">{activity.name}</span>
+                            <span className="font-medium text-gray-900">{activity.name}</span>
                             {activity.description && (
-                              <p className="text-sm text-gray-600 mt-1">
+                              <p className="text-sm text-gray-500 mt-1">
                                 {activity.description}
                               </p>
                             )}
@@ -751,12 +761,12 @@ export default function CategoryManagement() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-gray-500 text-center py-4">
+                    <p className="text-gray-400 text-center py-4">
                       Keine Aktivitäten in diesem Feld
                     </p>
                   )
                 ) : (
-                  <p className="text-gray-500 text-center py-4">
+                  <p className="text-gray-400 text-center py-4">
                     Wählen Sie zuerst ein Feld aus
                   </p>
                 )}

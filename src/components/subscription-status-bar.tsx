@@ -33,10 +33,9 @@ export default function SubscriptionStatusBar() {
           console.error("Error fetching user data:", userError);
         }
 
-        // If user is admin_member, set special subscription status
-        if (userData?.role === "admin_member") {
+        if (false) {
           setSubscription({
-            status: "admin_member",
+            status: "active",
             metadata: { quantity: "1" },
           });
           return;
@@ -101,9 +100,7 @@ export default function SubscriptionStatusBar() {
   const getSubscriptionStatus = () => {
     if (!subscription) return "trial"; // Default to trial for new users
 
-    if (subscription.status === "admin_member") {
-      return "admin_member";
-    } else if (subscription.status === "trialing") {
+    if (subscription.status === "trialing") {
       return "trialing";
     } else if (subscription.status === "active") {
       return "active";
@@ -137,7 +134,7 @@ export default function SubscriptionStatusBar() {
     ? parseInt(subscription.metadata.quantity, 10)
     : subscription?.items?.data?.[0]?.quantity || 1; // Default to 1 license
 
-  if (status === "admin_member") {
+  if (false as boolean) {
     return (
       <div className="w-full bg-purple-50 p-2 text-center text-sm text-purple-700 flex items-center justify-center">
         <CheckCircle className="h-3 w-3 mr-2" />

@@ -34,7 +34,7 @@ import {
 } from "@/app/actions";
 
 interface TeamPerformanceTabProps {
-  userRole: "admin" | "manager" | "employee";
+  userRole: "admin" | "member";
 }
 
 interface Organization {
@@ -95,7 +95,7 @@ export default function TeamPerformanceTab({
   const supabase = createClient();
 
   useEffect(() => {
-    if (userRole === "admin" || userRole === "manager") {
+    if (userRole === "admin") {
       loadUserOrganizations();
     }
   }, [userRole]);
@@ -349,15 +349,15 @@ export default function TeamPerformanceTab({
     return colorMap[hexColor] || "bg-gray-50 text-gray-600";
   };
 
-  if (userRole !== "admin" && userRole !== "manager") {
+  if (userRole !== "admin") {
     return (
-      <div className="bg-white p-6">
+      <div className="bg-white p-6 border border-gray-200 rounded-lg">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 mx-auto mb-4 text-amber-500" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
             Access Denied
           </h3>
-          <p className="text-gray-600">
+          <p className="text-gray-500">
             Only administrators and managers can access team performance data.
           </p>
         </div>
@@ -382,7 +382,7 @@ export default function TeamPerformanceTab({
                 <h1 className="text-3xl font-bold text-gray-900">
                   Team Performance
                 </h1>
-                <p className="text-gray-600 mt-1">
+                <p className="text-gray-500 mt-1">
                   View and analyze time entries across your team
                 </p>
               </div>
@@ -390,6 +390,7 @@ export default function TeamPerformanceTab({
                 <Button
                   variant="outline"
                   size="sm"
+                  className="border-gray-200 hover:bg-gray-50"
                   onClick={loadUserOrganizations}
                   disabled={organizationsLoading}
                 >
@@ -401,7 +402,7 @@ export default function TeamPerformanceTab({
             </div>
 
             {/* Organization Selector */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 p-4 border rounded-lg bg-gray-50">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 p-6 border border-gray-200 rounded-lg bg-white">
               <div className="flex-shrink-0">
                 <Label htmlFor="organization-select" className="font-medium">
                   Organization:
@@ -410,7 +411,7 @@ export default function TeamPerformanceTab({
               <div className="flex-grow w-full sm:w-auto">
                 <select
                   id="organization-select"
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900/20"
                   value={selectedOrganization}
                   onChange={(e) => setSelectedOrganization(e.target.value)}
                   disabled={organizationsLoading || organizations.length === 0}
@@ -451,67 +452,67 @@ export default function TeamPerformanceTab({
 
           {/* Team Statistics */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 py-2">
-                <CardTitle className="text-sm font-medium">
+            <Card className="bg-white border border-gray-200 shadow-none rounded-lg">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
+                <CardTitle className="text-sm font-medium text-gray-900">
                   Team Members
                 </CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
+                <Users className="h-4 w-4 text-gray-500" />
               </CardHeader>
-              <CardContent className="px-3 py-2">
-                <div className="text-2xl font-bold">
+              <CardContent className="p-6 pt-0">
+                <div className="text-2xl font-bold text-gray-900">
                   {teamStats.totalMembers}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-500">
                   {selectedMembers.length} selected
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 py-2">
-                <CardTitle className="text-sm font-medium">
+            <Card className="bg-white border border-gray-200 shadow-none rounded-lg">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
+                <CardTitle className="text-sm font-medium text-gray-900">
                   Total Hours
                 </CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                <Clock className="h-4 w-4 text-gray-500" />
               </CardHeader>
-              <CardContent className="px-3 py-2">
-                <div className="text-2xl font-bold">
+              <CardContent className="p-6 pt-0">
+                <div className="text-2xl font-bold text-gray-900">
                   {teamStats.totalHoursSelected.toFixed(1)}h
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-500">
                   Selected members
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 py-2">
-                <CardTitle className="text-sm font-medium">
+            <Card className="bg-white border border-gray-200 shadow-none rounded-lg">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
+                <CardTitle className="text-sm font-medium text-gray-900">
                   Daily Average
                 </CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <Calendar className="h-4 w-4 text-gray-500" />
               </CardHeader>
-              <CardContent className="px-3 py-2">
-                <div className="text-2xl font-bold">
+              <CardContent className="p-6 pt-0">
+                <div className="text-2xl font-bold text-gray-900">
                   {teamStats.averageHoursPerDay.toFixed(1)}h
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-500">
                   Per day in range
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 py-2">
-                <CardTitle className="text-sm font-medium">Top Area</CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <Card className="bg-white border border-gray-200 shadow-none rounded-lg">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
+                <CardTitle className="text-sm font-medium text-gray-900">Top Area</CardTitle>
+                <BarChart3 className="h-4 w-4 text-gray-500" />
               </CardHeader>
-              <CardContent className="px-3 py-2">
-                <div className="text-lg font-bold truncate">
+              <CardContent className="p-6 pt-0">
+                <div className="text-lg font-bold truncate text-gray-900">
                   {teamStats.mostActiveArea}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-500">
                   Most active area
                 </p>
               </CardContent>
@@ -520,7 +521,7 @@ export default function TeamPerformanceTab({
 
           {/* Team Performance Summary */}
           {performanceData.length > 0 && (
-            <Card className="mb-6">
+            <Card className="mb-6 bg-white border border-gray-200 shadow-none rounded-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="w-5 h-5" />
@@ -535,25 +536,25 @@ export default function TeamPerformanceTab({
                   {performanceData.map((member, index) => (
                     <div
                       key={index}
-                      className="p-4 border rounded-lg bg-gray-50"
+                      className="p-4 border border-gray-200 rounded-lg bg-white"
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-sm">
+                        <h4 className="font-medium text-sm text-gray-900">
                           {member.member_name}
                         </h4>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs border-gray-200 text-gray-700">
                           {member.entries_this_month} entries
                         </Badge>
                       </div>
                       <div className="space-y-1">
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Total Hours:</span>
+                          <span className="text-gray-500">Total Hours:</span>
                           <span className="font-medium">
                             {(member.total_hours_this_month || 0).toFixed(1)}h
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Avg per Entry:</span>
+                          <span className="text-gray-500">Avg per Entry:</span>
                           <span className="font-medium">
                             {(member.avg_hours_per_entry || 0).toFixed(1)}h
                           </span>
@@ -571,7 +572,7 @@ export default function TeamPerformanceTab({
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
             {/* Team Member Selection */}
-            <Card className="lg:col-span-1">
+            <Card className="lg:col-span-1 bg-white border border-gray-200 shadow-none rounded-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="w-5 h-5" />
@@ -585,7 +586,7 @@ export default function TeamPerformanceTab({
                     variant="outline"
                     size="sm"
                     onClick={selectAllMembers}
-                    className="text-xs"
+                    className="text-xs border-gray-200 hover:bg-gray-50"
                   >
                     Select All
                   </Button>
@@ -593,7 +594,7 @@ export default function TeamPerformanceTab({
                     variant="outline"
                     size="sm"
                     onClick={clearSelection}
-                    className="text-xs"
+                    className="text-xs border-gray-200 hover:bg-gray-50"
                   >
                     Clear
                   </Button>
@@ -617,18 +618,18 @@ export default function TeamPerformanceTab({
                     {teamMembers.map((member) => (
                       <div
                         key={member.id}
-                        className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${selectedMembers.includes(member.user_id) ? "bg-blue-50 border-blue-200" : "hover:bg-gray-50"}`}
+                        className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-colors ${selectedMembers.includes(member.user_id) ? "bg-gray-50 border-gray-200" : "border-gray-200 hover:bg-gray-50/50"}`}
                         onClick={() => toggleMemberSelection(member.user_id)}
                       >
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-blue-600 font-semibold text-sm">
+                          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center border border-gray-200">
+                            <span className="text-gray-700 font-medium text-sm">
                               {member.full_name?.charAt(0) ||
                                 member.email.charAt(0)}
                             </span>
                           </div>
                           <div>
-                            <p className="font-medium">
+                            <p className="font-medium text-gray-900">
                               {member.full_name || "No name"}
                             </p>
                             <p className="text-sm text-gray-500">
@@ -637,7 +638,7 @@ export default function TeamPerformanceTab({
                           </div>
                         </div>
                         {selectedMembers.includes(member.user_id) && (
-                          <CheckCircle className="w-5 h-5 text-blue-500" />
+                          <CheckCircle className="w-5 h-5 text-gray-700" />
                         )}
                       </div>
                     ))}
@@ -652,7 +653,7 @@ export default function TeamPerformanceTab({
             </Card>
 
             {/* Time Entries */}
-            <Card className="lg:col-span-2">
+            <Card className="lg:col-span-2 bg-white border border-gray-200 shadow-none rounded-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="w-5 h-5" />
@@ -678,7 +679,7 @@ export default function TeamPerformanceTab({
                           start: e.target.value,
                         }))
                       }
-                      className="w-auto h-8 text-xs"
+                      className="w-auto h-8 text-xs border-gray-200 rounded-md"
                     />
                   </div>
                   <div className="flex items-center gap-2">
@@ -695,7 +696,7 @@ export default function TeamPerformanceTab({
                           end: e.target.value,
                         }))
                       }
-                      className="w-auto h-8 text-xs"
+                      className="w-auto h-8 text-xs border-gray-200 rounded-md"
                     />
                   </div>
                   <Button
@@ -703,7 +704,7 @@ export default function TeamPerformanceTab({
                     size="sm"
                     onClick={loadTimeEntries}
                     disabled={selectedMembers.length === 0 || entriesLoading}
-                    className="ml-auto text-xs"
+                    className="ml-auto text-xs border-gray-200 hover:bg-gray-50"
                   >
                     {entriesLoading ? (
                       <>
@@ -723,7 +724,7 @@ export default function TeamPerformanceTab({
                 {entriesLoading ? (
                   <div className="space-y-3 animate-pulse">
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className="p-3 bg-gray-50 rounded-lg">
+                      <div key={i} className="p-4 border border-gray-200 rounded-lg bg-white">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
@@ -736,16 +737,16 @@ export default function TeamPerformanceTab({
                   </div>
                 ) : selectedMembers.length > 0 ? (
                   timeEntries.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {timeEntries.map((entry) => (
                         <div
                           key={entry.id}
-                          className="p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+                          className="p-4 border border-gray-200 rounded-lg bg-white hover:bg-gray-50/50 transition-colors"
                         >
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <div
-                                className={`px-2 py-1 rounded ${getAreaColorClasses(entry.areas?.color || "#3B82F6")}`}
+                                className={`px-2 py-1 rounded-md border border-gray-200 ${getAreaColorClasses(entry.areas?.color || "#3B82F6")}`}
                               >
                                 {entry.areas?.name || "Unknown Area"}
                               </div>
@@ -754,7 +755,7 @@ export default function TeamPerformanceTab({
                                 {entry.activities?.name || "Unknown Activity"}
                               </span>
                             </div>
-                            <span className="font-semibold">
+                            <span className="font-semibold text-gray-900">
                               {entry.duration.toFixed(1)}h
                             </span>
                           </div>
@@ -764,7 +765,7 @@ export default function TeamPerformanceTab({
                                 {entry.description || "No description"}
                               </p>
                               <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="outline" className="text-xs">
+                                <Badge variant="outline" className="text-xs border-gray-200 text-gray-700">
                                   {formatDate(entry.date)}
                                 </Badge>
                                 <span className="text-xs text-gray-500">

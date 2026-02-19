@@ -24,7 +24,7 @@ import AIWeeklySummary from "@/components/ai-weekly-summary";
 import AIMonthlySummary from "@/components/ai-monthly-summary";
 
 interface AnalyticsTabProps {
-  userRole: "manager" | "employee";
+  userRole: "admin" | "member";
   quickStats: {
     todayHours: number;
     weekHours: number;
@@ -83,11 +83,11 @@ export default function AnalyticsTab({
         .order("date", { ascending: false });
 
       // Handle different user roles with proper data access
-      if (userRole === "employee") {
-        // Employees see only their own data
+      if (userRole === "member") {
+        // Members see only their own data
         query = query.eq("user_id", user.id);
-      } else if (userRole === "manager") {
-        // Managers see their team's data using the helper function
+      } else if (userRole === "admin") {
+        // Admins see their team's data using the helper function
         const { data: teamMembers } = await supabase.rpc(
           "get_user_team_members",
           {

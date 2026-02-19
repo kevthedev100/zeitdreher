@@ -37,7 +37,7 @@ interface AIMessage {
   timestamp?: Date;
 }
 
-export default function AIChat({ userRole = "employee" }) {
+export default function AIChat({ userRole = "member" }) {
   const [messages, setMessages] = useState<AIMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -61,7 +61,7 @@ export default function AIChat({ userRole = "employee" }) {
   }, []);
 
   useEffect(() => {
-    if (currentUser || userRole === "manager") {
+    if (currentUser || userRole === "admin") {
       loadTimeEntries();
     }
   }, [currentUser, userRole]);
@@ -94,7 +94,7 @@ export default function AIChat({ userRole = "employee" }) {
         .order("date", { ascending: false });
 
       // Filter by user role
-      if (userRole === "employee" && currentUser) {
+      if (userRole === "member" && currentUser) {
         query = query.eq("user_id", currentUser.id);
       }
 

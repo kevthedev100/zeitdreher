@@ -82,7 +82,7 @@ export default function Profile() {
         full_name: data?.full_name || user.user_metadata?.full_name || "",
         email: user.email || "",
         avatar_url: data?.avatar_url || user.user_metadata?.avatar_url || null,
-        role: data?.role || "employee",
+        role: data?.role || "member",
         department: data?.department || "",
         position: data?.position || "",
         phone: data?.phone || "",
@@ -195,46 +195,55 @@ export default function Profile() {
                       .join("") || "U"}
                   </AvatarFallback>
                 </Avatar>
-                <CardTitle className="text-2xl">
+                <CardTitle className="text-2xl text-gray-900">
                   {profile?.full_name || "Dein Profil"}
                 </CardTitle>
-                <CardDescription>{profile?.email}</CardDescription>
+                <CardDescription className="text-gray-500">
+                  {profile?.email}
+                </CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               {errorMessage && (
-                <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md mb-4">
+                <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md">
                   {errorMessage}
                 </div>
               )}
               {successMessage && (
-                <div className="bg-green-50 border border-green-200 text-green-700 p-3 rounded-md mb-4 flex items-center gap-2">
+                <div className="bg-green-50 border border-green-200 text-green-700 p-3 rounded-md flex items-center gap-2">
                   <Check className="w-4 h-4" />
                   {successMessage}
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="full_name" className="flex items-center gap-2">
-                  <UserCircle className="w-4 h-4" /> Name
+                <Label
+                  htmlFor="full_name"
+                  className="flex items-center gap-2 text-gray-900"
+                >
+                  <UserCircle className="w-4 h-4 text-gray-500" /> Name
                 </Label>
                 <Input
                   id="full_name"
                   value={profile?.full_name || ""}
                   onChange={(e) => handleChange("full_name", e.target.value)}
                   placeholder="Dein vollständiger Name"
+                  className="border-gray-200 rounded-md"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" /> E-Mail
+                <Label
+                  htmlFor="email"
+                  className="flex items-center gap-2 text-gray-900"
+                >
+                  <Mail className="w-4 h-4 text-gray-500" /> E-Mail
                 </Label>
                 <Input
                   id="email"
                   value={profile?.email || ""}
                   disabled
-                  className="bg-gray-50"
+                  className="bg-gray-50 border-gray-200 rounded-md"
                 />
                 <p className="text-xs text-gray-500">
                   Die E-Mail-Adresse kann nicht geändert werden.
@@ -242,62 +251,80 @@ export default function Profile() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="role" className="flex items-center gap-2">
-                  <Briefcase className="w-4 h-4" /> Rolle
+                <Label
+                  htmlFor="role"
+                  className="flex items-center gap-2 text-gray-900"
+                >
+                  <Briefcase className="w-4 h-4 text-gray-500" /> Rolle
                 </Label>
                 <Select
-                  value={profile?.role || "employee"}
+                  value={profile?.role || "member"}
                   onValueChange={(value) => handleChange("role", value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="border-gray-200 rounded-md">
                     <SelectValue placeholder="Wähle deine Rolle" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="employee">Mitarbeiter</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="member">Mitarbeiter</SelectItem>
                     <SelectItem value="admin">Administrator</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="department" className="flex items-center gap-2">
-                  <Briefcase className="w-4 h-4" /> Abteilung
+                <Label
+                  htmlFor="department"
+                  className="flex items-center gap-2 text-gray-900"
+                >
+                  <Briefcase className="w-4 h-4 text-gray-500" /> Abteilung
                 </Label>
                 <Input
                   id="department"
                   value={profile?.department || ""}
                   onChange={(e) => handleChange("department", e.target.value)}
                   placeholder="Deine Abteilung"
+                  className="border-gray-200 rounded-md"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="position" className="flex items-center gap-2">
-                  <Briefcase className="w-4 h-4" /> Position
+                <Label
+                  htmlFor="position"
+                  className="flex items-center gap-2 text-gray-900"
+                >
+                  <Briefcase className="w-4 h-4 text-gray-500" /> Position
                 </Label>
                 <Input
                   id="position"
                   value={profile?.position || ""}
                   onChange={(e) => handleChange("position", e.target.value)}
                   placeholder="Deine Position"
+                  className="border-gray-200 rounded-md"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone" className="flex items-center gap-2">
-                  <Briefcase className="w-4 h-4" /> Telefon
+                <Label
+                  htmlFor="phone"
+                  className="flex items-center gap-2 text-gray-900"
+                >
+                  <Briefcase className="w-4 h-4 text-gray-500" /> Telefon
                 </Label>
                 <Input
                   id="phone"
                   value={profile?.phone || ""}
                   onChange={(e) => handleChange("phone", e.target.value)}
                   placeholder="Deine Telefonnummer"
+                  className="border-gray-200 rounded-md"
                 />
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={handleSave} disabled={saving} className="w-full">
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full bg-gray-900 text-white hover:bg-gray-800"
+              >
                 {saving ? (
                   <>
                     <RefreshCw className="w-4 h-4 mr-2 animate-spin" />{" "}

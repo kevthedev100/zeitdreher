@@ -62,7 +62,7 @@ export default function DashboardLayout({
                     full_name: user.user_metadata?.full_name || "",
                     email: user.email || "",
                     onboarded: false,
-                    role: "employee",
+                    role: "member",
                   },
                   {
                     onConflict: "user_id",
@@ -124,7 +124,7 @@ export default function DashboardLayout({
     setUserData((prev) =>
       prev
         ? { ...prev, onboarded: true }
-        : { user_id: user?.id || "", onboarded: true, role: "employee" },
+        : { user_id: user?.id || "", onboarded: true, role: "member" },
     );
 
     // Update user's onboarded status in the database
@@ -184,8 +184,7 @@ export default function DashboardLayout({
     return null;
   }
 
-  // Get user role from database or default to employee
-  const userRole = userData?.role || "employee";
+  const userRole = userData?.role || "member";
 
   return (
     <SubscriptionCheck>
@@ -196,7 +195,7 @@ export default function DashboardLayout({
         />
       )}
       <DashboardTabs
-        userRole={userRole as "admin" | "manager" | "employee"}
+        userRole={userRole as "admin" | "member"}
         isOnboarded={userData?.onboarded === true}
       >
         {children}

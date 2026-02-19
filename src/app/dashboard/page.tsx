@@ -1,11 +1,8 @@
 "use client";
 
-import DashboardNavbar from "@/components/dashboard-navbar";
 import { createClient } from "../../../supabase/client";
 import { redirect } from "next/navigation";
 import { SubscriptionCheck } from "@/components/subscription-check";
-import DashboardTabs from "@/components/dashboard-tabs-refactored";
-import AddEntryButton from "@/components/add-entry-button";
 import { useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
 import OnboardingWizardDialog from "@/components/onboarding-wizard-dialog";
@@ -60,7 +57,7 @@ export default function Dashboard() {
                     full_name: user.user_metadata?.full_name || "",
                     email: user.email || "",
                     onboarded: false,
-                    role: "employee",
+                    role: "member",
                   },
                   {
                     onConflict: "user_id",
@@ -99,7 +96,7 @@ export default function Dashboard() {
     setUserData((prev) =>
       prev
         ? { ...prev, onboarded: true }
-        : { user_id: user?.id || "", onboarded: true, role: "employee" },
+        : { user_id: user?.id || "", onboarded: true, role: "member" },
     );
 
     // Update user's onboarded status in the database
