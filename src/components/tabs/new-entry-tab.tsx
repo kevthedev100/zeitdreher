@@ -48,12 +48,12 @@ export default function NewEntryTab({
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-center h-full text-gray-500">
           Loading...
         </div>
       }
     >
-      <div className="space-y-4 lg:space-y-6 pb-16 lg:pb-0">
+      <div className="space-y-6 pb-16 lg:pb-0">
         <TimeEntryForm
           onSubmit={handleTimeEntrySubmit}
           selectedArea={selectedAreaId}
@@ -63,7 +63,7 @@ export default function NewEntryTab({
 
         {/* Recent Time Entry Display */}
         {recentTimeEntry && (
-          <div className="mt-6">
+          <div>
             <RecentTimeEntry
               entry={recentTimeEntry}
               onUpdate={handleRecentEntryUpdate}

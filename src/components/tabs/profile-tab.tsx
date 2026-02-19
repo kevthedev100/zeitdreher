@@ -7,8 +7,8 @@ export default function ProfileTab() {
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center h-full">
-          Loading...
+        <div className="flex items-center justify-center h-full p-6">
+          <p className="text-gray-500">Laden...</p>
         </div>
       }
     >

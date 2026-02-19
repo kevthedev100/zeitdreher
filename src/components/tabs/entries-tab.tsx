@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import TimeEntriesTable from "@/components/time-entries-table";
 
 interface EntriesTabProps {
-  userRole: "manager" | "employee" | "admin";
+  userRole: "admin" | "geschaeftsfuehrer" | "member";
   isOnboarded?: boolean;
   userId?: string | null;
   selectedMemberId?: string | null;
@@ -19,8 +19,11 @@ export default function EntriesTab({
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center h-full">
-          Loading...
+        <div className="flex items-center justify-center h-full min-h-[200px]">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600" />
+            <p className="text-sm text-gray-500">Lade Zeiteinträge...</p>
+          </div>
         </div>
       }
     >

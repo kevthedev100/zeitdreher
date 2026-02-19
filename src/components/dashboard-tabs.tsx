@@ -53,7 +53,7 @@ import AIWeeklySummary from "@/components/ai-weekly-summary";
 import RecentTimeEntry from "@/components/recent-time-entry";
 
 interface DashboardTabsProps {
-  userRole: "manager" | "employee";
+  userRole: "admin" | "geschaeftsfuehrer" | "member";
   isOnboarded?: boolean;
 }
 
@@ -209,7 +209,7 @@ export default function DashboardTabs({
   }, [supabase]);
 
   useEffect(() => {
-    if (currentUser || userRole === "manager") {
+    if (currentUser || userRole === "admin") {
       loadQuickData();
       checkEnoughDataForAnalysis();
     }
@@ -232,7 +232,7 @@ export default function DashboardTabs({
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user && userRole !== "manager") return;
+      if (!user && userRole !== "admin") return;
 
       // Calculate date 14 weeks ago
       const twoWeeksAgo = new Date();
@@ -253,8 +253,8 @@ export default function DashboardTabs({
         .gte("date", twoWeeksAgoStr)
         .order("date", { ascending: false });
 
-      // Filter by user if employee role
-      if (userRole === "employee" && user) {
+      // Filter by user if member role
+      if (userRole === "member" && user) {
         query = query.eq("user_id", user.id);
       }
 
@@ -439,7 +439,7 @@ export default function DashboardTabs({
         .order("date", { ascending: false });
 
       // Filter by user role - same logic as analytics dashboard
-      if (userRole === "employee" && currentUser) {
+      if (userRole === "member" && currentUser) {
         query = query.eq("user_id", currentUser.id);
       }
 
@@ -474,37 +474,34 @@ export default function DashboardTabs({
         return;
       }
 
-      // Use local timezone for all date calculations - EXACT same logic as analytics dashboard
       const now = new Date();
 
-      // Get today's date in local timezone (YYYY-MM-DD format)
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        .toISOString()
-        .split("T")[0];
+      // Format a local Date as YYYY-MM-DD without UTC shift
+      const fmtLocal = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+      const today = fmtLocal(now);
       console.log("Today's date (local):", today);
 
-      // Calculate start of current week (Monday) in local timezone
       const startOfWeek = new Date(
         now.getFullYear(),
         now.getMonth(),
         now.getDate(),
       );
       const dayOfWeek = now.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, so we need 6 days back
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
       startOfWeek.setDate(startOfWeek.getDate() - daysToMonday);
-      const startOfWeekStr = startOfWeek.toISOString().split("T")[0];
+      const startOfWeekStr = fmtLocal(startOfWeek);
       console.log("Start of week (Monday, local):", startOfWeekStr);
 
-      // Calculate start of current month in local timezone
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const startOfMonthStr = startOfMonth.toISOString().split("T")[0];
+      const startOfMonthStr = fmtLocal(startOfMonth);
       console.log("Start of month (local):", startOfMonthStr);
 
-      // Helper function to normalize date strings for comparison - EXACT same as analytics dashboard
       const normalizeDate = (dateStr: string) => {
-        // Ensure we're working with YYYY-MM-DD format
-        const date = new Date(dateStr + "T00:00:00.000Z");
-        return date.toISOString().split("T")[0];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+        const d = new Date(dateStr);
+        return fmtLocal(d);
       };
 
       // Calculate today's hours

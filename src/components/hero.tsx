@@ -150,7 +150,7 @@ export default function Hero() {
               </span>
               <br />
               <span className="text-white">
-                für echte Produktivitätsgewinne
+                für echte Produktivitäts&shy;gewinne
               </span>
             </h1>
 

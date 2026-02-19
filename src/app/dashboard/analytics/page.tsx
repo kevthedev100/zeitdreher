@@ -15,7 +15,7 @@ export default function DashboardAnalyticsPage() {
   });
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<"manager" | "employee">("employee");
+  const [userRole, setUserRole] = useState<"admin" | "geschaeftsfuehrer" | "member">("member");
 
   useEffect(() => {
     const getUser = async () => {
@@ -37,10 +37,10 @@ export default function DashboardAnalyticsPage() {
           .single();
 
         if (data) {
-          setUserRole(data.role as "manager" | "employee");
+          setUserRole(data.role as "admin" | "geschaeftsfuehrer" | "member");
         }
 
-        await loadQuickData(user.id, data?.role || "employee");
+        await loadQuickData(user.id, data?.role || "member");
       } catch (error) {
         console.error("Error in user initialization:", error);
         redirect("/sign-in");
@@ -89,11 +89,11 @@ export default function DashboardAnalyticsPage() {
         return;
       }
 
-      // Calculate stats
       const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        .toISOString()
-        .split("T")[0];
+      const fmtLocal = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+      const today = fmtLocal(now);
 
       const startOfWeek = new Date(
         now.getFullYear(),
@@ -103,14 +103,15 @@ export default function DashboardAnalyticsPage() {
       const dayOfWeek = now.getDay();
       const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
       startOfWeek.setDate(startOfWeek.getDate() - daysToMonday);
-      const startOfWeekStr = startOfWeek.toISOString().split("T")[0];
+      const startOfWeekStr = fmtLocal(startOfWeek);
 
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const startOfMonthStr = startOfMonth.toISOString().split("T")[0];
+      const startOfMonthStr = fmtLocal(startOfMonth);
 
       const normalizeDate = (dateStr: string) => {
-        const date = new Date(dateStr + "T00:00:00.000Z");
-        return date.toISOString().split("T")[0];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+        const d = new Date(dateStr);
+        return fmtLocal(d);
       };
 
       // Calculate today's hours

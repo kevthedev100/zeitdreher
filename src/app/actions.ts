@@ -66,11 +66,11 @@ export const signUpAction = async (formData: FormData) => {
           .single();
 
       if (adminInvitation && !adminInvitationError) {
-        userRole = "admin_member";
+        userRole = "member";
         isAdminCreated = true;
 
         console.log(
-          "Admin invitation found, setting role to admin_member for user:",
+          "Admin invitation found, setting role to member for user:",
           email,
         );
 
@@ -142,13 +142,12 @@ export const signUpAction = async (formData: FormData) => {
             .single();
 
           if (userData) {
-            // Add user to the organization with admin_member role
             const { error: orgMemberError } = await supabase
               .from("organization_members")
               .insert({
                 organization_id: organizationId,
                 user_id: userData.id,
-                role: "admin_member",
+                role: "member",
                 invited_by: adminInvitation.invited_by,
                 joined_at: new Date().toISOString(),
                 is_active: true,
@@ -161,53 +160,9 @@ export const signUpAction = async (formData: FormData) => {
               );
             } else {
               console.log(
-                "Successfully added admin_member to organization:",
+                "Successfully added member to organization:",
                 userData.id,
               );
-
-              // Create team activity entry
-              try {
-                // Get inviter's name for the activity log
-                const { data: inviterData } = await supabase
-                  .from("users")
-                  .select("full_name")
-                  .eq("id", adminInvitation.invited_by)
-                  .single();
-
-                // Create a team activity entry (you may need to create this table if it doesn't exist)
-                // For now, we'll use a simple approach and create an entry in a team_activities table
-                // If this table doesn't exist, you can create it or use another approach
-                const activityData = {
-                  organization_id: organizationId,
-                  user_id: userData.id,
-                  activity_type: "member_joined",
-                  description: `${fullName} joined the team as admin member`,
-                  created_by: adminInvitation.invited_by,
-                  created_at: new Date().toISOString(),
-                  metadata: {
-                    user_name: fullName,
-                    user_email: email,
-                    role: "admin_member",
-                    invited_by: inviterData?.full_name || "Admin",
-                  },
-                };
-
-                // Try to insert into team_activities table (create if needed)
-                const { error: activityError } = await supabase
-                  .from("team_activities")
-                  .insert(activityData);
-
-                if (activityError) {
-                  console.log(
-                    "Team activities table might not exist, creating activity log entry in alternative way:",
-                    activityError,
-                  );
-                  // Alternative: Log to console or handle differently
-                  console.log("Team Activity:", activityData);
-                }
-              } catch (activityError) {
-                console.error("Error creating team activity:", activityError);
-              }
             }
           }
         }
@@ -220,69 +175,26 @@ export const signUpAction = async (formData: FormData) => {
       }
     } else if (isInvitation && organizationId) {
       try {
-        // Find pending invitations for this email
-        const { data: pendingInvitation } = await supabase
-          .from("team_invitations")
-          .select("*")
-          .eq("email", email)
-          .gt("expires_at", new Date().toISOString())
-          .order("created_at", { ascending: false })
-          .limit(1)
+        const { data: userData } = await supabase
+          .from("users")
+          .select("id")
+          .eq("user_id", user.id)
           .single();
 
-        if (pendingInvitation) {
-          // Get the inviter's user data
-          const { data: inviterUserData } = await supabase
-            .from("users")
-            .select("id")
-            .eq("user_id", pendingInvitation.invited_by)
-            .single();
-
-          if (inviterUserData) {
-            // Get the inviter's organization membership
-            const { data: inviterOrgData } = await supabase
-              .from("organization_members")
-              .select("organization_id")
-              .eq("user_id", inviterUserData.id)
-              .eq("is_active", true)
-              .single();
-
-            if (inviterOrgData) {
-              // Add user to the organization
-              const { data: userData } = await supabase
-                .from("users")
-                .select("id")
-                .eq("user_id", user.id)
-                .single();
-
-              if (userData) {
-                await supabase.from("organization_members").insert({
-                  organization_id: inviterOrgData.organization_id,
-                  user_id: userData.id,
-                  role: invitationRole,
-                  invited_by: inviterUserData.id,
-                  joined_at: new Date().toISOString(),
-                  is_active: true,
-                });
-
-                // Mark invitation as accepted
-                await supabase
-                  .from("team_invitations")
-                  .update({
-                    accepted: true,
-                    accepted_at: new Date().toISOString(),
-                  })
-                  .eq("id", pendingInvitation.id);
-              }
-            }
-          }
+        if (userData) {
+          await supabase.from("organization_members").insert({
+            organization_id: organizationId,
+            user_id: userData.id,
+            role: "member",
+            joined_at: new Date().toISOString(),
+            is_active: true,
+          });
         }
       } catch (invitationProcessError) {
         console.error(
           "Error in invitation processing:",
           invitationProcessError,
         );
-        // Don't fail the signup if invitation processing fails
       }
     }
   }
@@ -806,81 +718,40 @@ export const getTeamMembers = async (organizationId?: string) => {
   const orgId = organizationId || userHierarchyData.organization_id;
   if (!orgId) return [];
 
-  // Get team members based on user role using helper functions
-  if (
-    userHierarchy.user_role === "admin" ||
-    userHierarchy.user_role === "admin_member"
-  ) {
-    // Admins and admin_members can see all organization members
-    const { data, error } = await supabase
-      .from("organization_hierarchy")
-      .select("*")
-      .eq("organization_id", orgId);
-
-    if (error) {
-      console.error(
-        "Error fetching team members for admin/admin_member:",
-        error,
-      );
-      return [];
-    }
-
-    console.log(
-      "Found team members for admin/admin_member:",
-      data?.length || 0,
-    );
-
-    return (
-      data?.map((member: { user_id: string; user_role: string; user_name: string; user_email: string }) => ({
-        id: member.user_id,
-        role: member.user_role,
-        joined_at: new Date().toISOString(), // Placeholder since view doesn't have this
-        user: {
-          id: member.user_id,
-          user_id: member.user_id,
-          full_name: member.user_name,
-          email: member.user_email,
-          avatar_url: null,
-          created_at: new Date().toISOString(),
-        },
-      })) || []
-    );
-  } else if (userHierarchy.user_role === "manager") {
-    // Managers can see their team members using the helper function
-    const { data, error } = await supabase.rpc("get_user_team_members", {
-      user_uuid: user.id,
-      org_id: orgId,
-    });
-
-    if (error) {
-      console.error("Error fetching team members for manager:", error);
-      return [];
-    }
-
-    return (
-      data?.map((member: { member_id: string; member_name: string; member_email: string; joined_at: string }) => ({
-        id: member.member_id,
-        role: "member",
-        joined_at: member.joined_at,
-        user: {
-          id: member.member_id,
-          user_id: member.member_id,
-          full_name: member.member_name,
-          email: member.member_email,
-          avatar_url: null,
-          created_at: member.joined_at,
-        },
-      })) || []
-    );
+  if (userHierarchy.user_role !== "admin" && userHierarchy.user_role !== "geschaeftsfuehrer") {
+    return [];
   }
 
-  return [];
+  const { data, error } = await supabase
+    .from("organization_hierarchy")
+    .select("*")
+    .eq("organization_id", orgId);
+
+  if (error) {
+    console.error("Error fetching team members:", error);
+    return [];
+  }
+
+  return (
+    data?.map((member: { user_id: string; user_role: string; user_name: string; user_email: string }) => ({
+      id: member.user_id,
+      role: member.user_role,
+      joined_at: new Date().toISOString(),
+      user: {
+        id: member.user_id,
+        user_id: member.user_id,
+        full_name: member.user_name,
+        email: member.user_email,
+        avatar_url: null,
+        created_at: new Date().toISOString(),
+      },
+    })) || []
+  );
 };
 
 export const getTeamInvitations = async () => {
   const supabase = await createClient();
 
-  // Get current user
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -888,14 +759,14 @@ export const getTeamInvitations = async () => {
     return [];
   }
 
-  // Get pending invitations
   const { data, error } = await supabase
-    .from("team_invitations")
+    .from("admin_invitations")
     .select("*")
-    .gt("expires_at", new Date().toISOString()); // Only get non-expired invitations
+    .eq("accepted", false)
+    .gt("expires_at", new Date().toISOString());
 
   if (error) {
-    console.error("Error fetching team invitations:", error);
+    console.error("Error fetching invitations:", error);
     return [];
   }
 
@@ -933,14 +804,13 @@ export const removeTeamMember = async (memberId: string) => {
       .eq("is_active", true)
       .single();
 
-    if (!orgMembership || !["admin", "manager"].includes(orgMembership.role)) {
+    if (!orgMembership || orgMembership.role !== "admin") {
       return {
         success: false,
-        error: "Only admins and managers can remove team members",
+        error: "Only admins can remove team members",
       };
     }
 
-    // Get the target member's data
     const { data: targetMember } = await supabase
       .from("users")
       .select("id")
@@ -951,7 +821,6 @@ export const removeTeamMember = async (memberId: string) => {
       return { success: false, error: "Target member not found" };
     }
 
-    // Remove from organization_members (the correct table)
     const { error: removeError } = await supabase
       .from("organization_members")
       .delete()
@@ -961,13 +830,6 @@ export const removeTeamMember = async (memberId: string) => {
     if (removeError) {
       return { success: false, error: removeError.message };
     }
-
-    // Also remove from team_hierarchies if exists
-    await supabase
-      .from("team_hierarchies")
-      .delete()
-      .eq("organization_id", orgMembership.organization_id)
-      .eq("member_id", targetMember.id);
 
     return { success: true, message: "Team member removed successfully" };
   } catch (error) {
@@ -1113,8 +975,8 @@ export const changeUserRole = async (formData: FormData) => {
     return { success: false, error: "Missing required parameters" };
   }
 
-  if (!["admin", "manager", "member"].includes(newRole)) {
-    return { success: false, error: "Invalid role" };
+  if (!["admin", "geschaeftsfuehrer", "member"].includes(newRole)) {
+    return { success: false, error: "Invalid role. Must be admin, geschaeftsfuehrer, or member." };
   }
 
   const supabase = await createClient();
@@ -1147,51 +1009,6 @@ export const changeUserRole = async (formData: FormData) => {
   }
 };
 
-export const assignManagerToMember = async (formData: FormData) => {
-  const managerId = formData.get("manager_id")?.toString();
-  const memberId = formData.get("member_id")?.toString();
-  const organizationId = formData.get("organization_id")?.toString();
-
-  if (!managerId || !memberId || !organizationId) {
-    return { success: false, error: "Missing required parameters" };
-  }
-
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false, error: "User not authenticated" };
-  }
-
-  // Get current user data
-  const { data: userData } = await supabase
-    .from("users")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!userData) {
-    return { success: false, error: "User data not found" };
-  }
-
-  // Create team hierarchy relationship
-  const { error } = await supabase.from("team_hierarchies").insert({
-    organization_id: organizationId,
-    manager_id: managerId,
-    member_id: memberId,
-    created_by: userData.id,
-  });
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
-  return { success: true };
-};
-
-// Get team performance data using the new database view
 export const getTeamPerformanceData = async (organizationId?: string) => {
   const supabase = await createClient();
 
@@ -1202,31 +1019,21 @@ export const getTeamPerformanceData = async (organizationId?: string) => {
     return [];
   }
 
-  // Get user's role and organization
   const { data: userHierarchy } = await supabase
     .from("organization_hierarchy")
     .select("*")
     .eq("user_id", user.id)
     .single();
 
-  if (!userHierarchy) return [];
+  if (!userHierarchy || (userHierarchy.user_role !== "admin" && userHierarchy.user_role !== "geschaeftsfuehrer")) return [];
 
   const orgId = organizationId || userHierarchy.organization_id;
   if (!orgId) return [];
 
-  // Get team performance data based on user role
-  let query = supabase
-    .from("manager_team_performance")
+  const { data, error } = await supabase
+    .from("organization_hierarchy")
     .select("*")
     .eq("organization_id", orgId);
-
-  // If user is a manager, only show their team's performance
-  if (userHierarchy.user_role === "manager") {
-    query = query.eq("manager_id", userHierarchy.user_id);
-  }
-  // Admins see all team performance data (no additional filter)
-
-  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching team performance data:", error);
@@ -1234,49 +1041,6 @@ export const getTeamPerformanceData = async (organizationId?: string) => {
   }
 
   return data || [];
-};
-
-// Check if user can manage another user using the database function
-export const checkUserManagementPermission = async (
-  targetUserId: string,
-  organizationId?: string,
-) => {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return false;
-  }
-
-  // Get user's organization if not provided
-  let orgId = organizationId;
-  if (!orgId) {
-    const { data: userHierarchy } = await supabase
-      .from("organization_hierarchy")
-      .select("organization_id")
-      .eq("user_id", user.id)
-      .single();
-
-    orgId = userHierarchy?.organization_id;
-  }
-
-  if (!orgId) return false;
-
-  // Use the database function to check permissions
-  const { data, error } = await supabase.rpc("can_user_manage", {
-    manager_uuid: user.id,
-    target_user_id: targetUserId,
-    org_id: orgId,
-  });
-
-  if (error) {
-    console.error("Error checking user management permission:", error);
-    return false;
-  }
-
-  return data || false;
 };
 
 export const createUserAction = async (formData: FormData) => {
@@ -1326,10 +1090,10 @@ export const createUserAction = async (formData: FormData) => {
       .eq("is_active", true)
       .single();
 
-    if (!orgMember || !["admin", "manager"].includes(orgMember.role)) {
+    if (!orgMember || orgMember.role !== "admin") {
       return {
         success: false,
-        error: "Only admins and managers can create users",
+        error: "Only admins can create users",
       };
     }
 
@@ -1416,11 +1180,11 @@ export const createUserAction = async (formData: FormData) => {
     return {
       success: true,
       message:
-        "User created successfully! They will receive a verification email to activate their account with full license privileges.",
+        "User created successfully! They will receive a verification email to activate their account.",
       data: {
         email,
         full_name: fullName,
-        role: "admin_member",
+        role: "member",
         invitation_id: invitationData.id,
         user_id: user.id,
         confirmation_sent: true,
@@ -1496,22 +1260,11 @@ export const inviteTeamMember = async (formData: FormData) => {
       };
     }
 
-    // Check if user has permission to invite (admin or manager)
-    if (!["admin", "manager"].includes(orgMember.role)) {
+    if (orgMember.role !== "admin") {
       return {
         success: false,
-        error: "Only admins and managers can invite members",
+        error: "Only admins can invite members",
       };
-    }
-
-    // Validate role
-    if (!["admin", "manager", "member"].includes(role)) {
-      return { success: false, error: "Invalid role specified" };
-    }
-
-    // Managers can only invite members, not admins or other managers
-    if (orgMember.role === "manager" && role !== "member") {
-      return { success: false, error: "Managers can only invite members" };
     }
 
     // Check if the email is already registered

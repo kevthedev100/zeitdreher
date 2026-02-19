@@ -13,13 +13,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Mic,
   MicOff,
   Clock,
@@ -354,7 +347,7 @@ export default function TimeEntryForm({
         .eq("user_id", user.id)
         .single();
 
-      const currentUserRole = currentUserData?.role || "employee";
+      const currentUserRole = currentUserData?.role || "member";
       console.log("Current user role for areas loading:", currentUserRole);
 
       // Determine which user ID to use for loading categories
@@ -369,7 +362,7 @@ export default function TimeEntryForm({
 
       // If we have a specific target user (editing someone else's entry), filter by that user
       // Otherwise, load current user's areas
-      if (targetUserId && (currentUserRole === "admin" || currentUserRole === "manager")) {
+      if (targetUserId && currentUserRole === "admin") {
         // Admin/Manager editing another user's entry - load that user's areas
         query = query.eq("user_id", targetUserId);
         console.log("Admin/Manager loading areas for user:", targetUserId);
@@ -434,7 +427,7 @@ export default function TimeEntryForm({
         .eq("user_id", user.id)
         .single();
 
-      const currentUserRole = currentUserData?.role || "employee";
+      const currentUserRole = currentUserData?.role || "member";
       
       // Determine which user ID to use for loading categories
       const targetUserId = entryOwnerId || specificUserId;
@@ -449,7 +442,7 @@ export default function TimeEntryForm({
 
       // If we have a specific target user (editing someone else's entry), filter by that user
       // Otherwise, load current user's fields
-      if (targetUserId && (currentUserRole === "admin" || currentUserRole === "manager")) {
+      if (targetUserId && currentUserRole === "admin") {
         // Admin/Manager editing another user's entry - load that user's fields
         query = query.eq("user_id", targetUserId);
         console.log("Admin/Manager loading fields for user:", targetUserId);
@@ -502,7 +495,7 @@ export default function TimeEntryForm({
         .eq("user_id", user.id)
         .single();
 
-      const currentUserRole = currentUserData?.role || "employee";
+      const currentUserRole = currentUserData?.role || "member";
       
       // Determine which user ID to use for loading categories
       const targetUserId = entryOwnerId || specificUserId;
@@ -517,7 +510,7 @@ export default function TimeEntryForm({
 
       // If we have a specific target user (editing someone else's entry), filter by that user
       // Otherwise, load current user's activities
-      if (targetUserId && (currentUserRole === "admin" || currentUserRole === "manager")) {
+      if (targetUserId && currentUserRole === "admin") {
         // Admin/Manager editing another user's entry - load that user's activities
         query = query.eq("user_id", targetUserId);
         console.log("Admin/Manager loading activities for user:", targetUserId);
@@ -1012,7 +1005,7 @@ export default function TimeEntryForm({
         .eq("user_id", user.id)
         .single();
 
-      const currentUserRole = currentUserData?.role || "employee";
+      const currentUserRole = currentUserData?.role || "member";
       
       // Determine which user ID to use for loading categories
       const targetUserId = entryOwnerId || specificUserId;
@@ -1027,7 +1020,7 @@ export default function TimeEntryForm({
 
       // If we have a specific target user (editing someone else's entry), filter by that user
       // Otherwise, load current user's fields
-      if (targetUserId && (currentUserRole === "admin" || currentUserRole === "manager")) {
+      if (targetUserId && currentUserRole === "admin") {
         // Admin/Manager editing another user's entry - load that user's fields
         query = query.eq("user_id", targetUserId);
         console.log("Admin/Manager loading fields for user:", targetUserId);
@@ -1082,7 +1075,7 @@ export default function TimeEntryForm({
         .eq("user_id", user.id)
         .single();
 
-      const currentUserRole = currentUserData?.role || "employee";
+      const currentUserRole = currentUserData?.role || "member";
       
       // Determine which user ID to use for loading categories
       const targetUserId = entryOwnerId || specificUserId;
@@ -1097,7 +1090,7 @@ export default function TimeEntryForm({
 
       // If we have a specific target user (editing someone else's entry), filter by that user
       // Otherwise, load current user's activities
-      if (targetUserId && (currentUserRole === "admin" || currentUserRole === "manager")) {
+      if (targetUserId && currentUserRole === "admin") {
         // Admin/Manager editing another user's entry - load that user's activities
         query = query.eq("user_id", targetUserId);
         console.log("Admin/Manager loading activities for user:", targetUserId);
@@ -2280,56 +2273,54 @@ export default function TimeEntryForm({
 
   if (loading) {
     return (
-      <div className="bg-white p-2 sm:p-6">
-        <Card className="max-w-2xl mx-auto">
-          <CardContent className="p-6">
-            <div className="animate-pulse space-y-4">
-              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-              <div className="h-10 bg-gray-200 rounded"></div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="h-10 bg-gray-200 rounded"></div>
-                <div className="h-10 bg-gray-200 rounded"></div>
-                <div className="h-10 bg-gray-200 rounded"></div>
-              </div>
+      <div className="bg-white p-4 sm:p-6">
+        <div className="max-w-2xl mx-auto bg-white border border-gray-200 rounded-lg p-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-4 bg-gray-200 rounded-md w-1/4"></div>
+            <div className="h-10 bg-gray-200 rounded-md"></div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="h-10 bg-gray-200 rounded-md"></div>
+              <div className="h-10 bg-gray-200 rounded-md"></div>
+              <div className="h-10 bg-gray-200 rounded-md"></div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white p-2 sm:p-6">
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+    <div className="bg-white p-4 sm:p-6">
+      <div className="max-w-2xl mx-auto bg-white border border-gray-200 rounded-lg">
+        <div className="p-6 pb-0">
+          <h3 className="text-gray-900 font-semibold text-base flex items-center gap-2">
             {isEditing ? (
-              <Edit className="w-5 h-5" />
+              <Edit className="w-5 h-5 text-gray-900" />
             ) : (
-              <Clock className="w-5 h-5" />
+              <Clock className="w-5 h-5 text-gray-900" />
             )}
             {isEditing ? "Zeiteintrag bearbeiten" : "Zeiteintrag"}
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-gray-500 text-sm mt-1">
             {isEditing
               ? "Bearbeiten Sie Ihren bestehenden Zeiteintrag"
               : "Erfassen Sie Ihre Arbeitszeit mit Spracheingabe oder manueller Eingabe"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div className="p-6 pt-4">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Timer and Voice Controls */}
             <div className="flex flex-col items-center space-y-4">
               {/* Timer Display */}
               {isTimerRunning && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 w-full max-w-md">
-                  <div className="flex items-center justify-center gap-2 text-green-700">
+                <div className="bg-white border border-gray-200 rounded-lg p-4 w-full max-w-md">
+                  <div className="flex items-center justify-center gap-2 text-gray-900">
                     <Timer className="w-5 h-5 animate-pulse" />
                     <span className="text-2xl font-mono font-bold">
                       {formatElapsedTime(elapsedTime)}
                     </span>
                   </div>
-                  <p className="text-center text-sm text-green-600 mt-1">
+                  <p className="text-center text-sm text-gray-500 mt-1">
                     Timer läuft... Drücken Sie Strg+Shift+S zum Stoppen und
                     Spracheingabe
                   </p>
@@ -2343,7 +2334,7 @@ export default function TimeEntryForm({
                   onClick={handleVoiceToggle}
                   variant={isRecording ? "destructive" : "outline"}
                   size="lg"
-                  className="flex items-center gap-2 h-12"
+                  className="flex items-center gap-2 h-12 border-gray-200 rounded-md"
                 >
                   {isRecording ? (
                     <>
@@ -2363,7 +2354,7 @@ export default function TimeEntryForm({
                   onClick={isTimerRunning ? stopTimer : startTimer}
                   variant={isTimerRunning ? "destructive" : "default"}
                   size="lg"
-                  className="flex items-center gap-2 h-12"
+                  className={`flex items-center gap-2 h-12 rounded-md ${!isTimerRunning ? "bg-gray-900 text-white hover:bg-gray-800" : ""}`}
                 >
                   {isTimerRunning ? (
                     <>
@@ -2382,9 +2373,9 @@ export default function TimeEntryForm({
                   <Button
                     type="button"
                     onClick={stopTimerAndStartVoice}
-                    variant="secondary"
+                    variant="outline"
                     size="lg"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 border-gray-200 rounded-md"
                   >
                     <Square className="w-4 h-4" />
                     <Mic className="w-4 h-4" />
@@ -2395,8 +2386,8 @@ export default function TimeEntryForm({
             </div>
 
             {isRecording && (
-              <div className="text-center p-4 bg-red-50 rounded-lg">
-                <div className="flex items-center justify-center gap-2 text-red-600">
+              <div className="text-center p-4 bg-white border border-gray-200 rounded-lg">
+                <div className="flex items-center justify-center gap-2 text-gray-900">
                   <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
                   Aufnahme läuft... Sprechen Sie Ihren Zeiteintrag natürlich
                 </div>
@@ -2407,13 +2398,13 @@ export default function TimeEntryForm({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="area">Bereich</Label>
+                  <Label htmlFor="area" className="text-gray-900">Bereich</Label>
                   <Dialog open={isAddingArea} onOpenChange={setIsAddingArea}>
                     <DialogTrigger asChild>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-6 w-6 p-0"
+                        className="h-6 w-6 p-0 border-gray-200 rounded-md"
                       >
                         <Plus className="w-3 h-3" />
                       </Button>
@@ -2430,6 +2421,7 @@ export default function TimeEntryForm({
                           placeholder="Bereichsname"
                           value={newAreaName}
                           onChange={(e) => setNewAreaName(e.target.value)}
+                          className="border-gray-200 rounded-md"
                         />
                         <div className="flex gap-2">
                           <Button onClick={handleAddArea}>Hinzufügen</Button>
@@ -2455,7 +2447,7 @@ export default function TimeEntryForm({
                     setActivities([]);
                   }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="border-gray-200 rounded-md">
                     <SelectValue placeholder="Bereich auswählen" />
                   </SelectTrigger>
                   <SelectContent>
@@ -2470,13 +2462,13 @@ export default function TimeEntryForm({
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="field">Feld</Label>
+                  <Label htmlFor="field" className="text-gray-900">Feld</Label>
                   <Dialog open={isAddingField} onOpenChange={setIsAddingField}>
                     <DialogTrigger asChild>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-6 w-6 p-0"
+                        className="h-6 w-6 p-0 border-gray-200 rounded-md"
                         disabled={!selectedArea}
                       >
                         <Plus className="w-3 h-3" />
@@ -2494,12 +2486,14 @@ export default function TimeEntryForm({
                           placeholder="Feldname"
                           value={newFieldName}
                           onChange={(e) => setNewFieldName(e.target.value)}
+                          className="border-gray-200 rounded-md"
                         />
                         <div className="flex gap-2">
-                          <Button onClick={handleAddField}>Hinzufügen</Button>
+                          <Button onClick={handleAddField} className="bg-gray-900 text-white hover:bg-gray-800 rounded-md">Hinzufügen</Button>
                           <Button
                             variant="outline"
                             onClick={() => setIsAddingField(false)}
+                            className="border-gray-200 rounded-md"
                           >
                             Abbrechen
                           </Button>
@@ -2518,7 +2512,7 @@ export default function TimeEntryForm({
                   }}
                   disabled={!selectedArea || fields.length === 0}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="border-gray-200 rounded-md">
                     <SelectValue
                       placeholder={
                         !selectedArea
@@ -2541,7 +2535,7 @@ export default function TimeEntryForm({
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="activity">Aktivität</Label>
+                  <Label htmlFor="activity" className="text-gray-900">Aktivität</Label>
                   <Dialog
                     open={isAddingActivity}
                     onOpenChange={setIsAddingActivity}
@@ -2550,7 +2544,7 @@ export default function TimeEntryForm({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-6 w-6 p-0"
+                        className="h-6 w-6 p-0 border-gray-200 rounded-md"
                         disabled={!selectedField}
                       >
                         <Plus className="w-3 h-3" />
@@ -2568,14 +2562,16 @@ export default function TimeEntryForm({
                           placeholder="Aktivitätsname"
                           value={newActivityName}
                           onChange={(e) => setNewActivityName(e.target.value)}
+                          className="border-gray-200 rounded-md"
                         />
                         <div className="flex gap-2">
-                          <Button onClick={handleAddActivity}>
+                          <Button onClick={handleAddActivity} className="bg-gray-900 text-white hover:bg-gray-800 rounded-md">
                             Hinzufügen
                           </Button>
                           <Button
                             variant="outline"
                             onClick={() => setIsAddingActivity(false)}
+                            className="border-gray-200 rounded-md"
                           >
                             Abbrechen
                           </Button>
@@ -2589,7 +2585,7 @@ export default function TimeEntryForm({
                   onValueChange={setSelectedActivity}
                   disabled={!selectedField || activities.length === 0}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="border-gray-200 rounded-md">
                     <SelectValue
                       placeholder={
                         !selectedField
@@ -2616,7 +2612,7 @@ export default function TimeEntryForm({
               {/* Date and Duration */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="date">Datum</Label>
+                  <Label htmlFor="date" className="text-gray-900">Datum</Label>
                   <div className="relative">
                     <Input
                       id="date"
@@ -2624,20 +2620,21 @@ export default function TimeEntryForm({
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
                       required
+                      className="border-gray-200 rounded-md"
                     />
                     <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="duration">Dauer</Label>
+                  <Label htmlFor="duration" className="text-gray-900">Dauer</Label>
                   <Input
                     id="duration"
                     type="text"
                     placeholder="Wird automatisch berechnet"
                     value={duration}
                     disabled={true}
-                    className="bg-gray-100 text-gray-500"
+                    className="bg-gray-50 text-gray-500 border-gray-200 rounded-md"
                     onChange={(e) => {
                       // Only allow manual input if start or end time is missing
                       if (!startTime || !endTime) {
@@ -2657,12 +2654,13 @@ export default function TimeEntryForm({
               {/* Start and End Time */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="startTime">Startzeit</Label>
+                  <Label htmlFor="startTime" className="text-gray-900">Startzeit</Label>
                   <Input
                     id="startTime"
                     type="time"
                     step="1"
                     value={startTime}
+                    className="border-gray-200 rounded-md"
                     onChange={(e) => {
                       setStartTime(e.target.value);
                       // Auto-calculate duration if end time is set
@@ -2675,12 +2673,13 @@ export default function TimeEntryForm({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="endTime">Endzeit</Label>
+                  <Label htmlFor="endTime" className="text-gray-900">Endzeit</Label>
                   <Input
                     id="endTime"
                     type="time"
                     step="1"
                     value={endTime}
+                    className="border-gray-200 rounded-md"
                     onChange={(e) => {
                       setEndTime(e.target.value);
                       // Auto-calculate duration if start time is set
@@ -2695,8 +2694,8 @@ export default function TimeEntryForm({
 
               {/* Time Range Display */}
               {startTime && endTime && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <div className="flex items-center gap-2 text-blue-700">
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-gray-900">
                     <Clock className="w-4 h-4" />
                     <span className="font-medium">
                       Arbeitszeit: {formatTimeDisplay(startTime)} -{" "}
@@ -2710,13 +2709,14 @@ export default function TimeEntryForm({
 
             {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="description">Beschreibung</Label>
+              <Label htmlFor="description" className="text-gray-900">Beschreibung</Label>
               <Textarea
                 id="description"
                 placeholder="Kurze Beschreibung der durchgeführten Arbeit..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
+                className="border-gray-200 rounded-md"
               />
             </div>
 
@@ -2725,14 +2725,14 @@ export default function TimeEntryForm({
               !selectedField ||
               !selectedActivity ||
               !duration) && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 text-yellow-700">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-gray-900">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
                   <span className="text-sm font-medium">
                     Bitte vervollständigen Sie die Eingabe:
                   </span>
                 </div>
-                <ul className="mt-2 text-sm text-yellow-600 space-y-1">
+                <ul className="mt-2 text-sm text-gray-500 space-y-1">
                   {!selectedArea && <li>• Bereich auswählen</li>}
                   {selectedArea && !selectedField && <li>• Feld auswählen</li>}
                   {selectedField && !selectedActivity && (
@@ -2773,6 +2773,7 @@ export default function TimeEntryForm({
                     </div>
                     <div className="flex gap-3">
                       <Button 
+                        className="flex-1 bg-gray-900 text-white hover:bg-gray-800 rounded-md"
                         onClick={async () => {
                           // User confirmed - proceed with the selection
                           setSelectedArea(activityConfirmationData.areaId);
@@ -2804,19 +2805,18 @@ export default function TimeEntryForm({
                           setShowActivityConfirmation(false);
                           setActivityConfirmationData(null);
                         }}
-                        className="flex-1"
                       >
                         Ja, das ist richtig
                       </Button>
                       <Button 
                         variant="outline" 
+                        className="flex-1 border-gray-200 rounded-md"
                         onClick={async () => {
                           // User rejected - suggest creating new activity
                           setShowActivityConfirmation(false);
                           await suggestNewActivity(activityConfirmationData.originalInput, activityConfirmationData.parsedData);
                           setActivityConfirmationData(null);
                         }}
-                        className="flex-1"
                       >
                         Nein, neue Aktivität erstellen
                       </Button>
@@ -2851,7 +2851,7 @@ export default function TimeEntryForm({
                     {/* Option to change area/field */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Bereich ändern (optional)</Label>
+                        <Label className="text-gray-900">Bereich ändern (optional)</Label>
                         <Select 
                           value={newActivitySuggestionData.suggestedArea.id}
                           onValueChange={async (value) => {
@@ -2875,7 +2875,7 @@ export default function TimeEntryForm({
                             }
                           }}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="border-gray-200 rounded-md">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -2889,7 +2889,7 @@ export default function TimeEntryForm({
                       </div>
                       
                       <div className="space-y-2">
-                        <Label>Feld ändern (optional)</Label>
+                        <Label className="text-gray-900">Feld ändern (optional)</Label>
                         <Select 
                           value={newActivitySuggestionData.suggestedField.id}
                           onValueChange={(value) => {
@@ -2902,7 +2902,7 @@ export default function TimeEntryForm({
                             }
                           }}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="border-gray-200 rounded-md">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -2918,22 +2918,22 @@ export default function TimeEntryForm({
                     
                     <div className="flex gap-3">
                       <Button 
+                        className="flex-1 bg-gray-900 text-white hover:bg-gray-800 rounded-md"
                         onClick={async () => {
                           await createNewActivityFromVoice(newActivitySuggestionData);
                           setShowNewActivitySuggestion(false);
                           setNewActivitySuggestionData(null);
                         }}
-                        className="flex-1"
                       >
                         Ja, Aktivität erstellen
                       </Button>
                       <Button 
                         variant="outline" 
+                        className="flex-1 border-gray-200 rounded-md"
                         onClick={() => {
                           setShowNewActivitySuggestion(false);
                           setNewActivitySuggestionData(null);
                         }}
-                        className="flex-1"
                       >
                         Abbrechen
                       </Button>
@@ -2947,7 +2947,7 @@ export default function TimeEntryForm({
             <div className="flex gap-3">
               <Button
                 type="submit"
-                className="flex-1"
+                className="flex-1 bg-gray-900 text-white hover:bg-gray-800 rounded-md"
                 size="lg"
                 disabled={
                   !selectedArea ||
@@ -2965,6 +2965,7 @@ export default function TimeEntryForm({
                   type="button"
                   variant="outline"
                   size="lg"
+                  className="border-gray-200 rounded-md"
                   onClick={() => {
                     // Reset form to new entry mode
                     setIsEditing(false);
@@ -2986,8 +2987,8 @@ export default function TimeEntryForm({
               )}
             </div>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

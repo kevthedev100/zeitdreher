@@ -31,7 +31,7 @@ export default function DashboardOverviewPage() {
 
   return (
     <SubscriptionCheck>
-      <OverviewTab userRole="employee" isOnboarded={true} />
+      <OverviewTab userRole="member" isOnboarded={true} />
     </SubscriptionCheck>
   );
 }

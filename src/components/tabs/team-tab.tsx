@@ -49,7 +49,6 @@ import {
   getTeamInvitations,
   inviteTeamMember,
   removeTeamMember,
-  checkUserManagementPermission,
   getUserOrganizations,
   changeUserRole,
 } from "@/app/actions";
@@ -191,7 +190,7 @@ function RecentActivities({
 }
 
 interface TeamTabProps {
-  userRole: "admin" | "manager" | "employee";
+  userRole: "admin" | "geschaeftsfuehrer" | "member";
 }
 
 interface TeamMember {
@@ -268,11 +267,10 @@ export default function TeamTab({ userRole }: TeamTabProps) {
         getTeamInvitations(),
       ]);
 
-      setTeamMembers(membersData || []);
+      setTeamMembers((membersData || []) as any);
       setInvitations(invitationsData || []);
 
-      // Calculate team statistics
-      await calculateTeamStats(membersData || []);
+      await calculateTeamStats((membersData || []) as any);
     } catch (error) {
       console.error("Error loading team data:", error);
     } finally {
@@ -390,10 +388,8 @@ export default function TeamTab({ userRole }: TeamTabProps) {
 
   const handleRemoveMember = async (memberId: string) => {
     try {
-      // Check if current user has permission to remove this member
-      const canManage = await checkUserManagementPermission(memberId);
-      if (!canManage) {
-        console.error("You don't have permission to remove this team member");
+      if (userRole !== "admin") {
+        console.error("Only admins can remove team members");
         return;
       }
 
@@ -408,16 +404,16 @@ export default function TeamTab({ userRole }: TeamTabProps) {
     }
   };
 
-  if (!["admin", "manager"].includes(userRole)) {
+  if (userRole === "member") {
     return (
-      <div className="bg-white p-6">
+      <div className="bg-white p-6 border border-gray-200 rounded-lg">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 mx-auto mb-4 text-amber-500" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Access Denied
+            Zugriff verweigert
           </h3>
-          <p className="text-gray-600">
-            Only administrators and managers can access team management.
+          <p className="text-gray-500">
+            Nur Administratoren und Geschäftsführer haben Zugriff auf die Teamverwaltung.
           </p>
         </div>
       </div>
@@ -435,7 +431,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
       <div className="bg-white p-1 sm:p-4 lg:p-6">
         <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
           {!hasOrganization && (
-            <Card className="border-2 border-yellow-200 bg-yellow-50">
+            <Card className="border border-yellow-200 bg-yellow-50 shadow-none rounded-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Building className="w-5 h-5 text-yellow-600" />
@@ -460,7 +456,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
           )}
 
           {hasOrganization && (
-            <Card>
+            <Card className="bg-white border border-gray-200 shadow-none rounded-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Building className="w-5 h-5" />
@@ -486,37 +482,40 @@ export default function TeamTab({ userRole }: TeamTabProps) {
               <h1 className="text-3xl font-bold text-gray-900">
                 Team Management
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className="text-gray-500 mt-1">
                 Manage your team members and view team analytics
               </p>
             </div>
             <div className="flex items-center gap-3">
               <Button
-                variant="outline"
-                size="sm"
-                onClick={loadTeamData}
-                disabled={loading || !hasOrganization}
+                  variant="outline"
+                  size="sm"
+                  className="border-gray-200 hover:bg-gray-50"
+                  onClick={loadTeamData}
+                  disabled={loading || !hasOrganization}
               >
                 <RefreshCw
                   className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
                 />
               </Button>
-              {hasOrganization ? (
-                <Dialog
-                  open={addUserDialogOpen}
-                  onOpenChange={setAddUserDialogOpen}
-                >
-                  <DialogTrigger asChild>
-                    <Button className="bg-blue-600 hover:bg-blue-700">
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      Nutzer Hinzufügen
-                    </Button>
-                  </DialogTrigger>
-                </Dialog>
-              ) : (
-                <CreateOrganizationDialog
-                  onOrganizationCreated={checkOrganizationStatus}
-                />
+              {userRole === "admin" && (
+                hasOrganization ? (
+                  <Dialog
+                    open={addUserDialogOpen}
+                    onOpenChange={setAddUserDialogOpen}
+                  >
+                    <DialogTrigger asChild>
+                      <Button className="bg-gray-900 text-white hover:bg-gray-800">
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        Nutzer Hinzufügen
+                      </Button>
+                    </DialogTrigger>
+                  </Dialog>
+                ) : (
+                  <CreateOrganizationDialog
+                    onOrganizationCreated={checkOrganizationStatus}
+                  />
+                )
               )}
               {hasOrganization && (
                 <Dialog
@@ -585,6 +584,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                         <Button
                           type="button"
                           variant="outline"
+                          className="border-gray-200 hover:bg-gray-50"
                           onClick={() => {
                             setAddUserDialogOpen(false);
                             setNewUserData({
@@ -596,7 +596,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                         >
                           Abbrechen
                         </Button>
-                        <Button type="submit" disabled={addUserLoading}>
+                        <Button type="submit" disabled={addUserLoading} className="bg-gray-900 text-white hover:bg-gray-800">
                           {addUserLoading ? (
                             <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                           ) : (
@@ -614,59 +614,59 @@ export default function TeamTab({ userRole }: TeamTabProps) {
 
           {/* Team Statistics */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 py-2">
-                <CardTitle className="text-sm font-medium">
+            <Card className="bg-white border border-gray-200 shadow-none rounded-lg">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
+                <CardTitle className="text-sm font-medium text-gray-900">
                   Team Members
                 </CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
+                <Users className="h-4 w-4 text-gray-500" />
               </CardHeader>
-              <CardContent className="px-3 py-2">
-                <div className="text-2xl font-bold">
+              <CardContent className="p-6 pt-0">
+                <div className="text-2xl font-bold text-gray-900">
                   {teamStats.totalMembers}
                 </div>
-                <p className="text-xs text-muted-foreground">Active members</p>
+                <p className="text-xs text-gray-500">Active members</p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 py-2">
-                <CardTitle className="text-sm font-medium">This Week</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
+            <Card className="bg-white border border-gray-200 shadow-none rounded-lg">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
+                <CardTitle className="text-sm font-medium text-gray-900">This Week</CardTitle>
+                <Clock className="h-4 w-4 text-gray-500" />
               </CardHeader>
-              <CardContent className="px-3 py-2">
-                <div className="text-2xl font-bold">
+              <CardContent className="px-3 py-2 p-6 pt-0">
+                <div className="text-2xl font-bold text-gray-900">
                   {teamStats.totalHoursThisWeek.toFixed(1)}h
                 </div>
-                <p className="text-xs text-muted-foreground">Team total</p>
+                <p className="text-xs text-gray-500">Team total</p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 py-2">
-                <CardTitle className="text-sm font-medium">
+            <Card className="bg-white border border-gray-200 shadow-none rounded-lg">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
+                <CardTitle className="text-sm font-medium text-gray-900">
                   This Month
                 </CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <Calendar className="h-4 w-4 text-gray-500" />
               </CardHeader>
-              <CardContent className="px-3 py-2">
-                <div className="text-2xl font-bold">
+              <CardContent className="p-6 pt-0">
+                <div className="text-2xl font-bold text-gray-900">
                   {teamStats.totalHoursThisMonth.toFixed(1)}h
                 </div>
-                <p className="text-xs text-muted-foreground">Team total</p>
+                <p className="text-xs text-gray-500">Team total</p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 py-2">
-                <CardTitle className="text-sm font-medium">Average</CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <Card className="bg-white border border-gray-200 shadow-none rounded-lg">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
+                <CardTitle className="text-sm font-medium text-gray-900">Average</CardTitle>
+                <BarChart3 className="h-4 w-4 text-gray-500" />
               </CardHeader>
-              <CardContent className="px-3 py-2">
-                <div className="text-2xl font-bold">
+              <CardContent className="p-6 pt-0">
+                <div className="text-2xl font-bold text-gray-900">
                   {teamStats.averageHoursPerMember.toFixed(1)}h
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-500">
                   Per member/month
                 </p>
               </CardContent>
@@ -720,32 +720,30 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                               {member.user.email}
                             </p>
                             <div className="flex items-center gap-2">
+                              {userRole === "admin" ? (
                               <Dialog>
                                 <DialogTrigger asChild>
                                   <Badge
                                     variant={
                                       member.role === "admin"
                                         ? "default"
-                                        : member.role === "manager"
-                                          ? "secondary"
-                                          : "outline"
+                                        : "outline"
                                     }
                                     className="text-xs cursor-pointer hover:bg-gray-100"
                                   >
-                                    {member.role}
+                                    {member.role === "geschaeftsfuehrer" ? "Geschäftsführer" : member.role}
                                   </Badge>
                                 </DialogTrigger>
                                 <DialogContent>
                                   <DialogHeader>
                                     <DialogTitle>
-                                      Change Member Role
+                                      Rolle ändern
                                     </DialogTitle>
                                     <DialogDescription>
-                                      Update the role for{" "}
+                                      Rolle ändern für{" "}
                                       {member.user.full_name ||
                                         member.user.email}
-                                      . Different roles have different
-                                      permissions in the system.
+                                      .
                                     </DialogDescription>
                                   </DialogHeader>
                                   <form
@@ -779,7 +777,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                                   >
                                     <div className="space-y-2">
                                       <Label htmlFor="new_role">
-                                        Select Role
+                                        Rolle auswählen
                                       </Label>
                                       <select
                                         id="new_role"
@@ -787,20 +785,16 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                                         className="w-full p-2 border rounded-md"
                                         defaultValue={member.role}
                                       >
-                                        {userRole === "admin" && (
-                                          <option value="admin">Admin</option>
-                                        )}
-                                        <option value="manager">Manager</option>
-                                        <option value="member">Member</option>
+                                        <option value="admin">Administrator</option>
+                                        <option value="geschaeftsfuehrer">Geschäftsführer</option>
+                                        <option value="member">Mitglied</option>
                                       </select>
                                       <p className="text-xs text-gray-500 mt-1">
-                                        Admin: Full access to all features
+                                        Administrator: Voller Zugriff auf alle Funktionen
                                         <br />
-                                        Manager: Can manage team members and
-                                        view team data
+                                        Geschäftsführer: Einblick in Mitglieder und Performance
                                         <br />
-                                        Member: Basic access to time tracking
-                                        features
+                                        Mitglied: Zugriff auf eigene Zeiterfassung
                                       </p>
                                     </div>
                                     <div className="flex justify-end gap-2">
@@ -815,13 +809,21 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                                             ?.dispatchEvent(new Event("close"))
                                         }
                                       >
-                                        Cancel
+                                        Abbrechen
                                       </Button>
-                                      <Button type="submit">Update Role</Button>
+                                      <Button type="submit">Rolle ändern</Button>
                                     </div>
                                   </form>
                                 </DialogContent>
                               </Dialog>
+                              ) : (
+                              <Badge
+                                variant={member.role === "admin" ? "default" : "outline"}
+                                className="text-xs"
+                              >
+                                {member.role === "geschaeftsfuehrer" ? "Geschäftsführer" : member.role === "admin" ? "Admin" : "Mitglied"}
+                              </Badge>
+                              )}
                               <p className="text-xs text-gray-400">
                                 Joined{" "}
                                 {new Date(
@@ -831,6 +833,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                             </div>
                           </div>
                         </div>
+                        {userRole === "admin" && (
                         <div className="flex items-center gap-2">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -845,29 +848,29 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>
-                                  Remove Team Member
+                                  Mitglied entfernen
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to remove{" "}
+                                  Möchten Sie{" "}
                                   {member.user.full_name || member.user.email}{" "}
-                                  from your team? This action cannot be undone
-                                  and they will lose access to team features.
+                                  wirklich aus dem Team entfernen? Diese Aktion kann nicht rückgängig gemacht werden.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() =>
                                     handleRemoveMember(member.user.id)
                                   }
                                   className="bg-red-600 hover:bg-red-700"
                                 >
-                                  Remove Member
+                                  Entfernen
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
                         </div>
+                        )}
                       </div>
                     ))}
                   </div>

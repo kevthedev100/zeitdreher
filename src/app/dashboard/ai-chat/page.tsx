@@ -8,7 +8,7 @@ import AIChatTab from "@/components/tabs/ai-chat-tab";
 
 export default function DashboardAIChatPage() {
   const supabase = createClient();
-  const [userRole, setUserRole] = useState<"manager" | "employee">("employee");
+  const [userRole, setUserRole] = useState<"admin" | "geschaeftsfuehrer" | "member">("member");
 
   useEffect(() => {
     const getUser = async () => {
@@ -30,7 +30,7 @@ export default function DashboardAIChatPage() {
           .single();
 
         if (data) {
-          setUserRole(data.role as "manager" | "employee");
+          setUserRole(data.role as "admin" | "geschaeftsfuehrer" | "member");
         }
       } catch (error) {
         console.error("Error in user initialization:", error);

@@ -49,8 +49,7 @@ export function SubscriptionCheck({
         return;
       }
 
-      // Admin members get full access without subscription check
-      if (userData?.role === "admin_member") {
+      if (userData?.role === "admin" || userData?.role === "member") {
         setLoading(false);
         return;
       }

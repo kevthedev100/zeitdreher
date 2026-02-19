@@ -36,13 +36,13 @@ type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
 type Area = Database["public"]["Tables"]["areas"]["Row"];
 
 interface AnalyticsDashboardProps {
-  userRole?: "admin" | "manager" | "employee";
+  userRole?: "admin" | "geschaeftsfuehrer" | "member";
   isOnboarded?: boolean;
   userId?: string | null;
 }
 
 export default function TimeAnalyticsDashboard({
-  userRole = "employee",
+  userRole = "member",
   isOnboarded = false,
   userId = null,
 }: AnalyticsDashboardProps) {
@@ -59,7 +59,7 @@ export default function TimeAnalyticsDashboard({
   }, []);
 
   useEffect(() => {
-    if (currentUser || userRole === "manager") {
+    if (currentUser || userRole === "admin") {
       loadData();
     }
   }, [currentUser, userRole]);
@@ -156,9 +156,6 @@ export default function TimeAnalyticsDashboard({
       if (areasError) throw areasError;
       setAreas(areasData || []);
 
-      // Get today's date for filtering
-      const today = new Date().toISOString().split("T")[0];
-
       // Load time entries with related data
       let query = supabase
         .from("time_entries")
@@ -177,11 +174,11 @@ export default function TimeAnalyticsDashboard({
       if (userId) {
         // If userId is explicitly provided, use it
         query = query.eq("user_id", userId);
-      } else if (userRole === "employee" && currentUser) {
-        // Employees only see their own entries
+      } else if (userRole === "member" && currentUser) {
+        // Members only see their own entries
         query = query.eq("user_id", currentUser.id);
-      } else if (userRole === "manager" && currentUser) {
-        // Managers only see their own entries in analytics view
+      } else if (userRole === "admin" && currentUser) {
+        // Admins only see their own entries in analytics view
         query = query.eq("user_id", currentUser.id);
       } else if (currentUser) {
         // Fallback to current user if no specific filtering is applied
@@ -240,34 +237,32 @@ export default function TimeAnalyticsDashboard({
       };
     }
 
-    // Use local timezone for all date calculations
     const now = new Date();
 
-    // Get today's date in local timezone (YYYY-MM-DD format)
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-      .toISOString()
-      .split("T")[0];
+    // Format a local Date as YYYY-MM-DD without UTC shift
+    const fmtLocal = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+    const today = fmtLocal(now);
     console.log("Today's date (local):", today);
 
-    // Calculate start of current week (Monday) in local timezone
     const startOfWeek = new Date(
       now.getFullYear(),
       now.getMonth(),
       now.getDate(),
     );
     const dayOfWeek = now.getDay();
-    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, so we need 6 days back
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     startOfWeek.setDate(startOfWeek.getDate() - daysToMonday);
-    const startOfWeekStr = startOfWeek.toISOString().split("T")[0];
+    const startOfWeekStr = fmtLocal(startOfWeek);
     console.log("Start of week (Monday, local):", startOfWeekStr);
 
-    // Calculate start of last week
     const startOfLastWeek = new Date(startOfWeek);
     startOfLastWeek.setDate(startOfWeek.getDate() - 7);
-    const startOfLastWeekStr = startOfLastWeek.toISOString().split("T")[0];
+    const startOfLastWeekStr = fmtLocal(startOfLastWeek);
     const endOfLastWeek = new Date(startOfWeek);
     endOfLastWeek.setDate(startOfWeek.getDate() - 1);
-    const endOfLastWeekStr = endOfLastWeek.toISOString().split("T")[0];
+    const endOfLastWeekStr = fmtLocal(endOfLastWeek);
     console.log(
       "Last week range (local):",
       startOfLastWeekStr,
@@ -275,16 +270,15 @@ export default function TimeAnalyticsDashboard({
       endOfLastWeekStr,
     );
 
-    // Calculate start of current month in local timezone
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfMonthStr = startOfMonth.toISOString().split("T")[0];
+    const startOfMonthStr = fmtLocal(startOfMonth);
     console.log("Start of month (local):", startOfMonthStr);
 
-    // Helper function to normalize date strings for comparison
+    // Normalize DB date strings to YYYY-MM-DD (they may already be in this format)
     const normalizeDate = (dateStr: string) => {
-      // Ensure we're working with YYYY-MM-DD format
-      const date = new Date(dateStr + "T00:00:00.000Z");
-      return date.toISOString().split("T")[0];
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+      const d = new Date(dateStr);
+      return fmtLocal(d);
     };
 
     // Calculate today's hours
@@ -490,42 +484,10 @@ export default function TimeAnalyticsDashboard({
 
   if (loading) {
     return (
-      <div className="bg-white p-1 sm:p-4 lg:p-6">
-        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
-          {/* Loading skeleton */}
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2 mb-6"></div>
-
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-6 mb-4 sm:mb-6">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="bg-white border rounded-lg p-6">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
-                  <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-                </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-              <div className="bg-white border rounded-lg p-6">
-                <div className="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
-                <div className="space-y-3">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="h-4 bg-gray-200 rounded"></div>
-                  ))}
-                </div>
-              </div>
-              <div className="bg-white border rounded-lg p-6">
-                <div className="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
-                <div className="space-y-3">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="h-4 bg-gray-200 rounded"></div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-gray-200 border-t-blue-600 rounded-full animate-spin" />
+          <p className="text-sm text-gray-500">Laden der Analytik...</p>
         </div>
       </div>
     );
@@ -533,144 +495,149 @@ export default function TimeAnalyticsDashboard({
 
   if (error) {
     return (
-      <div className="bg-white p-1 sm:p-4 lg:p-6">
-        <div className="max-w-7xl mx-auto">
-          <Card className="border-red-200">
-            <CardContent className="px-3 py-2">
-              <div className="text-center">
-                <div className="text-red-600 mb-2">
-                  <Clock className="w-12 h-12 mx-auto mb-4" />
-                </div>
-                <h3 className="text-lg font-semibold text-red-800 mb-2">
-                  Fehler beim Laden der Daten
-                </h3>
-                <p className="text-red-600 mb-4">{error}</p>
-                <Button onClick={refreshData} variant="outline">
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Erneut versuchen
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="text-center">
+            <Clock className="w-12 h-12 mx-auto mb-4 text-red-500" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Fehler beim Laden der Daten
+            </h3>
+            <p className="text-gray-500 mb-4">{error}</p>
+            <Button
+              onClick={refreshData}
+              variant="outline"
+              className="border-gray-200 hover:border-blue-600 hover:text-blue-600"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Erneut versuchen
+            </Button>
+          </div>
         </div>
       </div>
     );
   }
 
+  const cardClassName =
+    "bg-white border border-gray-200 rounded-lg shadow-none";
+
   return (
-    <div className="bg-white p-1 sm:p-4 lg:p-6">
-      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Zeit-Analytik</h1>
-            <p className="text-gray-600 mt-1">
-              {userRole === "manager"
-                ? "Unternehmensweite Zeiterfassungsübersicht"
-                : "Ihr persönliches Zeiterfassungs-Dashboard"}
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Zeit-Analytik
+          </h1>
+          <p className="text-gray-500 mt-1 text-sm">
+            {userRole === "admin"
+              ? "Unternehmensweite Zeiterfassungsübersicht"
+              : "Ihr persönliches Zeiterfassungs-Dashboard"}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refreshData}
+            disabled={loading}
+            className="border-gray-200 hover:border-blue-600 hover:text-blue-600"
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+            />
+          </Button>
+          <Badge
+            variant={userRole === "admin" ? "default" : "secondary"}
+            className="text-sm border border-gray-200"
+          >
+            {userRole === "admin"
+              ? "Manager-Ansicht"
+              : "Mitarbeiter-Ansicht"}
+          </Badge>
+        </div>
+      </div>
+
+      {/* Key Metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className={cardClassName}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
+            <CardTitle className="text-sm font-medium text-gray-900">
+              Heutige Stunden
+            </CardTitle>
+            <Clock className="h-4 w-4 text-gray-500" />
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <div className="text-2xl font-semibold text-gray-900">
+              {timeData.todayHours.toFixed(1)}h
+            </div>
+            <p className="text-sm text-gray-500 mt-1">Heute erfasst</p>
+          </CardContent>
+        </Card>
+
+        <Card className={cardClassName}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
+            <CardTitle className="text-sm font-medium text-gray-900">
+              Diese Woche
+            </CardTitle>
+            <Calendar className="h-4 w-4 text-gray-500" />
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <div className="text-2xl font-semibold text-gray-900">
+              {timeData.thisWeek.toFixed(1)}h
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              {timeData.thisWeek >= timeData.lastWeek ? "+" : ""}
+              {(timeData.thisWeek - timeData.lastWeek).toFixed(1)}h seit
+              letzter Woche
             </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={refreshData}
-              disabled={loading}
-            >
-              <RefreshCw
-                className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
-              />
-            </Button>
-            <Badge
-              variant={userRole === "manager" ? "default" : "secondary"}
-              className="text-sm"
-            >
-              {userRole === "manager"
-                ? "Manager-Ansicht"
-                : "Mitarbeiter-Ansicht"}
-            </Badge>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-6 sm:mt-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 py-2">
-              <CardTitle className="text-sm font-medium">
-                Heutige Stunden
-              </CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="px-3 py-2">
-              <div className="text-2xl font-bold">
-                {timeData.todayHours.toFixed(1)}h
-              </div>
-              <p className="text-xs text-muted-foreground">Heute erfasst</p>
-            </CardContent>
-          </Card>
+        <Card className={cardClassName}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
+            <CardTitle className="text-sm font-medium text-gray-900">
+              Dieser Monat
+            </CardTitle>
+            <TrendingUp className="h-4 w-4 text-gray-500" />
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <div className="text-2xl font-semibold text-gray-900">
+              {timeData.thisMonth.toFixed(1)}h
+            </div>
+            <p className="text-sm text-gray-500 mt-1">Monatsstunden</p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 py-2">
-              <CardTitle className="text-sm font-medium">Diese Woche</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="px-3 py-2">
-              <div className="text-2xl font-bold">
-                {timeData.thisWeek.toFixed(1)}h
-              </div>
-              <p className="text-xs text-green-600">
-                {timeData.thisWeek >= timeData.lastWeek ? "+" : ""}
-                {(timeData.thisWeek - timeData.lastWeek).toFixed(1)}h seit
-                letzter Woche
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 py-2">
-              <CardTitle className="text-sm font-medium">
-                Dieser Monat
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="px-3 py-2">
-              <div className="text-2xl font-bold">
-                {timeData.thisMonth.toFixed(1)}h
-              </div>
-              <p className="text-xs text-muted-foreground">Monatsstunden</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 py-2">
-              <CardTitle className="text-sm font-medium">
-                Top-Aktivität
-              </CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="px-3 py-2">
-              <div className="text-2xl font-bold text-blue-600">
-                {timeData.topActivity}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Meiste Zeit verbracht
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        <Card className={cardClassName}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
+            <CardTitle className="text-sm font-medium text-gray-900">
+              Top-Aktivität
+            </CardTitle>
+            <BarChart3 className="h-4 w-4 text-gray-500" />
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <div className="text-2xl font-semibold text-blue-600">
+              {timeData.topActivity}
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              Meiste Zeit verbracht
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
         {/* Daily Time Distribution Bar */}
-        <Card className="bg-transparent sm:bg-white border-0 sm:border shadow-none sm:shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5" />
+        <Card className={cardClassName}>
+          <CardHeader className="p-6">
+            <CardTitle className="flex items-center gap-2 text-gray-900">
+              <Clock className="w-5 h-5 text-gray-500" />
               Tagesübersicht
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-gray-500">
               Zeitverteilung über den Tag (5 Uhr bis 0 Uhr)
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6 pt-0">
             <div className="space-y-4">
               {timeEntries.length > 0 ? (
                 <div>
@@ -682,7 +649,7 @@ export default function TimeAnalyticsDashboard({
                       </div>
                     ))}
                   </div>
-                  <div className="h-10 bg-gray-100 rounded-lg relative">
+                  <div className="h-10 bg-gray-100 rounded-lg relative border border-gray-200">
                     {/* Create a single continuous bar */}
                     <div className="absolute top-0 left-0 h-full w-full">
                       {/* Process entries to create time segments */}
@@ -703,8 +670,8 @@ export default function TimeAnalyticsDashboard({
                           });
                         };
 
-                        // Get today's date for filtering
-                        const today = new Date().toISOString().split("T")[0];
+                        const nowLocal = new Date();
+                        const today = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, "0")}-${String(nowLocal.getDate()).padStart(2, "0")}`;
 
                         // Map entries to segments - ONLY TODAY'S ENTRIES
                         timeEntries
@@ -937,7 +904,7 @@ export default function TimeAnalyticsDashboard({
                       })()}
                     </div>
                   </div>
-                  <div className="mt-2 text-sm text-center text-gray-600">
+                  <div className="mt-2 text-sm text-center text-gray-500">
                     Der Balken zeigt Ihre Zeitverteilung über den Tag (klicken
                     zum Bearbeiten)
                   </div>
@@ -952,19 +919,19 @@ export default function TimeAnalyticsDashboard({
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Time Distribution Pie Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <PieChart className="w-5 h-5" />
+          <Card className={cardClassName}>
+            <CardHeader className="p-6">
+              <CardTitle className="flex items-center gap-2 text-gray-900">
+                <PieChart className="w-5 h-5 text-gray-500" />
                 Zeitverteilung nach Bereichen
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-gray-500">
                 Aufschlüsselung der Stunden nach verschiedenen Arbeitsbereichen
               </CardDescription>
             </CardHeader>
-            <CardContent className="px-3 py-2">
+            <CardContent className="p-6 pt-0">
               <div className="space-y-4">
                 {areaBreakdown.length > 0 ? (
                   areaBreakdown.map((area, index) => (
@@ -984,7 +951,7 @@ export default function TimeAnalyticsDashboard({
                         <span className="font-medium">{area.name}</span>
                       </div>
                       <div className="text-right">
-                        <div className="font-semibold">
+                        <div className="font-semibold text-gray-900">
                           {area.hours.toFixed(1)}h
                         </div>
                         <div className="text-sm text-gray-500">
@@ -1021,33 +988,33 @@ export default function TimeAnalyticsDashboard({
           </Card>
 
           {/* Weekly Trend Bar Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
+          <Card className={cardClassName}>
+            <CardHeader className="p-6">
+              <CardTitle className="flex items-center gap-2 text-gray-900">
+                <BarChart3 className="w-5 h-5 text-gray-500" />
                 Wöchentlicher Stunden-Trend
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-gray-500">
                 Täglich gearbeitete Stunden diese Woche
               </CardDescription>
             </CardHeader>
-            <CardContent className="px-3 py-2">
+            <CardContent className="p-6 pt-0">
               <div className="space-y-4">
                 {weeklyTrend.length > 0 ? (
                   weeklyTrend.map((day, index) => (
                     <div key={index} className="flex items-center gap-4">
-                      <div className="w-12 text-sm font-medium">{day.day}</div>
+                      <div className="w-12 text-sm font-medium text-gray-900">{day.day}</div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <div className="flex-1 bg-gray-200 rounded-full h-2">
                             <div
-                              className="bg-blue-500 h-2 rounded-full"
+                              className="bg-blue-600 h-2 rounded-full"
                               style={{
                                 width: `${Math.min(100, (day.hours / 10) * 100)}%`,
                               }}
                             ></div>
                           </div>
-                          <span className="text-sm font-semibold w-12">
+                          <span className="text-sm font-semibold w-12 text-gray-900">
                             {day.hours.toFixed(1)}h
                           </span>
                         </div>
@@ -1066,31 +1033,31 @@ export default function TimeAnalyticsDashboard({
         </div>
 
         {/* Recent Time Entries Table */}
-        <Card className="bg-transparent sm:bg-white border-0 sm:border shadow-none sm:shadow-sm">
-          <CardHeader>
-            <CardTitle>Letzte Zeiteinträge</CardTitle>
-            <CardDescription>
-              {userRole === "manager"
+        <Card className={cardClassName}>
+          <CardHeader className="p-6">
+            <CardTitle className="text-gray-900">Letzte Zeiteinträge</CardTitle>
+            <CardDescription className="text-gray-500">
+              {userRole === "admin"
                 ? "Neueste Einträge aller Teammitglieder"
                 : "Ihre letzten Zeiteinträge"}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6 pt-0">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 font-medium">Aktivität</th>
-                    <th className="text-left py-2 font-medium">Bereich</th>
-                    <th className="text-left py-2 font-medium">Dauer</th>
-                    <th className="text-left py-2 font-medium">Datum</th>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 font-medium text-gray-900">Aktivität</th>
+                    <th className="text-left py-3 font-medium text-gray-900">Bereich</th>
+                    <th className="text-left py-3 font-medium text-gray-900">Dauer</th>
+                    <th className="text-left py-3 font-medium text-gray-900">Datum</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentEntries.length > 0 ? (
                     recentEntries.map((entry) => (
-                      <tr key={entry.id} className="border-b hover:bg-gray-50">
-                        <td className="py-3 font-medium">{entry.activity}</td>
+                      <tr key={entry.id} className="border-b border-gray-200 hover:bg-gray-50">
+                        <td className="py-3 font-medium text-gray-900">{entry.activity}</td>
                         <td className="py-3">
                           <Badge
                             variant="secondary"
@@ -1099,8 +1066,8 @@ export default function TimeAnalyticsDashboard({
                             {entry.area}
                           </Badge>
                         </td>
-                        <td className="py-3">{entry.duration.toFixed(1)}h</td>
-                        <td className="py-3 text-gray-600">
+                        <td className="py-3 text-gray-900">{entry.duration.toFixed(1)}h</td>
+                        <td className="py-3 text-gray-500">
                           {new Date(entry.date).toLocaleDateString("de-DE")}
                         </td>
                       </tr>
@@ -1122,6 +1089,5 @@ export default function TimeAnalyticsDashboard({
           </CardContent>
         </Card>
       </div>
-    </div>
   );
 }

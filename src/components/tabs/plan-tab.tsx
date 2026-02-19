@@ -229,13 +229,13 @@ export default function PlanTab({ userId }: PlanTabProps) {
 
     if (status === "trialing") {
       return (
-        <Card className="mb-8 border-blue-200 bg-blue-50">
+        <Card className="mb-8 bg-white border border-gray-200 rounded-lg shadow-none">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-blue-600" />
+            <CardTitle className="flex items-center gap-2 text-gray-900">
+              <Clock className="h-5 w-5 text-gray-500" />
               Kostenlose Testphase
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-gray-500">
               Sie befinden sich in der 14-tägigen kostenlosen Testphase
             </CardDescription>
           </CardHeader>
@@ -243,11 +243,13 @@ export default function PlanTab({ userId }: PlanTabProps) {
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-gray-500">Verbleibende Tage</p>
-                <p className="text-2xl font-bold">{trialDaysLeft} Tage</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {trialDaysLeft} Tage
+                </p>
               </div>
-              <div className="w-full bg-blue-100 rounded-full h-2.5">
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div
-                  className="bg-blue-600 h-2.5 rounded-full"
+                  className="bg-gray-900 h-2.5 rounded-full"
                   style={{ width: `${((14 - trialDaysLeft) / 14) * 100}%` }}
                 ></div>
               </div>
@@ -263,13 +265,13 @@ export default function PlanTab({ userId }: PlanTabProps) {
       );
     } else if (status === "active") {
       return (
-        <Card className="mb-8 border-green-200 bg-green-50">
+        <Card className="mb-8 bg-white border border-gray-200 rounded-lg shadow-none">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
+            <CardTitle className="flex items-center gap-2 text-gray-900">
+              <CheckCircle className="h-5 w-5 text-gray-500" />
               Aktives Abonnement
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-gray-500">
               {licenseQuantity} {licenseQuantity === 1 ? "Lizenz" : "Lizenzen"}{" "}
               für {formatCurrency(pricePerLicense, currency)} pro Lizenz/Monat
             </CardDescription>
@@ -278,11 +280,13 @@ export default function PlanTab({ userId }: PlanTabProps) {
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-gray-500">Nächste Abrechnung in</p>
-                <p className="text-2xl font-bold">{daysUntilRenewal} Tagen</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {daysUntilRenewal} Tagen
+                </p>
               </div>
-              <div className="w-full bg-green-100 rounded-full h-2.5">
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div
-                  className="bg-green-600 h-2.5 rounded-full"
+                  className="bg-gray-900 h-2.5 rounded-full"
                   style={{ width: `${((30 - daysUntilRenewal) / 30) * 100}%` }}
                 ></div>
               </div>
@@ -338,13 +342,13 @@ export default function PlanTab({ userId }: PlanTabProps) {
       );
     } else {
       return (
-        <Card className="mb-8 border-blue-200 bg-blue-50">
+        <Card className="mb-8 bg-white border border-gray-200 rounded-lg shadow-none">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-blue-600" />
+            <CardTitle className="flex items-center gap-2 text-gray-900">
+              <Clock className="h-5 w-5 text-gray-500" />
               Kostenlose Testphase
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-gray-500">
               Sie befinden sich in der 14-tägigen kostenlosen Testphase
             </CardDescription>
           </CardHeader>
@@ -352,11 +356,11 @@ export default function PlanTab({ userId }: PlanTabProps) {
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-gray-500">Verbleibende Tage</p>
-                <p className="text-2xl font-bold">14 Tage</p>
+                <p className="text-2xl font-bold text-gray-900">14 Tage</p>
               </div>
-              <div className="w-full bg-blue-100 rounded-full h-2.5">
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div
-                  className="bg-blue-600 h-2.5 rounded-full"
+                  className="bg-gray-900 h-2.5 rounded-full"
                   style={{ width: `0%` }}
                 ></div>
               </div>
@@ -377,7 +381,7 @@ export default function PlanTab({ userId }: PlanTabProps) {
     return (
       <div className="container mx-auto py-8">
         <div className="flex flex-col items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-4" />
+          <Loader2 className="h-8 w-8 animate-spin text-gray-500 mb-4" />
           <p className="text-gray-500">Lade Abonnementinformationen...</p>
         </div>
       </div>
@@ -386,17 +390,21 @@ export default function PlanTab({ userId }: PlanTabProps) {
 
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-6">Abonnement & Lizenzen</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">
+        Abonnement & Lizenzen
+      </h1>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
           {error}
         </div>
       )}
 
       {renderSubscriptionDetails()}
 
-      <h2 className="text-2xl font-bold mb-4">Verfügbare Pläne</h2>
+      <h2 className="text-2xl font-bold text-gray-900 mb-4">
+        Verfügbare Pläne
+      </h2>
 
       <div className="flex flex-col gap-6 mb-8">
         {plans.length > 0 ? (
@@ -599,7 +607,7 @@ export default function PlanTab({ userId }: PlanTabProps) {
             );
           })
         ) : (
-          <Card>
+          <Card className="bg-white border border-gray-200 rounded-lg shadow-none">
             <CardContent className="pt-6">
               <p className="text-center text-gray-500">
                 Keine Pläne verfügbar. Bitte versuchen Sie es später erneut.
