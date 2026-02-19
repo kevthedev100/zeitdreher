@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "../../supabase/server";
 import { Button } from "./ui/button";
-import { User, UserCircle } from "lucide-react";
+import { User, UserCircle, Clock } from "lucide-react";
 import UserProfile from "./user-profile";
 
 export default async function Navbar() {
@@ -14,8 +14,13 @@ export default async function Navbar() {
   return (
     <nav className="w-full border-b border-gray-200 bg-white py-2">
       <div className="container mx-auto px-4 flex justify-between items-center">
-        <Link href="/" prefetch className="text-xl font-bold text-blue-600">
-          Zeitdreher
+        <Link
+          href="/"
+          prefetch
+          className="text-xl font-bold text-black flex items-center gap-2"
+        >
+          <Clock className="w-6 h-6" />
+          TimeFocusAI
         </Link>
         <div className="flex gap-4 items-center">
           {user ? (
