@@ -13,11 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import { createClient } from "../../supabase/client";
 import {
@@ -117,14 +112,12 @@ export default function Profile() {
 
       if (authError) throw authError;
 
-      // Update profile in users table
       const { error: profileError } = await supabase
         .from("users")
         .upsert({
           user_id: profile.id,
           full_name: profile.full_name,
           avatar_url: profile.avatar_url,
-          role: profile.role,
           department: profile.department,
           position: profile.position,
           phone: profile.phone,
@@ -251,24 +244,12 @@ export default function Profile() {
               </div>
 
               <div className="space-y-2">
-                <Label
-                  htmlFor="role"
-                  className="flex items-center gap-2 text-gray-900"
-                >
+                <Label className="flex items-center gap-2 text-gray-900">
                   <Briefcase className="w-4 h-4 text-gray-500" /> Rolle
                 </Label>
-                <Select
-                  value={profile?.role || "member"}
-                  onValueChange={(value) => handleChange("role", value)}
-                >
-                  <SelectTrigger className="border-gray-200 rounded-md">
-                    <SelectValue placeholder="Wähle deine Rolle" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="member">Mitarbeiter</SelectItem>
-                    <SelectItem value="admin">Administrator</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center h-10 px-3 rounded-md border border-gray-200 bg-gray-50 text-sm text-gray-500">
+                  {profile?.role === "admin" ? "Administrator" : "Mitglied"}
+                </div>
               </div>
 
               <div className="space-y-2">
