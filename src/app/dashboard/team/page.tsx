@@ -42,7 +42,7 @@ export default function TeamPage() {
             .single();
 
           if (orgMember) {
-            setUserRole(orgMember.role as "admin" | "manager" | "member");
+            setUserRole(orgMember.role === "member" ? "employee" : orgMember.role as "admin" | "manager" | "employee");
           } else {
             // Fallback to user table role if no organization membership
             const { data: userRole } = await supabase
@@ -53,9 +53,7 @@ export default function TeamPage() {
 
             if (userRole) {
               setUserRole(
-                userRole.role === "employee"
-                  ? "member"
-                  : (userRole.role as "admin" | "manager" | "member"),
+                userRole.role as "admin" | "manager" | "employee",
               );
             }
           }
