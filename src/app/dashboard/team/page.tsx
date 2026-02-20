@@ -71,13 +71,13 @@ export default function TeamPage() {
   if (loading) {
     return (
       <div className="p-6 flex justify-center items-center">
-        <div className="animate-pulse">Loading...</div>
+        <div className="animate-pulse">Wird geladen...</div>
       </div>
     );
   }
 
   return (
-    <Suspense fallback={<div className="p-6">Loading team management...</div>}>
+    <Suspense fallback={<div className="p-6">Teamverwaltung wird geladen...</div>}>
       <TeamTab userRole={userRole} />
     </Suspense>
   );

@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "../../supabase/client";
-import { Clock, Send, Bot, RefreshCw } from "lucide-react";
+import { Clock, Send, Bot, RefreshCw, Mic, MicOff } from "lucide-react";
 
 interface TimeEntry {
   id: string;
@@ -45,16 +45,18 @@ export default function AIChat({ userRole = "member" }) {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [dataLoaded, setDataLoaded] = useState(false);
 
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+
   const supabase = createClient();
 
   useEffect(() => {
     loadCurrentUser();
-    // Add initial system message
     setMessages([
       {
         role: "system",
         content:
-          "Willkommen beim Zeitdreher AI-Chat! Ich kann dir helfen, deine Zeiteinträge zu analysieren und dir Produktivitätstipps zu geben. Wie kann ich dir heute helfen?",
+          "Hey! Ich bin dein AI-Buddy. Frag mich alles was du möchtest — ich kenne deine Zeiteinträge und helfe dir gerne weiter.",
         timestamp: new Date(),
       },
     ]);
@@ -247,6 +249,86 @@ export default function AIChat({ userRole = "member" }) {
     return context;
   };
 
+  const handleVoiceToggle = async () => {
+    if (!isRecording) {
+      setIsRecording(true);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        const audioChunks: Blob[] = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+          stream.getTracks().forEach((track) => track.stop());
+          setIsTranscribing(true);
+
+          try {
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const formData = new FormData();
+            formData.append("audio", audioBlob, "recording.webm");
+            formData.append("language", "de");
+            formData.append("user_id", user.id);
+
+            const response = await fetch(
+              `${(supabase as any).supabaseUrl}/functions/v1/supabase-functions-transcribe-audio`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+                },
+                body: formData,
+              },
+            );
+
+            if (!response.ok) throw new Error("Transcription failed");
+
+            const result = await response.json();
+            const transcription = result.transcription || result.text || "";
+            const junkPhrases = [
+              "untertitel der amara.org-community",
+              "untertitel von",
+              "amara.org",
+              "copyright",
+              "www.mooji.org",
+            ];
+            const isJunk = !transcription.trim() || junkPhrases.some((p) => transcription.trim().toLowerCase().includes(p));
+            if (isJunk) {
+              alert("Aufnahme nicht erkannt. Bitte versuche es erneut oder überprüfe dein Mikrofon.");
+            } else {
+              setInput((prev) => (prev ? prev + " " + transcription.trim() : transcription.trim()));
+            }
+          } catch (error) {
+            console.error("Error transcribing audio:", error);
+            alert("Aufnahme nicht erkannt. Bitte versuche es erneut oder überprüfe dein Mikrofon.");
+          } finally {
+            setIsTranscribing(false);
+          }
+        };
+
+        mediaRecorder.start();
+        (window as any).currentChatRecorder = mediaRecorder;
+      } catch (error) {
+        console.error("Error accessing microphone:", error);
+        setIsRecording(false);
+        alert("Fehler beim Zugriff auf das Mikrofon. Bitte überprüfen Sie die Berechtigungen.");
+      }
+    } else {
+      const recorder = (window as any).currentChatRecorder;
+      if (recorder && recorder.state === "recording") {
+        recorder.stop();
+      }
+      setIsRecording(false);
+    }
+  };
+
   const formatTimestamp = (date?: Date) => {
     if (!date) return "";
     return date.toLocaleTimeString("de-DE", {
@@ -261,11 +343,10 @@ export default function AIChat({ userRole = "member" }) {
         <CardHeader className="px-2 py-3 sm:p-6">
           <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
             <Bot className="w-5 h-5" />
-            Zeitdreher AI-Chat
+            Dein AI-Buddy
           </CardTitle>
           <CardDescription className="text-sm">
-            Erhalte intelligente Einblicke und Ratschläge zu deinen
-            Zeiteinträgen
+            Frag Ihn alles was du möchtest
           </CardDescription>
         </CardHeader>
         <CardContent className="px-2 sm:px-6">
@@ -316,31 +397,64 @@ export default function AIChat({ userRole = "member" }) {
             </div>
 
             {/* Input Area */}
-            <div className="flex gap-2">
-              <Textarea
-                placeholder="Stelle eine Frage zu deinen Zeiteinträgen..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                className="flex-1"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                disabled={isLoading || !dataLoaded}
-              />
-              <Button
-                onClick={handleSendMessage}
-                disabled={isLoading || !input.trim() || !dataLoaded}
-              >
-                {isLoading ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
+            <div className="flex gap-2 relative">
+              <div className="flex-1 relative">
+                <Textarea
+                  placeholder={isTranscribing ? "" : "Stelle eine Frage..."}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  className="flex-1 w-full"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  disabled={isLoading || !dataLoaded || isTranscribing}
+                />
+                {isTranscribing && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-md pointer-events-none">
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Wird transkribiert...</span>
+                    </div>
+                  </div>
                 )}
-              </Button>
+              </div>
+              <div className="flex flex-row gap-2 items-center">
+                <Button
+                  type="button"
+                  onClick={handleVoiceToggle}
+                  variant={isRecording ? "destructive" : "outline"}
+                  size="icon"
+                  disabled={isLoading}
+                  title={isRecording ? "Aufnahme stoppen" : "Spracheingabe"}
+                >
+                  {isRecording ? (
+                    <MicOff className="w-4 h-4" />
+                  ) : (
+                    <Mic className="w-4 h-4" />
+                  )}
+                </Button>
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={isLoading || !input.trim() || !dataLoaded}
+                  size="icon"
+                >
+                  {isLoading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
             </div>
+            {isRecording && (
+              <div className="flex items-center justify-center gap-2 mt-2 text-sm text-red-600">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                Aufnahme läuft...
+              </div>
+            )}
 
             {/* Data loading status */}
             {!dataLoaded && !isLoading && (

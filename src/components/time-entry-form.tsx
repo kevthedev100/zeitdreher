@@ -707,10 +707,19 @@ export default function TimeEntryForm({
       }
 
       const { parsed, transcription, confidence, processingMethod } = data;
-      console.log("Transcription:", transcription);
-      console.log("Parsed data:", parsed);
-      console.log("Confidence:", confidence);
-      console.log("Processing method:", processingMethod);
+
+      const junkPhrases = [
+        "untertitel der amara.org-community",
+        "untertitel von",
+        "amara.org",
+        "copyright",
+        "www.mooji.org",
+      ];
+      const isJunk = !transcription?.trim() || junkPhrases.some((p) => transcription.trim().toLowerCase().includes(p));
+      if (isJunk) {
+        alert("Aufnahme nicht erkannt. Bitte versuche es erneut oder überprüfe dein Mikrofon.");
+        return;
+      }
 
       // Apply parsed data to form with enhanced logic
       console.log(

@@ -151,7 +151,7 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="w-full bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+        <div className="text-gray-600">Wird geladen...</div>
       </div>
     );
   }
@@ -169,7 +169,7 @@ export default function Dashboard() {
         />
       )}
       <div className="w-full bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Redirecting to dashboard...</div>
+        <div className="text-gray-600">Weiterleitung zum Dashboard...</div>
       </div>
     </SubscriptionCheck>
   );

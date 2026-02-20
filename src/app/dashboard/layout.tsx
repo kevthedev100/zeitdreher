@@ -175,7 +175,7 @@ export default function DashboardLayout({
   if (loading) {
     return (
       <div className="w-full bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+        <div className="text-gray-600">Wird geladen...</div>
       </div>
     );
   }

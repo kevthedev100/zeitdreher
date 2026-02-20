@@ -71,14 +71,14 @@ export default function TeamPerformancePage() {
   if (loading) {
     return (
       <div className="p-6 flex justify-center items-center">
-        <div className="animate-pulse">Loading...</div>
+        <div className="animate-pulse">Wird geladen...</div>
       </div>
     );
   }
 
   return (
     <Suspense
-      fallback={<div className="p-6">Loading team performance data...</div>}
+      fallback={<div className="p-6">Teamleistung wird geladen...</div>}
     >
       <TeamPerformanceTab userRole={userRole} />
     </Suspense>
