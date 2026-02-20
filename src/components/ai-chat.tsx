@@ -63,7 +63,7 @@ export default function AIChat({ userRole = "member" }) {
   }, []);
 
   useEffect(() => {
-    if (currentUser || userRole === "admin") {
+    if (currentUser || userRole === "admin" || userRole === "geschaeftsfuehrer") {
       loadTimeEntries();
     }
   }, [currentUser, userRole]);

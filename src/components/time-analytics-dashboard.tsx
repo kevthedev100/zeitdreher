@@ -59,7 +59,7 @@ export default function TimeAnalyticsDashboard({
   }, []);
 
   useEffect(() => {
-    if (currentUser || userRole === "admin") {
+    if (currentUser || userRole === "admin" || userRole === "geschaeftsfuehrer") {
       loadData();
     }
   }, [currentUser, userRole]);
@@ -177,7 +177,7 @@ export default function TimeAnalyticsDashboard({
       } else if (userRole === "member" && currentUser) {
         // Members only see their own entries
         query = query.eq("user_id", currentUser.id);
-      } else if (userRole === "admin" && currentUser) {
+      } else if ((userRole === "admin" || userRole === "geschaeftsfuehrer") && currentUser) {
         // Admins only see their own entries in analytics view
         query = query.eq("user_id", currentUser.id);
       } else if (currentUser) {
@@ -529,7 +529,7 @@ export default function TimeAnalyticsDashboard({
             Zeit-Analytik
           </h1>
           <p className="text-gray-500 mt-1 text-sm">
-            {userRole === "admin"
+            {(userRole === "admin" || userRole === "geschaeftsfuehrer")
               ? "Unternehmensweite Zeiterfassungsübersicht"
               : "Ihr persönliches Zeiterfassungs-Dashboard"}
           </p>
@@ -547,10 +547,10 @@ export default function TimeAnalyticsDashboard({
             />
           </Button>
           <Badge
-            variant={userRole === "admin" ? "default" : "secondary"}
+            variant={(userRole === "admin" || userRole === "geschaeftsfuehrer") ? "default" : "secondary"}
             className="text-sm border border-gray-200"
           >
-            {userRole === "admin"
+            {(userRole === "admin" || userRole === "geschaeftsfuehrer")
               ? "Manager-Ansicht"
               : "Mitarbeiter-Ansicht"}
           </Badge>
@@ -1037,7 +1037,7 @@ export default function TimeAnalyticsDashboard({
           <CardHeader className="p-6">
             <CardTitle className="text-gray-900">Letzte Zeiteinträge</CardTitle>
             <CardDescription className="text-gray-500">
-              {userRole === "admin"
+              {(userRole === "admin" || userRole === "geschaeftsfuehrer")
                 ? "Neueste Einträge aller Teammitglieder"
                 : "Ihre letzten Zeiteinträge"}
             </CardDescription>

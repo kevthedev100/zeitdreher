@@ -209,7 +209,7 @@ export default function DashboardTabs({
   }, [supabase]);
 
   useEffect(() => {
-    if (currentUser || userRole === "admin") {
+    if (currentUser || userRole === "admin" || userRole === "geschaeftsfuehrer") {
       loadQuickData();
       checkEnoughDataForAnalysis();
     }

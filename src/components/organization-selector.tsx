@@ -96,10 +96,10 @@ export default function OrganizationSelector({
                   {org.organization.name}
                 </CardTitle>
                 <Badge
-                  variant={org.role === "admin" ? "default" : "secondary"}
+                  variant={(org.role === "admin" || org.role === "geschaeftsfuehrer") ? "default" : "secondary"}
                   className="text-xs"
                 >
-                  {org.role}
+                  {org.role === "geschaeftsfuehrer" ? "Geschäftsführer" : org.role === "admin" ? "Geschäftsführer" : org.role === "einzelnutzer" ? "Einzelnutzer" : "Mitglied"}
                 </Badge>
               </div>
               <CardDescription className="line-clamp-2">

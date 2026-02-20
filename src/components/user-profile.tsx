@@ -13,7 +13,7 @@ export default function UserProfile() {
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
-                    <UserCircle className="h-6 w-6" />
+                    <UserCircle className="h-6 w-6 text-white" />
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -21,7 +21,7 @@ export default function UserProfile() {
                     await supabase.auth.signOut()
                     router.push("/")
                 }}>
-                    Sign out
+                    Abmelden
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

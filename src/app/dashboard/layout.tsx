@@ -47,33 +47,10 @@ export default function DashboardLayout({
           .single();
 
         if (error) {
-          // PGRST116 means no rows returned - this is a new user
           if (error.code === "PGRST116") {
             console.log("New user detected, showing onboarding wizard");
             setShowOnboarding(true);
-            // Create user record if it doesn't exist
-            try {
-              // Create user record with proper headers
-              await supabase
-                .from("users")
-                .upsert(
-                  {
-                    user_id: user.id,
-                    full_name: user.user_metadata?.full_name || "",
-                    email: user.email || "",
-                    onboarded: false,
-                    role: "member",
-                  },
-                  {
-                    onConflict: "user_id",
-                  },
-                )
-                .throwOnError();
-
-              console.log("Created new user record for:", user.id);
-            } catch (insertError) {
-              console.error("Error creating user record:", insertError);
-            }
+            setUserData({ user_id: user.id, onboarded: false });
           } else {
             console.error("Error fetching user data:", error);
           }
@@ -118,58 +95,11 @@ export default function DashboardLayout({
     getUser();
   }, [supabase]);
 
-  const handleOnboardingComplete = async () => {
-    // Immediately update UI state to prevent wizard from showing again
+  const handleOnboardingComplete = () => {
     setShowOnboarding(false);
     setUserData((prev) =>
-      prev
-        ? { ...prev, onboarded: true }
-        : { user_id: user?.id || "", onboarded: true, role: "member" },
+      prev ? { ...prev, onboarded: true } : { user_id: user?.id || "", onboarded: true },
     );
-
-    // Update user's onboarded status in the database
-    if (user) {
-      try {
-        console.log("Updating onboarded status for user:", user.id);
-
-        const { error } = await supabase
-          .from("users")
-          .update({ onboarded: true })
-          .eq("user_id", user.id);
-
-        if (error) {
-          console.error("Error updating onboarded status:", error);
-          return;
-        }
-
-        console.log("User onboarded status updated successfully in database");
-      } catch (err) {
-        console.error("Exception in handleOnboardingComplete:", err);
-
-        // Fallback: try to upsert the record if update failed
-        try {
-          await supabase
-            .from("users")
-            .upsert(
-              {
-                user_id: user.id,
-                full_name: user.user_metadata?.full_name || "",
-                email: user.email || "",
-                onboarded: true,
-                role: "employee",
-              },
-              {
-                onConflict: "user_id",
-              },
-            )
-            .throwOnError();
-
-          console.log("Fallback: User record upserted with onboarded=true");
-        } catch (upsertError) {
-          console.error("Fallback upsert also failed:", upsertError);
-        }
-      }
-    }
   };
 
   if (loading) {

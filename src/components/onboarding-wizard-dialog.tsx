@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -21,14 +21,14 @@ export default function OnboardingWizardDialog({
   onComplete,
 }: OnboardingWizardDialogProps) {
   const [open, setOpen] = useState(true);
+  const [completed, setCompleted] = useState(false);
   const supabase = createClient();
 
-  // Mark user as onboarded when dialog is closed
-  const handleClose = async () => {
-    try {
-      console.log("Marking user as onboarded:", userId);
+  const handleComplete = async () => {
+    if (completed) return;
+    setCompleted(true);
 
-      // Update the user's onboarded status in the database
+    try {
       const { error } = await supabase
         .from("users")
         .update({ onboarded: true })
@@ -36,24 +36,24 @@ export default function OnboardingWizardDialog({
 
       if (error) {
         console.error("Error updating onboarding status:", error);
-      } else {
-        console.log("Successfully marked user as onboarded");
       }
-
-      setOpen(false);
-      if (onComplete) onComplete();
-
-      // Reload the page to ensure all user data and categories are properly loaded
-      window.location.reload();
     } catch (error) {
       console.error("Error updating onboarding status:", error);
-      setOpen(false);
-      if (onComplete) onComplete();
     }
+
+    setOpen(false);
+    if (onComplete) onComplete();
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen && !completed) {
+          handleComplete();
+        }
+      }}
+    >
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Willkommen bei Zeitdreher!</DialogTitle>
@@ -61,7 +61,7 @@ export default function OnboardingWizardDialog({
             Richten Sie Ihre Zeiterfassungsstruktur ein, um loszulegen.
           </DialogDescription>
         </DialogHeader>
-        <CategorySetupWizard onComplete={handleClose} />
+        <CategorySetupWizard onComplete={handleComplete} />
       </DialogContent>
     </Dialog>
   );
