@@ -97,7 +97,7 @@ export default function TimeEntriesTable({
   useEffect(() => {
     loadCurrentUser();
     loadAreas();
-    if (userRole === "admin") {
+    if (userRole === "admin" || userRole === "geschaeftsfuehrer") {
       loadTeamMembers();
     }
     loadTimeEntries();
@@ -593,7 +593,7 @@ export default function TimeEntriesTable({
                 {loading && <RefreshCw className="w-4 h-4 animate-spin ml-2 text-gray-400" />}
               </CardTitle>
               <CardDescription className="text-gray-500 mt-1">
-                {userRole === "admin"
+                {(userRole === "admin" || userRole === "geschaeftsfuehrer")
                   ? "Alle Team-Zeiteinträge mit erweiterten Filter- und Sortierfunktionen"
                   : "Ihre Zeiteinträge mit erweiterten Filter- und Sortierfunktionen"}
               </CardDescription>
@@ -633,7 +633,7 @@ export default function TimeEntriesTable({
             {/* Filter Row */}
             <div className="flex flex-wrap gap-2">
               {/* Team Member Filter - First position and always visible for managers/admins */}
-              {userRole === "admin" && (
+              {(userRole === "admin" || userRole === "geschaeftsfuehrer") && (
                 <Select
                   value={filterMember}
                   onValueChange={(value) => {
@@ -739,7 +739,7 @@ export default function TimeEntriesTable({
                   <SelectItem value="duration">Dauer</SelectItem>
                   <SelectItem value="activity">Aktivität</SelectItem>
                   <SelectItem value="area">Bereich</SelectItem>
-                  {userRole === "admin" && (
+                  {(userRole === "admin" || userRole === "geschaeftsfuehrer") && (
                     <SelectItem value="employee">Mitarbeiter</SelectItem>
                   )}
                 </SelectContent>
@@ -788,7 +788,7 @@ export default function TimeEntriesTable({
                   <th className="text-left py-3 px-4 font-medium text-xs uppercase tracking-wider text-gray-500">
                     Bereich
                   </th>
-                  {userRole === "admin" && (
+                  {(userRole === "admin" || userRole === "geschaeftsfuehrer") && (
                     <th className="text-left py-3 px-4 font-medium text-xs uppercase tracking-wider text-gray-500">
                       Mitarbeiter
                     </th>
@@ -830,7 +830,7 @@ export default function TimeEntriesTable({
                         <td className="py-4 px-4">
                           <div className="h-6 bg-gray-200 rounded w-20 animate-pulse"></div>
                         </td>
-                        {userRole === "admin" && (
+                        {(userRole === "admin" || userRole === "geschaeftsfuehrer") && (
                           <td className="py-4 px-4">
                             <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
                           </td>
@@ -895,7 +895,7 @@ export default function TimeEntriesTable({
                             </div>
                           </Badge>
                         </td>
-                        {userRole === "admin" && (
+                        {(userRole === "admin" || userRole === "geschaeftsfuehrer") && (
                           <td className="py-4 px-4">
                             <div className="font-medium">
                               {entry.users?.full_name || "Unbekannter Benutzer"}

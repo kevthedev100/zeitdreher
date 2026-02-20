@@ -38,6 +38,8 @@ export const signUpAction = async (formData: FormData) => {
       data: {
         full_name: fullName,
         email: email,
+        usage_type: usageType || undefined,
+        org_name: orgName || undefined,
       },
     },
   });
@@ -796,7 +798,7 @@ export const getTeamMembers = async (organizationId?: string) => {
   );
 };
 
-export const getTeamInvitations = async () => {
+export const getTeamInvitations = async (organizationId?: string) => {
   const supabase = await createClient();
 
   const {
@@ -806,11 +808,17 @@ export const getTeamInvitations = async () => {
     return [];
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("admin_invitations")
     .select("*")
     .eq("accepted", false)
     .gt("expires_at", new Date().toISOString());
+
+  if (organizationId) {
+    query = query.eq("organization_id", organizationId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching invitations:", error);
@@ -851,10 +859,10 @@ export const removeTeamMember = async (memberId: string) => {
       .eq("is_active", true)
       .single();
 
-    if (!orgMembership || orgMembership.role !== "admin") {
+    if (!orgMembership || (orgMembership.role !== "geschaeftsfuehrer" && orgMembership.role !== "admin")) {
       return {
         success: false,
-        error: "Only admins can remove team members",
+        error: "Only team managers can remove team members",
       };
     }
 
@@ -932,13 +940,13 @@ export const createOrganization = async (formData: FormData) => {
       return { success: false, error: orgError.message };
     }
 
-    // Add creator as admin
+    // Add creator as geschaeftsfuehrer
     const { error: memberError } = await supabase
       .from("organization_members")
       .insert({
         organization_id: org.id,
         user_id: userData.id,
-        role: "admin",
+        role: "geschaeftsfuehrer",
         invited_by: userData.id,
         joined_at: new Date().toISOString(),
         is_active: true,
@@ -1137,10 +1145,10 @@ export const createUserAction = async (formData: FormData) => {
       .eq("is_active", true)
       .single();
 
-    if (!orgMember || orgMember.role !== "admin") {
+    if (!orgMember || (orgMember.role !== "geschaeftsfuehrer" && orgMember.role !== "admin")) {
       return {
         success: false,
-        error: "Only admins can create users",
+        error: "Only team managers can create users",
       };
     }
 
@@ -1307,10 +1315,10 @@ export const inviteTeamMember = async (formData: FormData) => {
       };
     }
 
-    if (orgMember.role !== "admin") {
+    if (orgMember.role !== "geschaeftsfuehrer" && orgMember.role !== "admin") {
       return {
         success: false,
-        error: "Only admins can invite members",
+        error: "Only team managers can invite members",
       };
     }
 

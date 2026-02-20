@@ -203,12 +203,12 @@ export default function Hero() {
             <div className="mt-16 pt-10 border-t border-white/5">
               <div className="grid grid-cols-3 gap-8 max-w-lg mx-auto">
                 <div className="text-center">
-                  <div className="text-2xl sm:text-3xl font-bold text-white mb-1">500+</div>
-                  <div className="text-xs sm:text-sm text-gray-500">Teams nutzen uns</div>
+                  <div className="text-2xl sm:text-3xl font-bold text-white mb-1">35%</div>
+                  <div className="text-xs sm:text-sm text-gray-500">Mehr Produktivität</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl sm:text-3xl font-bold text-white mb-1">98%</div>
-                  <div className="text-xs sm:text-sm text-gray-500">Zufriedenheit</div>
+                  <div className="text-2xl sm:text-3xl font-bold text-white mb-1">9.6/10</div>
+                  <div className="text-xs sm:text-sm text-gray-500">Bewertung</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl sm:text-3xl font-bold text-white mb-1">24h</div>

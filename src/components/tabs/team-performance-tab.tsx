@@ -95,7 +95,7 @@ export default function TeamPerformanceTab({
   const supabase = createClient();
 
   useEffect(() => {
-    if (userRole === "admin") {
+    if (userRole === "admin" || userRole === "geschaeftsfuehrer") {
       loadUserOrganizations();
     }
   }, [userRole]);

@@ -549,10 +549,10 @@ export default async function Home() {
           {/* Stats */}
           <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
             {[
-              { value: "98%", label: "Kundenzufriedenheit" },
-              { value: "4.9/5", label: "Bewertung" },
-              { value: "500+", label: "Aktive Teams" },
-              { value: "24h", label: "Zeitersparnis/Woche" },
+              { value: "35%", label: "Mehr Produktivität" },
+              { value: "9.6/10", label: "Bewertung" },
+              { value: "24h+", label: "Zeitersparnis/Monat" },
+              { value: "100%", label: "DSGVO-konform" },
             ].map((stat) => (
               <div key={stat.label} className="text-center p-4 rounded-xl bg-white/5 border border-white/5">
                 <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{stat.value}</div>

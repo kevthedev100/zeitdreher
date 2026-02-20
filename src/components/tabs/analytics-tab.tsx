@@ -86,7 +86,7 @@ export default function AnalyticsTab({
       if (userRole === "member") {
         // Members see only their own data
         query = query.eq("user_id", user.id);
-      } else if (userRole === "admin") {
+      } else if (userRole === "admin" || userRole === "geschaeftsfuehrer") {
         // Admins see their team's data using the helper function
         const { data: teamMembers } = await supabase.rpc(
           "get_user_team_members",

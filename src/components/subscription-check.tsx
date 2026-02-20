@@ -49,7 +49,7 @@ export function SubscriptionCheck({
         return;
       }
 
-      if (userData?.role === "admin" || userData?.role === "member") {
+      if (userData?.role === "admin" || userData?.role === "geschaeftsfuehrer" || userData?.role === "member") {
         setLoading(false);
         return;
       }

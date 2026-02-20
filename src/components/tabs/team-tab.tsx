@@ -197,6 +197,7 @@ interface TeamMember {
   id: string;
   role: string;
   joined_at: string;
+  status: "active" | "invited";
   user: {
     id: string;
     user_id: string;
@@ -210,8 +211,10 @@ interface TeamMember {
 interface TeamInvitation {
   id: string;
   email: string;
+  full_name?: string;
   created_at: string;
   expires_at: string;
+  organization_id?: string;
 }
 
 export default function TeamTab({ userRole }: TeamTabProps) {
@@ -239,7 +242,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
   const supabase = createClient();
 
   useEffect(() => {
-    if (userRole === "admin") {
+    if (userRole === "admin" || userRole === "geschaeftsfuehrer") {
       checkOrganizationStatus();
     }
   }, [userRole]);
@@ -261,16 +264,36 @@ export default function TeamTab({ userRole }: TeamTabProps) {
     try {
       setLoading(true);
 
-      // Load team members and invitations
       const [membersData, invitationsData] = await Promise.all([
         getTeamMembers(selectedOrganizationId || undefined),
-        getTeamInvitations(),
+        getTeamInvitations(selectedOrganizationId || undefined),
       ]);
 
-      setTeamMembers((membersData || []) as any);
+      const activeMembers: TeamMember[] = ((membersData || []) as any[]).map((m: any) => ({
+        ...m,
+        status: "active" as const,
+      }));
+
+      const invitedMembers: TeamMember[] = ((invitationsData || []) as any[]).map((inv: any) => ({
+        id: `inv-${inv.id}`,
+        role: "member",
+        joined_at: inv.created_at,
+        status: "invited" as const,
+        user: {
+          id: inv.id,
+          user_id: inv.id,
+          full_name: inv.full_name || "",
+          email: inv.email,
+          avatar_url: null as any,
+          created_at: inv.created_at,
+        },
+      }));
+
+      const allMembers = [...activeMembers, ...invitedMembers];
+      setTeamMembers(allMembers);
       setInvitations(invitationsData || []);
 
-      await calculateTeamStats((membersData || []) as any);
+      await calculateTeamStats(activeMembers);
     } catch (error) {
       console.error("Error loading team data:", error);
     } finally {
@@ -388,8 +411,8 @@ export default function TeamTab({ userRole }: TeamTabProps) {
 
   const handleRemoveMember = async (memberId: string) => {
     try {
-      if (userRole !== "admin") {
-        console.error("Only admins can remove team members");
+      if (userRole !== "admin" && userRole !== "geschaeftsfuehrer") {
+        console.error("Only managers can remove team members");
         return;
       }
 
@@ -435,18 +458,18 @@ export default function TeamTab({ userRole }: TeamTabProps) {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Building className="w-5 h-5 text-yellow-600" />
-                  Organization Required
+                  Organisation erforderlich
                 </CardTitle>
                 <CardDescription>
-                  You need to create an organization before you can invite team
-                  members.
+                  Sie müssen eine Organisation erstellen, bevor Sie Teammitglieder
+                  einladen können.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-gray-600 mb-4">
-                  Organizations help you manage teams and track time entries
-                  across your company. Create your first organization to get
-                  started.
+                  Organisationen helfen Ihnen, Teams zu verwalten und
+                  Zeiteinträge unternehmensweit zu erfassen. Erstellen Sie Ihre
+                  erste Organisation, um loszulegen.
                 </p>
                 <CreateOrganizationDialog
                   onOrganizationCreated={checkOrganizationStatus}
@@ -457,14 +480,21 @@ export default function TeamTab({ userRole }: TeamTabProps) {
 
           {hasOrganization && (
             <Card className="bg-white border border-gray-200 shadow-none rounded-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building className="w-5 h-5" />
-                  Your Organizations
-                </CardTitle>
-                <CardDescription>
-                  Select an organization to manage its team members
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="w-5 h-5" />
+                    Ihre Organisationen
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    Wählen Sie eine Organisation um deren Teammitglieder zu verwalten
+                  </CardDescription>
+                </div>
+                {(userRole === "admin" || userRole === "geschaeftsfuehrer") && (
+                  <CreateOrganizationDialog
+                    onOrganizationCreated={checkOrganizationStatus}
+                  />
+                )}
               </CardHeader>
               <CardContent>
                 <OrganizationSelector
@@ -480,10 +510,10 @@ export default function TeamTab({ userRole }: TeamTabProps) {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                Team Management
+                Team-Verwaltung
               </h1>
               <p className="text-gray-500 mt-1">
-                Manage your team members and view team analytics
+                Verwalten Sie Ihre Teammitglieder und Teamanalysen
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -498,7 +528,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                   className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
                 />
               </Button>
-              {userRole === "admin" && (
+              {(userRole === "admin" || userRole === "geschaeftsfuehrer") && (
                 hasOrganization ? (
                   <Dialog
                     open={addUserDialogOpen}
@@ -617,7 +647,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
             <Card className="bg-white border border-gray-200 shadow-none rounded-lg">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
                 <CardTitle className="text-sm font-medium text-gray-900">
-                  Team Members
+                  Mitglieder
                 </CardTitle>
                 <Users className="h-4 w-4 text-gray-500" />
               </CardHeader>
@@ -625,27 +655,27 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                 <div className="text-2xl font-bold text-gray-900">
                   {teamStats.totalMembers}
                 </div>
-                <p className="text-xs text-gray-500">Active members</p>
+                <p className="text-xs text-gray-500">Aktive Mitglieder</p>
               </CardContent>
             </Card>
 
             <Card className="bg-white border border-gray-200 shadow-none rounded-lg">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
-                <CardTitle className="text-sm font-medium text-gray-900">This Week</CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-900">Diese Woche</CardTitle>
                 <Clock className="h-4 w-4 text-gray-500" />
               </CardHeader>
               <CardContent className="px-3 py-2 p-6 pt-0">
                 <div className="text-2xl font-bold text-gray-900">
                   {teamStats.totalHoursThisWeek.toFixed(1)}h
                 </div>
-                <p className="text-xs text-gray-500">Team total</p>
+                <p className="text-xs text-gray-500">Team gesamt</p>
               </CardContent>
             </Card>
 
             <Card className="bg-white border border-gray-200 shadow-none rounded-lg">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
                 <CardTitle className="text-sm font-medium text-gray-900">
-                  This Month
+                  Dieser Monat
                 </CardTitle>
                 <Calendar className="h-4 w-4 text-gray-500" />
               </CardHeader>
@@ -667,7 +697,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                   {teamStats.averageHoursPerMember.toFixed(1)}h
                 </div>
                 <p className="text-xs text-gray-500">
-                  Per member/month
+                  Pro Mitglied/Monat
                 </p>
               </CardContent>
             </Card>
@@ -679,10 +709,10 @@ export default function TeamTab({ userRole }: TeamTabProps) {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="w-5 h-5" />
-                  Team Members ({teamMembers.length})
+                  Teammitglieder ({teamMembers.length})
                 </CardTitle>
                 <CardDescription>
-                  Manage your active team members
+                  Verwalten Sie Ihre aktiven Teammitglieder
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -703,35 +733,43 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                     {teamMembers.map((member) => (
                       <div
                         key={member.id}
-                        className="flex items-center justify-between p-3 border rounded-lg"
+                        className={`flex items-center justify-between p-3 border rounded-lg ${member.status === "invited" ? "border-dashed border-yellow-300 bg-yellow-50/50" : ""}`}
                       >
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-blue-600 font-semibold text-sm">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${member.status === "invited" ? "bg-yellow-100" : "bg-blue-100"}`}>
+                            <span className={`font-semibold text-sm ${member.status === "invited" ? "text-yellow-600" : "text-blue-600"}`}>
                               {member.user.full_name?.charAt(0) ||
                                 member.user.email.charAt(0)}
                             </span>
                           </div>
                           <div>
-                            <p className="font-medium">
-                              {member.user.full_name || "No name"}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">
+                                {member.user.full_name || member.user.email}
+                              </p>
+                              <Badge
+                                variant={member.status === "active" ? "default" : "secondary"}
+                                className={`text-xs ${member.status === "active" ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-yellow-100 text-yellow-700 hover:bg-yellow-100"}`}
+                              >
+                                {member.status === "active" ? "Aktiv" : "Eingeladen"}
+                              </Badge>
+                            </div>
                             <p className="text-sm text-gray-500">
                               {member.user.email}
                             </p>
                             <div className="flex items-center gap-2">
-                              {userRole === "admin" ? (
+                              {member.status === "active" && (userRole === "admin" || userRole === "geschaeftsfuehrer") ? (
                               <Dialog>
                                 <DialogTrigger asChild>
                                   <Badge
                                     variant={
-                                      member.role === "admin"
+                                      (member.role === "admin" || member.role === "geschaeftsfuehrer")
                                         ? "default"
                                         : "outline"
                                     }
                                     className="text-xs cursor-pointer hover:bg-gray-100"
                                   >
-                                    {member.role === "geschaeftsfuehrer" ? "Geschäftsführer" : member.role === "einzelnutzer" ? "Einzelnutzer" : member.role}
+                                    {member.role === "geschaeftsfuehrer" ? "Geschäftsführer" : member.role === "admin" ? "Geschäftsführer" : member.role === "einzelnutzer" ? "Einzelnutzer" : "Mitglied"}
                                   </Badge>
                                 </DialogTrigger>
                                 <DialogContent>
@@ -785,19 +823,13 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                                         className="w-full p-2 border rounded-md"
                                         defaultValue={member.role}
                                       >
-                                        <option value="admin">Administrator</option>
                                         <option value="geschaeftsfuehrer">Geschäftsführer</option>
                                         <option value="member">Mitglied</option>
-                                        <option value="einzelnutzer">Einzelnutzer</option>
                                       </select>
                                       <p className="text-xs text-gray-500 mt-1">
-                                        Administrator: Voller Zugriff auf alle Funktionen
-                                        <br />
                                         Geschäftsführer: Einblick in Mitglieder und Performance
                                         <br />
                                         Mitglied: Zugriff auf eigene Zeiterfassung
-                                        <br />
-                                        Einzelnutzer: Einzelnutzung ohne Team
                                       </p>
                                     </div>
                                     <div className="flex justify-end gap-2">
@@ -819,24 +851,28 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                                   </form>
                                 </DialogContent>
                               </Dialog>
-                              ) : (
+                              ) : member.status === "active" ? (
                               <Badge
-                                variant={member.role === "admin" ? "default" : "outline"}
+                                variant={(member.role === "admin" || member.role === "geschaeftsfuehrer") ? "default" : "outline"}
                                 className="text-xs"
                               >
-                                {member.role === "geschaeftsfuehrer" ? "Geschäftsführer" : member.role === "admin" ? "Admin" : member.role === "einzelnutzer" ? "Einzelnutzer" : "Mitglied"}
+                                {member.role === "geschaeftsfuehrer" ? "Geschäftsführer" : member.role === "admin" ? "Geschäftsführer" : member.role === "einzelnutzer" ? "Einzelnutzer" : "Mitglied"}
                               </Badge>
+                              ) : (
+                              <span className="text-xs text-yellow-600">
+                                Warte auf E-Mail-Bestätigung
+                              </span>
                               )}
                               <p className="text-xs text-gray-400">
-                                Joined{" "}
+                                {member.status === "active" ? "Beigetreten" : "Eingeladen"}{" "}
                                 {new Date(
                                   member.joined_at,
-                                ).toLocaleDateString()}
+                                ).toLocaleDateString("de-DE")}
                               </p>
                             </div>
                           </div>
                         </div>
-                        {userRole === "admin" && (
+                        {(userRole === "admin" || userRole === "geschaeftsfuehrer") && member.status === "active" && (
                         <div className="flex items-center gap-2">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -880,7 +916,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                 ) : (
                   <div className="text-center py-8 text-gray-500">
                     <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>No team members yet</p>
+                    <p>Noch keine Teammitglieder</p>
                     <p className="text-sm">
                       Fügen Sie Ihren ersten Nutzer hinzu, um zu beginnen
                     </p>
