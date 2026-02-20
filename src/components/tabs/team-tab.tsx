@@ -190,7 +190,7 @@ function RecentActivities({
 }
 
 interface TeamTabProps {
-  userRole: "admin" | "geschaeftsfuehrer" | "member";
+  userRole: "admin" | "geschaeftsfuehrer" | "member" | "einzelnutzer";
 }
 
 interface TeamMember {
@@ -404,7 +404,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
     }
   };
 
-  if (userRole === "member") {
+  if (userRole === "member" || userRole === "einzelnutzer") {
     return (
       <div className="bg-white p-6 border border-gray-200 rounded-lg">
         <div className="text-center">
@@ -731,7 +731,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                                     }
                                     className="text-xs cursor-pointer hover:bg-gray-100"
                                   >
-                                    {member.role === "geschaeftsfuehrer" ? "Geschäftsführer" : member.role}
+                                    {member.role === "geschaeftsfuehrer" ? "Geschäftsführer" : member.role === "einzelnutzer" ? "Einzelnutzer" : member.role}
                                   </Badge>
                                 </DialogTrigger>
                                 <DialogContent>
@@ -788,6 +788,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                                         <option value="admin">Administrator</option>
                                         <option value="geschaeftsfuehrer">Geschäftsführer</option>
                                         <option value="member">Mitglied</option>
+                                        <option value="einzelnutzer">Einzelnutzer</option>
                                       </select>
                                       <p className="text-xs text-gray-500 mt-1">
                                         Administrator: Voller Zugriff auf alle Funktionen
@@ -795,6 +796,8 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                                         Geschäftsführer: Einblick in Mitglieder und Performance
                                         <br />
                                         Mitglied: Zugriff auf eigene Zeiterfassung
+                                        <br />
+                                        Einzelnutzer: Einzelnutzung ohne Team
                                       </p>
                                     </div>
                                     <div className="flex justify-end gap-2">
@@ -821,7 +824,7 @@ export default function TeamTab({ userRole }: TeamTabProps) {
                                 variant={member.role === "admin" ? "default" : "outline"}
                                 className="text-xs"
                               >
-                                {member.role === "geschaeftsfuehrer" ? "Geschäftsführer" : member.role === "admin" ? "Admin" : "Mitglied"}
+                                {member.role === "geschaeftsfuehrer" ? "Geschäftsführer" : member.role === "admin" ? "Admin" : member.role === "einzelnutzer" ? "Einzelnutzer" : "Mitglied"}
                               </Badge>
                               )}
                               <p className="text-xs text-gray-400">

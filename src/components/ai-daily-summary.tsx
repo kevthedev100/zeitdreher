@@ -87,23 +87,14 @@ export default function AIDailySummary({
         throw todayError;
       }
 
-      console.log("Today's entries loaded:", todayEntries);
-
-      // Format entries for AI analysis
       const dailyEntriesText = formatTimeEntriesForAI(todayEntries || []);
 
-      // Get basic weekly data for the API call requirement
-      const weeklyEntriesText = `Diese Woche: ${todayHours.toFixed(1)} Stunden erfasst`;
-
-      console.log("Sending to AI:", { dailyEntriesText, weeklyEntriesText });
-
-      // Call the generate-summaries edge function
       const { data, error } = await supabase.functions.invoke(
         "supabase-functions-generate-summaries",
         {
           body: {
             dailyEntries: dailyEntriesText,
-            weeklyEntries: weeklyEntriesText,
+            summaryType: "daily",
           },
         },
       );
@@ -113,19 +104,7 @@ export default function AIDailySummary({
         throw new Error(error.message || "Edge function failed");
       }
 
-      console.log("AI Response:", data);
-
-      // Extract only the daily summary from the response
-      let fullResponse = data.choices[0].message.content;
-      let dailySummary = "";
-
-      // Split by separator to get only the daily part
-      if (fullResponse.includes("---SUMMARY_SEPARATOR---")) {
-        dailySummary = fullResponse.split("---SUMMARY_SEPARATOR---")[0].trim();
-      } else {
-        // Fallback: use the entire response as daily summary
-        dailySummary = fullResponse.trim();
-      }
+      let dailySummary = (data.choices[0].message.content || "").trim();
 
       // Clean up any remaining markdown and labels, ensure proper HTML structure
       dailySummary = dailySummary
@@ -192,8 +171,6 @@ export default function AIDailySummary({
     if (!entries || entries.length === 0) {
       return "Keine Zeiteinträge für heute vorhanden";
     }
-
-    console.log("Formatting entries for AI:", entries);
 
     return entries
       .map((entry) => {

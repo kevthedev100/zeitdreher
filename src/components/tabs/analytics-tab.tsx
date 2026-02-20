@@ -24,7 +24,7 @@ import AIWeeklySummary from "@/components/ai-weekly-summary";
 import AIMonthlySummary from "@/components/ai-monthly-summary";
 
 interface AnalyticsTabProps {
-  userRole: "admin" | "geschaeftsfuehrer" | "member";
+  userRole: "admin" | "geschaeftsfuehrer" | "member" | "einzelnutzer";
   quickStats: {
     todayHours: number;
     weekHours: number;
@@ -124,12 +124,7 @@ export default function AnalyticsTab({
 
       setLastTwoWeeksEntries(formattedEntries);
       setHasEnoughData(formattedEntries.length >= 5);
-
-      console.log(
-        `Found ${formattedEntries.length} entries in the last 14 days for ${userRole}. Enough data: ${formattedEntries.length >= 5}`,
-      );
     } catch (error) {
-      console.error("Error checking data for analysis:", error);
       setLastTwoWeeksEntries([]);
       setHasEnoughData(false);
     }
@@ -151,9 +146,6 @@ export default function AnalyticsTab({
 
       if (error) throw error;
 
-      console.log("AI Optimization Analysis Response:", data);
-
-      // Update suggestions with the AI response
       if (data.suggestions && data.suggestions.length > 0) {
         // Convert area suggestions format to match the expected format for aiSuggestions
         const formattedSuggestions = data.suggestions.map(
@@ -234,8 +226,6 @@ export default function AnalyticsTab({
       );
 
       if (error) throw error;
-
-      console.log("Area Optimization Suggestions Response:", data);
 
       if (data.suggestions && data.suggestions.length > 0) {
         setAreaSuggestions(data.suggestions);
@@ -437,7 +427,7 @@ export default function AnalyticsTab({
                       {suggestion.title}
                     </h3>
                     <div
-                      className="text-gray-700 mb-3 [&>p]:mb-2 [&>ul]:mb-2 [&>li]:mb-1 [&>strong]:font-semibold [&>em]:italic"
+                      className="text-gray-700 mb-3 [&>h4]:font-bold [&>h4]:text-base [&>h4]:mb-2 [&>h4]:mt-3 [&>h4]:first:mt-0 [&>p]:mb-2 [&>ul]:mb-2 [&>li]:mb-1 [&>strong]:font-semibold [&>em]:italic"
                       dangerouslySetInnerHTML={{
                         __html: suggestion.description,
                       }}
@@ -555,7 +545,7 @@ export default function AnalyticsTab({
                     </div>
                   </div>
                   <div
-                    className="prose prose-sm max-w-none text-gray-700 leading-relaxed [&>h4]:text-blue-800 [&>h4]:font-semibold [&>h4]:mb-3 [&>h4]:mt-4 [&>h4]:first:mt-0 [&>p]:mb-3 [&>ul]:mb-3 [&>ul]:pl-4 [&>li]:mb-2 [&>li]:list-disc [&>strong]:font-semibold [&>strong]:text-blue-700 [&>em]:italic [&>em]:text-blue-600 [&>br]:block [&>br]:content-[''] [&>br]:h-4"
+                    className="prose prose-sm max-w-none text-gray-700 leading-relaxed [&>h4]:text-blue-800 [&>h4]:font-bold [&>h4]:text-base [&>h4]:mb-3 [&>h4]:mt-4 [&>h4]:first:mt-0 [&>p]:mb-3 [&>ul]:mb-3 [&>ul]:pl-4 [&>li]:mb-2 [&>li]:list-disc [&>strong]:font-semibold [&>strong]:text-blue-700 [&>em]:italic [&>em]:text-blue-600 [&>br]:block [&>br]:content-[''] [&>br]:h-4"
                     dangerouslySetInnerHTML={{
                       __html: areaSuggestion.suggestion,
                     }}

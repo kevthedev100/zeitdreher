@@ -6,7 +6,7 @@ import { createClient } from "../../../../supabase/client";
 import { useEffect, useState } from "react";
 
 export default function TeamPage() {
-  const [userRole, setUserRole] = useState<"admin" | "geschaeftsfuehrer" | "member">(
+  const [userRole, setUserRole] = useState<"admin" | "geschaeftsfuehrer" | "member" | "einzelnutzer">(
     "member",
   );
   const [loading, setLoading] = useState(true);
@@ -42,7 +42,7 @@ export default function TeamPage() {
             .single();
 
           if (orgMember) {
-            setUserRole(orgMember.role as "admin" | "geschaeftsfuehrer" | "member");
+            setUserRole(orgMember.role as "admin" | "geschaeftsfuehrer" | "member" | "einzelnutzer");
           } else {
             // Fallback to user table role if no organization membership
             const { data: userRole } = await supabase
@@ -53,7 +53,7 @@ export default function TeamPage() {
 
             if (userRole) {
               setUserRole(
-                userRole.role as "admin" | "geschaeftsfuehrer" | "member",
+                userRole.role as "admin" | "geschaeftsfuehrer" | "member" | "einzelnutzer",
               );
             }
           }
@@ -71,13 +71,13 @@ export default function TeamPage() {
   if (loading) {
     return (
       <div className="p-6 flex justify-center items-center">
-        <div className="animate-pulse">Loading...</div>
+        <div className="animate-pulse">Wird geladen...</div>
       </div>
     );
   }
 
   return (
-    <Suspense fallback={<div className="p-6">Loading team management...</div>}>
+    <Suspense fallback={<div className="p-6">Teamverwaltung wird geladen...</div>}>
       <TeamTab userRole={userRole} />
     </Suspense>
   );

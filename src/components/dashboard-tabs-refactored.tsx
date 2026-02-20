@@ -36,7 +36,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 
 interface DashboardTabsProps {
-  userRole: "admin" | "geschaeftsfuehrer" | "member";
+  userRole: "admin" | "geschaeftsfuehrer" | "member" | "einzelnutzer";
   isOnboarded?: boolean;
   children?: React.ReactNode;
 }
@@ -46,7 +46,7 @@ const navItems = [
   { id: "new-entry", label: "Neuer Eintrag", icon: Plus, href: "/dashboard/new-entry" },
   { id: "analytics", label: "Analytik", icon: BarChart3, href: "/dashboard/analytics" },
   { id: "entries", label: "Alle Einträge", icon: Table, href: "/dashboard/entries" },
-  { id: "ai-chat", label: "AI-Chat", icon: Bot, href: "/dashboard/ai-chat" },
+  { id: "ai-chat", label: "AI-Buddy", icon: Bot, href: "/dashboard/ai-chat" },
 ];
 
 const categoryItems = [
@@ -218,7 +218,7 @@ export default function DashboardTabs({
         </div>
 
         {/* Admin / Geschäftsführer section */}
-        {userRole !== "member" && (
+        {(userRole === "admin" || userRole === "geschaeftsfuehrer") && (
           <div className="mt-6">
             <span className="px-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Team</span>
             <div className="mt-2 space-y-1">
@@ -309,7 +309,7 @@ export default function DashboardTabs({
             { id: "analytics", icon: BarChart3, label: "Analytik" },
             { id: "new-entry", icon: Plus, label: "Neu" },
             { id: "entries", icon: Table, label: "Einträge" },
-            { id: "ai-chat", icon: Bot, label: "AI-Chat" },
+            { id: "ai-chat", icon: Bot, label: "AI-Buddy" },
           ].map((item) => {
             const isActive = activeTab === item.id;
             const Icon = item.icon;
