@@ -8,7 +8,7 @@ import EntriesTab from "@/components/tabs/entries-tab";
 
 export default function DashboardEntriesPage() {
   const supabase = createClient();
-  const [userRole, setUserRole] = useState<"admin" | "geschaeftsfuehrer" | "member">(
+  const [userRole, setUserRole] = useState<"admin" | "geschaeftsfuehrer" | "member" | "einzelnutzer">(
     "member",
   );
   const [isOnboarded, setIsOnboarded] = useState(false);
@@ -36,7 +36,7 @@ export default function DashboardEntriesPage() {
           .single();
 
         if (data) {
-          setUserRole(data.role as "admin" | "geschaeftsfuehrer" | "member");
+          setUserRole(data.role as "admin" | "geschaeftsfuehrer" | "member" | "einzelnutzer");
           setIsOnboarded(data.onboarded === true);
         }
       } catch (error) {

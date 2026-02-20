@@ -16,6 +16,8 @@ export const signUpAction = async (formData: FormData) => {
   const organizationId = formData.get("org")?.toString();
   const adminInvitationId = formData.get("admin_invitation")?.toString();
   const adminInvitationToken = formData.get("token")?.toString();
+  const usageType = formData.get("usage_type")?.toString() as "einzelnutzer" | "team" | undefined;
+  const orgName = formData.get("org_name")?.toString();
   const supabase = await createClient();
 
   if (!email || !password) {
@@ -46,7 +48,11 @@ export const signUpAction = async (formData: FormData) => {
 
   // Initialize variables that will be used later
   let isAdminCreated = false;
-  let userRole = "member"; // Default for self-registered users
+  let userRole = usageType === "einzelnutzer"
+    ? "einzelnutzer"
+    : usageType === "team"
+      ? "geschaeftsfuehrer"
+      : "member";
 
   // User data is automatically inserted into public.users table via database trigger
   // The trigger will automatically set trial_start and trial_end for new users
@@ -197,18 +203,59 @@ export const signUpAction = async (formData: FormData) => {
         );
       }
     }
+
+    // Auto-create organization for team sign-ups
+    if (usageType === "team" && orgName && !isInvitation && !isAdminCreated) {
+      try {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+
+        if (userData) {
+          const { data: newOrg, error: orgError } = await supabase
+            .from("organizations")
+            .insert({
+              name: orgName,
+              created_by: userData.id,
+            })
+            .select("id")
+            .single();
+
+          if (newOrg && !orgError) {
+            await supabase.from("organization_members").insert({
+              organization_id: newOrg.id,
+              user_id: userData.id,
+              role: "geschaeftsfuehrer",
+              joined_at: new Date().toISOString(),
+              is_active: true,
+            });
+
+            console.log("Team organization created:", orgName, "for user:", email);
+          } else if (orgError) {
+            console.error("Error creating organization:", orgError);
+          }
+        }
+      } catch (orgCreationError) {
+        console.error("Error in team organization creation:", orgCreationError);
+      }
+    }
   }
 
   let successMessage;
   if (isAdminCreated) {
     successMessage =
-      "Welcome to the team! Your account has been activated with full license privileges.";
+      "Willkommen im Team! Ihr Konto wurde mit voller Lizenz aktiviert.";
   } else if (isInvitation) {
     successMessage =
-      "Welcome to the team! Please check your email for a verification link.";
+      "Willkommen im Team! Bitte überprüfen Sie Ihre E-Mail für den Bestätigungslink.";
+  } else if (usageType === "team") {
+    successMessage =
+      "Team erfolgreich erstellt! Bitte überprüfen Sie Ihre E-Mail für den Bestätigungslink.";
   } else {
     successMessage =
-      "Thanks for signing up! Please check your email for a verification link.";
+      "Registrierung erfolgreich! Bitte überprüfen Sie Ihre E-Mail für den Bestätigungslink.";
   }
 
   return encodedRedirect("success", "/sign-up", successMessage);
@@ -975,8 +1022,8 @@ export const changeUserRole = async (formData: FormData) => {
     return { success: false, error: "Missing required parameters" };
   }
 
-  if (!["admin", "geschaeftsfuehrer", "member"].includes(newRole)) {
-    return { success: false, error: "Invalid role. Must be admin, geschaeftsfuehrer, or member." };
+  if (!["admin", "geschaeftsfuehrer", "member", "einzelnutzer"].includes(newRole)) {
+    return { success: false, error: "Invalid role. Must be admin, geschaeftsfuehrer, member, or einzelnutzer." };
   }
 
   const supabase = await createClient();

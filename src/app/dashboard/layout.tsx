@@ -195,7 +195,7 @@ export default function DashboardLayout({
         />
       )}
       <DashboardTabs
-        userRole={userRole as "admin" | "geschaeftsfuehrer" | "member"}
+        userRole={userRole as "admin" | "geschaeftsfuehrer" | "member" | "einzelnutzer"}
         isOnboarded={userData?.onboarded === true}
       >
         {children}

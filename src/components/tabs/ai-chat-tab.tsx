@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import AIChat from "@/components/ai-chat";
 
 interface AIChatTabProps {
-  userRole: "admin" | "geschaeftsfuehrer" | "member";
+  userRole: "admin" | "geschaeftsfuehrer" | "member" | "einzelnutzer";
 }
 
 export default function AIChatTab({ userRole }: AIChatTabProps) {

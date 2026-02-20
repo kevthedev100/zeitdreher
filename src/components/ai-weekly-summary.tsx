@@ -70,14 +70,11 @@ export default function AIWeeklySummary({
       const startDate = startOfWeek.toISOString().split("T")[0];
       const endDate = endOfWeek.toISOString().split("T")[0];
 
-      console.log("Loading weekly entries from", startDate, "to", endDate);
-
       // Get current user
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        console.log("No user found for weekly summary");
         return;
       }
 
@@ -102,8 +99,6 @@ export default function AIWeeklySummary({
         throw error;
       }
 
-      console.log("Raw weekly entries data:", data);
-
       // Format entries for display with descriptions
       const formattedEntries =
         data?.map((entry) => ({
@@ -115,7 +110,6 @@ export default function AIWeeklySummary({
           description: entry.description || "Keine Beschreibung",
         })) || [];
 
-      console.log("Formatted weekly entries:", formattedEntries);
       setWeeklyEntries(formattedEntries);
     } catch (err) {
       console.error("Error loading weekly entries:", err);
@@ -125,10 +119,7 @@ export default function AIWeeklySummary({
   };
 
   const generateSummary = async () => {
-    console.log("Generating summary with entries:", weeklyEntries.length);
-
     if (weeklyEntries.length === 0) {
-      console.log("No weekly entries found, setting empty message");
       setSummary(
         "<h4>Wochenübersicht</h4><p>Diese Woche wurden noch keine Zeiteinträge erfasst.</p><p><em>Tipp:</em> Beginnen Sie mit der Erfassung Ihrer Arbeitszeit für bessere Produktivitätsanalysen.</p>",
       );
@@ -139,8 +130,6 @@ export default function AIWeeklySummary({
       setIsGenerating(true);
       setError(null);
 
-      console.log("Weekly entries for AI:", weeklyEntries);
-
       // Group entries by day for better AI context
       const entriesByDay = weeklyEntries.reduce((acc: any, entry: any) => {
         if (!acc[entry.date]) acc[entry.date] = [];
@@ -148,29 +137,19 @@ export default function AIWeeklySummary({
         return acc;
       }, {});
 
-      // Format daily entries for the AI (we need this for the API call)
-      const today = new Date().toISOString().split("T")[0];
-      const dailyEntriesText = entriesByDay[today]
-        ? formatEntriesForDay(entriesByDay[today], "Heute")
-        : "Keine Einträge für heute";
-
-      // Format weekly entries for the AI with full descriptions
       const weeklyEntriesText = Object.keys(entriesByDay)
-        .sort() // Sort dates chronologically
+        .sort()
         .map((date) =>
           formatEntriesForDay(entriesByDay[date], formatDate(date)),
         )
         .join("\n\n");
 
-      console.log("Sending to AI:", { dailyEntriesText, weeklyEntriesText });
-
-      // Call the generate-summaries edge function
       const { data, error } = await supabase.functions.invoke(
         "supabase-functions-generate-summaries",
         {
           body: {
-            dailyEntries: dailyEntriesText,
             weeklyEntries: weeklyEntriesText,
+            summaryType: "weekly",
           },
         },
       );
@@ -180,20 +159,7 @@ export default function AIWeeklySummary({
         throw new Error(error.message || "Edge function failed");
       }
 
-      console.log("AI Response:", data);
-
-      // Extract only the weekly summary from the response
-      let fullResponse = data.choices[0].message.content;
-      let weeklySummary = "";
-
-      // Split by separator to get only the weekly part
-      if (fullResponse.includes("---SUMMARY_SEPARATOR---")) {
-        weeklySummary =
-          fullResponse.split("---SUMMARY_SEPARATOR---")[1]?.trim() || "";
-      } else {
-        // Fallback: use the entire response as weekly summary
-        weeklySummary = fullResponse.trim();
-      }
+      let weeklySummary = (data.choices[0].message.content || "").trim();
 
       // Clean up any remaining markdown and labels, ensure proper HTML structure
       weeklySummary = weeklySummary

@@ -248,7 +248,7 @@ export default function Profile() {
                   <Briefcase className="w-4 h-4 text-gray-500" /> Rolle
                 </Label>
                 <div className="flex items-center h-10 px-3 rounded-md border border-gray-200 bg-gray-50 text-sm text-gray-500">
-                  {profile?.role === "admin" ? "Administrator" : profile?.role === "geschaeftsfuehrer" ? "Geschäftsführer" : "Mitglied"}
+                  {profile?.role === "admin" ? "Administrator" : profile?.role === "geschaeftsfuehrer" ? "Geschäftsführer" : profile?.role === "einzelnutzer" ? "Einzelnutzer" : "Mitglied"}
                 </div>
               </div>
 

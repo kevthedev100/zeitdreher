@@ -66,14 +66,11 @@ export default function AIMonthlySummary({
       const startDate = startOfMonth.toISOString().split("T")[0];
       const endDate = endOfMonth.toISOString().split("T")[0];
 
-      console.log("Loading monthly entries from", startDate, "to", endDate);
-
       // Get current user
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        console.log("No user found for monthly summary");
         return;
       }
 
@@ -98,8 +95,6 @@ export default function AIMonthlySummary({
         throw error;
       }
 
-      console.log("Raw monthly entries data:", data);
-
       // Format entries for display with descriptions
       const formattedEntries =
         data?.map((entry) => ({
@@ -111,7 +106,6 @@ export default function AIMonthlySummary({
           description: entry.description || "Keine Beschreibung",
         })) || [];
 
-      console.log("Formatted monthly entries:", formattedEntries);
       setMonthlyEntries(formattedEntries);
     } catch (err) {
       console.error("Error loading monthly entries:", err);
@@ -121,10 +115,7 @@ export default function AIMonthlySummary({
   };
 
   const generateSummary = async () => {
-    console.log("Generating summary with entries:", monthlyEntries.length);
-
     if (monthlyEntries.length === 0) {
-      console.log("No monthly entries found, setting empty message");
       setSummary(
         "<h4>Monatsübersicht</h4><p>In den letzten 30 Tagen wurden noch keine Zeiteinträge erfasst.</p><p><em>Tipp:</em> Beginnen Sie mit der Erfassung Ihrer Arbeitszeit für bessere Produktivitätsanalysen.</p>",
       );
@@ -134,8 +125,6 @@ export default function AIMonthlySummary({
     try {
       setIsGenerating(true);
       setError(null);
-
-      console.log("Monthly entries for AI:", monthlyEntries);
 
       // Group entries by week for better AI context
       const entriesByWeek = monthlyEntries.reduce((acc: any, entry: any) => {
@@ -151,19 +140,8 @@ export default function AIMonthlySummary({
         return acc;
       }, {});
 
-      // Format daily entries for the AI (we need this for the API call)
-      const today = new Date().toISOString().split("T")[0];
-      const dailyEntriesText =
-        monthlyEntries.filter((entry) => entry.date === today).length > 0
-          ? formatEntriesForDay(
-              monthlyEntries.filter((entry) => entry.date === today),
-              "Heute",
-            )
-          : "Keine Einträge für heute";
-
-      // Format monthly entries for the AI with full descriptions
       const monthlyEntriesText = Object.keys(entriesByWeek)
-        .sort() // Sort dates chronologically
+        .sort()
         .map((weekStart) => {
           const weekEntries = entriesByWeek[weekStart];
           const weekEnd = new Date(weekStart);
@@ -175,16 +153,12 @@ export default function AIMonthlySummary({
         })
         .join("\n\n");
 
-      console.log("Sending to AI:", { dailyEntriesText, monthlyEntriesText });
-
-      // Call the generate-summaries edge function with monthly data
       const { data, error } = await supabase.functions.invoke(
         "supabase-functions-generate-summaries",
         {
           body: {
-            dailyEntries: dailyEntriesText,
-            weeklyEntries: monthlyEntriesText, // Use monthly data but keep the parameter name for compatibility
-            summaryType: "monthly", // Add a flag to indicate this is a monthly summary
+            weeklyEntries: monthlyEntriesText,
+            summaryType: "monthly",
           },
         },
       );
@@ -194,20 +168,7 @@ export default function AIMonthlySummary({
         throw new Error(error.message || "Edge function failed");
       }
 
-      console.log("AI Response:", data);
-
-      // Extract the summary from the response
-      let fullResponse = data.choices[0].message.content;
-      let monthlySummary = "";
-
-      // Split by separator to get the summary part
-      if (fullResponse.includes("---SUMMARY_SEPARATOR---")) {
-        monthlySummary =
-          fullResponse.split("---SUMMARY_SEPARATOR---")[1]?.trim() || "";
-      } else {
-        // Fallback: use the entire response as monthly summary
-        monthlySummary = fullResponse.trim();
-      }
+      let monthlySummary = (data.choices[0].message.content || "").trim();
 
       // Clean up any remaining markdown and labels, ensure proper HTML structure
       monthlySummary = monthlySummary
@@ -352,7 +313,7 @@ export default function AIMonthlySummary({
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm">
       <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-        <Calendar className="w-5 h-5 text-purple-600" />
+        <Calendar className="w-5 h-5 text-emerald-600" />
         KI-Monatsübersicht
       </h3>
 
@@ -361,7 +322,7 @@ export default function AIMonthlySummary({
           <div className="h-4 bg-gray-200 rounded w-full"></div>
           <div className="h-4 bg-gray-200 rounded w-5/6"></div>
           <div className="h-4 bg-gray-200 rounded w-4/6"></div>
-          <div className="flex items-center gap-2 mt-4 text-purple-500">
+          <div className="flex items-center gap-2 mt-4 text-emerald-500">
             <RefreshCw className="w-4 h-4 animate-spin" />
             <span className="text-sm">Generiere Monatsübersicht...</span>
           </div>
@@ -374,9 +335,9 @@ export default function AIMonthlySummary({
           </button>
         </div>
       ) : summary ? (
-        <div className="p-4 bg-purple-50 rounded-lg">
+        <div className="p-4 bg-emerald-50 rounded-lg">
           <div
-            className="text-purple-900 font-normal prose prose-sm max-w-none [&>h4]:text-purple-800 [&>h4]:font-semibold [&>h4]:mb-2 [&>h4]:mt-3 [&>h4]:first:mt-0 [&>p]:mb-2 [&>ul]:mb-2 [&>li]:mb-0 [&>strong]:font-semibold [&>em]:italic [&>em]:text-purple-700"
+            className="text-emerald-900 font-normal prose prose-sm max-w-none [&>h4]:text-emerald-800 [&>h4]:font-semibold [&>h4]:mb-2 [&>h4]:mt-3 [&>h4]:first:mt-0 [&>p]:mb-2 [&>ul]:mb-2 [&>li]:mb-0 [&>strong]:font-semibold [&>em]:italic [&>em]:text-emerald-700"
             dangerouslySetInnerHTML={{ __html: summary }}
           />
         </div>

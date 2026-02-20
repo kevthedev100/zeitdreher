@@ -36,7 +36,7 @@ type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
 type Area = Database["public"]["Tables"]["areas"]["Row"];
 
 interface AnalyticsDashboardProps {
-  userRole?: "admin" | "geschaeftsfuehrer" | "member";
+  userRole?: "admin" | "geschaeftsfuehrer" | "member" | "einzelnutzer";
   isOnboarded?: boolean;
   userId?: string | null;
 }

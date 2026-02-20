@@ -10,7 +10,7 @@ import NewEntryTab from "@/components/tabs/new-entry-tab";
 export default function DashboardNewEntryPage() {
   const supabase = createClient();
   const searchParams = useSearchParams();
-  const [userRole, setUserRole] = useState<"admin" | "geschaeftsfuehrer" | "member">("member");
+  const [userRole, setUserRole] = useState<"admin" | "geschaeftsfuehrer" | "member" | "einzelnutzer">("member");
 
   // Get URL parameters for pre-selection
   const selectedAreaId = searchParams.get("area") || "";
@@ -43,7 +43,7 @@ export default function DashboardNewEntryPage() {
           .single();
 
         if (data) {
-          setUserRole(data.role as "admin" | "geschaeftsfuehrer" | "member");
+          setUserRole(data.role as "admin" | "geschaeftsfuehrer" | "member" | "einzelnutzer");
         }
       } catch (error) {
         console.error("Error in user initialization:", error);

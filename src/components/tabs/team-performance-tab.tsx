@@ -34,7 +34,7 @@ import {
 } from "@/app/actions";
 
 interface TeamPerformanceTabProps {
-  userRole: "admin" | "geschaeftsfuehrer" | "member";
+  userRole: "admin" | "geschaeftsfuehrer" | "member" | "einzelnutzer";
 }
 
 interface Organization {
@@ -349,7 +349,7 @@ export default function TeamPerformanceTab({
     return colorMap[hexColor] || "bg-gray-50 text-gray-600";
   };
 
-  if (userRole === "member") {
+  if (userRole === "member" || userRole === "einzelnutzer") {
     return (
       <div className="bg-white p-6 border border-gray-200 rounded-lg">
         <div className="text-center">

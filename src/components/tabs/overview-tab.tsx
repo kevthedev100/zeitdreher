@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import TimeAnalyticsDashboard from "@/components/time-analytics-dashboard";
 
 interface OverviewTabProps {
-  userRole: "admin" | "geschaeftsfuehrer" | "member";
+  userRole: "admin" | "geschaeftsfuehrer" | "member" | "einzelnutzer";
   isOnboarded?: boolean;
 }
 
