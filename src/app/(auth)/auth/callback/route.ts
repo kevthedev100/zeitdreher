@@ -14,24 +14,46 @@ export async function GET(request: Request) {
       const user = sessionData.user;
 
       try {
-        const { data: pendingInvitation } = await supabase
-          .from("admin_invitations")
-          .select("*")
-          .eq("email", user.email!)
-          .eq("accepted", false)
-          .gt("expires_at", new Date().toISOString())
-          .order("created_at", { ascending: false })
-          .limit(1)
+        // Ensure public.users record exists (trigger may have failed)
+        let { data: userData } = await supabase
+          .from("users")
+          .select("id")
+          .eq("user_id", user.id)
           .single();
 
-        if (pendingInvitation) {
-          const { data: userData } = await supabase
+        if (!userData) {
+          const { data: created } = await supabase
             .from("users")
+            .upsert(
+              {
+                id: user.id,
+                user_id: user.id,
+                email: user.email || "",
+                full_name: user.user_metadata?.full_name || "",
+                onboarded: false,
+                role: "member",
+                token_identifier: crypto.randomUUID(),
+              },
+              { onConflict: "id" },
+            )
             .select("id")
-            .eq("user_id", user.id)
+            .single();
+          userData = created;
+        }
+
+        if (userData) {
+          // Process any pending admin invitation
+          const { data: pendingInvitation } = await supabase
+            .from("admin_invitations")
+            .select("*")
+            .eq("email", user.email!)
+            .eq("accepted", false)
+            .gt("expires_at", new Date().toISOString())
+            .order("created_at", { ascending: false })
+            .limit(1)
             .single();
 
-          if (userData) {
+          if (pendingInvitation) {
             await supabase.from("organization_members").upsert(
               {
                 organization_id: pendingInvitation.organization_id,
@@ -56,7 +78,7 @@ export async function GET(request: Request) {
           }
         }
       } catch (error) {
-        console.error("Error processing admin invitation:", error);
+        console.error("Error processing auth callback:", error);
       }
     }
   }
